@@ -1,0 +1,78 @@
+{
+  "mobile": {
+    "auth": {
+      "welcome": "Selamat datang di The LINK Project",
+      "tagline": "Latih bahasa Inggris sehari-hari bersama tutor AI.",
+      "signIn": "Masuk",
+      "signUp": "Buat akun",
+      "email": "Email",
+      "password": "Kata sandi",
+      "firstName": "Nama depan",
+      "lastName": "Nama belakang",
+      "continueWithGoogle": "Lanjutkan dengan Google",
+      "or": "atau",
+      "noAccount": "Baru di sini?",
+      "haveAccount": "Sudah punya akun?",
+      "verifyTitle": "Periksa email Anda",
+      "verifyBody": "Kami mengirim kode 6 digit ke {email}. Masukkan di bawah ini.",
+      "code": "Kode verifikasi",
+      "verify": "Verifikasi",
+      "genericError": "Terjadi kesalahan. Silakan coba lagi.",
+      "mfaUnsupported": "Masuk dengan dua langkah belum tersedia di aplikasi. Silakan masuk di thelinkproject.org.",
+      "forgotPassword": "Lupa kata sandi?",
+      "forgotTitle": "Atur ulang kata sandi",
+      "forgotBody": "Masukkan email Anda dan kami akan mengirim kode 6 digit.",
+      "newPassword": "Kata sandi baru",
+      "sendCode": "Kirim kode",
+      "resetPassword": "Atur kata sandi baru",
+      "backToSignIn": "Kembali ke halaman masuk",
+      "sessionExpired": "Sesi Anda telah berakhir. Silakan masuk lagi.",
+      "username": "Nama pengguna",
+      "usernameHint": "4–64 huruf, angka, _ atau -"
+    },
+    "account": {
+      "title": "Akun",
+      "language": "Bahasa",
+      "chooseLanguage": "Pilih bahasa",
+      "signOut": "Keluar",
+      "privacy": "Kebijakan privasi",
+      "deleteAccount": "Hapus akun",
+      "deleteTitle": "Hapus akun Anda?",
+      "deleteConfirm": "Hapus",
+      "cancel": "Batal",
+      "deleteFailed": "Kami tidak dapat menghapus akun Anda. Silakan coba lagi.",
+      "about": "Tentang kami",
+      "editProfile": "Ubah profil",
+      "firstName": "Nama depan",
+      "lastName": "Nama belakang",
+      "save": "Simpan",
+      "changePassword": "Ubah kata sandi",
+      "currentPassword": "Kata sandi saat ini",
+      "newPassword": "Kata sandi baru",
+      "passwordMinLength": "Gunakan minimal 8 karakter.",
+      "genericError": "Terjadi kesalahan. Silakan coba lagi.",
+      "username": "Nama pengguna"
+    },
+    "common": {
+      "retry": "Coba lagi",
+      "loading": "Memuat…",
+      "offline": "Sepertinya Anda sedang offline. Periksa koneksi Anda dan coba lagi.",
+      "offlineBanner": "Tidak ada koneksi internet",
+      "close": "Tutup",
+      "crashTitle": "Terjadi kesalahan",
+      "crashBody": "Aplikasi mengalami kesalahan tak terduga. Anda dapat mencoba lagi atau memulai ulang aplikasi.",
+      "notFound": "Halaman ini tidak ditemukan."
+    },
+    "about": {
+      "faqTitle": "Pertanyaan yang sering diajukan",
+      "contactTitle": "Hubungi kami",
+      "contactWeb": "Hubungi kami di situs web"
+    }
+  },
+  "aboutUs": {
+    "headerCall": "Kenali tim kami",
+    "headerTitle": "Tentang Kami",
+    "headerDescription": "Kami bersemangat untuk membuat pembelajaran Bahasa Inggris dapat diakses dan efektif bagi semua orang. Tim kami bekerja keras untuk menciptakan solusi inovatif yang memberdayakan pekerja migran.",
+    "role": "Co-Founder"
+  }
+}
