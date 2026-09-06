@@ -11,7 +11,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { Button, Text } from "@/components/ui";
+import { Button, LoadingState, Text } from "@/components/ui";
 import { API_BASE_URL, useApiAuth } from "@/lib/api";
 import i18n, { useLocaleReady } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
@@ -59,10 +59,11 @@ function AccountQueries() {
 // instance whose Native API is switched off). Without this the app would sit
 // behind the splash screen forever, because nothing under ClerkProvider
 // renders until Clerk reports loaded.
-function AuthUnavailable({ onRetry }: { onRetry: () => void }) {
+function AuthUnavailable({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
     useEffect(() => {
         void SplashScreen.hideAsync();
     }, []);
+    if (retrying) return <LoadingState />;
     return (
         <View style={styles.fullscreenMessage}>
             <Text variant="heading">{i18n.t("mobile.common.authUnavailableTitle")}</Text>
@@ -80,23 +81,35 @@ function Accounts({ onRetry }: { onRetry: () => void }) {
     // waiting after a while. Clerk keeps loading underneath; if it succeeds
     // later the app proceeds on its own.
     const [timedOut, setTimedOut] = useState(false);
+    // Clerk's status stays "error" while a reload is in flight, so track the
+    // attempt ourselves to show progress. A successful load unmounts this
+    // screen; a failed one hits the same timeout as the first load.
+    const [retrying, setRetrying] = useState(false);
     useEffect(() => {
         if (isLoaded) return;
-        const timer = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
+        const timer = setTimeout(() => {
+            setTimedOut(true);
+            setRetrying(false);
+        }, LOAD_TIMEOUT_MS);
         return () => clearTimeout(timer);
-    }, [isLoaded]);
+    }, [isLoaded, retrying]);
 
     const retry = useCallback(() => {
         // Remounting ClerkProvider re-runs Clerk's own load sequence. The React
         // SDK caches its wrapper in a static singleton, so drop that first or
         // the new provider would pick the failed one back up.
-        (clerk as unknown as { constructor: { clearInstance?: () => void } }).constructor
-            .clearInstance?.();
+        const sdk = clerk as unknown as { constructor: { clearInstance?: () => void } };
+        if (typeof sdk.constructor.clearInstance !== "function") {
+            console.warn("Clerk SDK no longer exposes clearInstance; retry will not reload");
+        }
+        sdk.constructor.clearInstance?.();
+        setTimedOut(false);
+        setRetrying(true);
         onRetry();
     }, [clerk, onRetry]);
 
     if (clerk.status === "error" || (timedOut && !isLoaded)) {
-        return <AuthUnavailable onRetry={retry} />;
+        return <AuthUnavailable onRetry={retry} retrying={retrying} />;
     }
     if (!isLoaded) return null;
     // No persisted personal data. Changing accounts remounts the entire cache.
@@ -115,7 +128,11 @@ export default function RootLayout() {
         <GestureHandlerRootView style={styles.fill}>
             <KeyboardProvider>
                 <SafeAreaProvider>
-                    <ClerkProvider key={attempt} publishableKey={publishableKey} tokenCache={tokenCache}>
+                    <ClerkProvider
+                        key={attempt}
+                        publishableKey={publishableKey}
+                        tokenCache={tokenCache}
+                    >
                         <Accounts onRetry={retry} />
                     </ClerkProvider>
                 </SafeAreaProvider>
@@ -125,6 +142,11 @@ export default function RootLayout() {
 }
 
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+    // A crash during the first render (for example a missing .env) would
+    // otherwise stay hidden behind the splash screen
+    useEffect(() => {
+        void SplashScreen.hideAsync();
+    }, []);
     return (
         <View style={styles.fullscreenMessage}>
             <Text variant="heading">{i18n.t("mobile.common.crashTitle")}</Text>

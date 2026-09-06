@@ -26,8 +26,11 @@ export default function ForgotPasswordScreen() {
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
 
+    const canSend = !!email.trim();
+    const canReset = code.trim().length === 6 && password.length >= 8;
+
     const sendCode = useCallback(async () => {
-        if (submittingRef.current) return;
+        if (!canSend || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -49,10 +52,10 @@ export default function ForgotPasswordScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [email, signIn, t]);
+    }, [canSend, email, signIn, t]);
 
     const reset = useCallback(async () => {
-        if (submittingRef.current) return;
+        if (!canReset || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -74,6 +77,11 @@ export default function ForgotPasswordScreen() {
                 if (finalizeError) {
                     setError(clerkErrorMessage(finalizeError, t("genericError")));
                 }
+            } else if (
+                signIn.status === "needs_second_factor" ||
+                signIn.status === "needs_client_trust"
+            ) {
+                setError(t("mfaUnsupported"));
             } else {
                 setError(t("genericError"));
             }
@@ -83,7 +91,7 @@ export default function ForgotPasswordScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [code, password, signIn, t]);
+    }, [canReset, code, password, signIn, t]);
 
     return (
         <Screen edges={["top", "bottom", "left", "right"]}>
@@ -143,7 +151,7 @@ export default function ForgotPasswordScreen() {
                             title={t("sendCode")}
                             size="lg"
                             loading={busy || fetchStatus === "fetching"}
-                            disabled={!email.trim()}
+                            disabled={!canSend}
                             onPress={sendCode}
                         />
                     ) : (
@@ -151,7 +159,7 @@ export default function ForgotPasswordScreen() {
                             title={t("resetPassword")}
                             size="lg"
                             loading={busy || fetchStatus === "fetching"}
-                            disabled={code.trim().length < 6 || password.length < 8}
+                            disabled={!canReset}
                             onPress={reset}
                         />
                     )}

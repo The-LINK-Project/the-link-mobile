@@ -43,9 +43,7 @@ export function Screen({
     return (
         <SafeAreaView style={styles.safe} edges={edges}>
             {fixed ? (
-                <View style={[styles.fill, padded ? styles.padded : null]}>
-                    {children}
-                </View>
+                <View style={[styles.fill, padded ? styles.padded : null]}>{children}</View>
             ) : (
                 <KeyboardAvoiding style={styles.fill}>
                     <ScrollView

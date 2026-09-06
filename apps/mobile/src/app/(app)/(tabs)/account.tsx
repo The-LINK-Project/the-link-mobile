@@ -1,5 +1,4 @@
 import { useClerk, useUser } from "@clerk/expo";
-import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -15,7 +14,6 @@ export default function AccountScreen() {
     const router = useRouter();
     const { user } = useUser();
     const { signOut } = useClerk();
-    const client = useQueryClient();
     const [locale, setLocale] = useLocale();
     const [languagesOpen, setLanguagesOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -25,11 +23,13 @@ export default function AccountScreen() {
     const displayName = user?.username || user?.fullName || email;
 
     async function logout() {
+        if (busy) return;
         setBusy(true);
         setError(null);
         try {
+            // The root layout remounts the whole tree (and its query cache)
+            // once Clerk reports signed out
             await signOut();
-            client.clear();
         } catch {
             setError(f("signOutError"));
         } finally {
@@ -85,23 +85,25 @@ export default function AccountScreen() {
                     onPress={() => setLanguagesOpen((open) => !open)}
                     last={!languagesOpen}
                 />
-                {languagesOpen
-                    ? LOCALES.map((option, index) => (
-                          <ListRow
-                              key={option}
-                              title={LOCALE_LABELS[option]}
-                              trailing="check"
-                              inset
-                              selected={option === locale}
-                              accessibilityRole="radio"
-                              last={index === LOCALES.length - 1}
-                              onPress={() => {
-                                  void setLocale(option);
-                                  setLanguagesOpen(false);
-                              }}
-                          />
-                      ))
-                    : null}
+                {languagesOpen ? (
+                    <View accessibilityRole="radiogroup" accessibilityLabel={t("language")}>
+                        {LOCALES.map((option, index) => (
+                            <ListRow
+                                key={option}
+                                title={LOCALE_LABELS[option]}
+                                trailing="check"
+                                inset
+                                selected={option === locale}
+                                accessibilityRole="radio"
+                                last={index === LOCALES.length - 1}
+                                onPress={() => {
+                                    void setLocale(option);
+                                    setLanguagesOpen(false);
+                                }}
+                            />
+                        ))}
+                    </View>
+                ) : null}
             </Card>
 
             <Card padded={false}>

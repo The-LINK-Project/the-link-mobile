@@ -14,9 +14,14 @@
     "android": "npm run android --workspace @link/mobile",
     "ios": "npm run ios --workspace @link/mobile",
     "typecheck": "npm run typecheck --workspaces",
-    "lint": "npm run lint --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "smoke:live": "npm run smoke:live --workspace @link/api",
-    "build:api": "npm run build --workspace @link/api"
+    "build:api": "npm run build --workspace @link/api",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
+    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\""
+  },
+  "devDependencies": {
+    "prettier": "3.9.6"
   }
 }

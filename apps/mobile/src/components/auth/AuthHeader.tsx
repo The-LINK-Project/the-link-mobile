@@ -4,13 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { Text } from "@/components/ui";
 import { spacing } from "@/lib/theme";
 
-export function AuthHeader({
-    title,
-    subtitle,
-}: {
-    title: string;
-    subtitle: string;
-}) {
+export function AuthHeader({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <View style={styles.header}>
             <Image

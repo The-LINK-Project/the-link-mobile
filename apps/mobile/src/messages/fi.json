@@ -26,14 +26,12 @@
       "sendCode": "Ipadala ang code",
       "resetPassword": "Itakda ang bagong password",
       "backToSignIn": "Bumalik sa sign in",
-      "sessionExpired": "Nag-expire ang iyong session. Mag-sign in muli.",
       "username": "Username",
       "usernameHint": "4–64 na letra, numero, _ o -"
     },
     "account": {
       "title": "Account",
       "language": "Wika",
-      "chooseLanguage": "Pumili ng wika",
       "signOut": "Mag-sign out",
       "privacy": "Patakaran sa privacy",
       "deleteAccount": "Burahin ang account",
@@ -55,18 +53,9 @@
     },
     "common": {
       "retry": "Subukan muli",
-      "loading": "Naglo-load…",
-      "offline": "Mukhang offline ka. Suriin ang iyong koneksyon at subukan muli.",
       "offlineBanner": "Walang koneksyon sa internet",
-      "close": "Isara",
       "crashTitle": "May nangyaring mali",
-      "crashBody": "Nagkaroon ng hindi inaasahang error ang app. Maaari mong subukan muli o i-restart ang app.",
-      "notFound": "Hindi mahanap ang pahinang ito."
-    },
-    "about": {
-      "faqTitle": "Mga madalas itanong",
-      "contactTitle": "Makipag-ugnayan",
-      "contactWeb": "Makipag-ugnayan sa amin sa website"
+      "crashBody": "Nagkaroon ng hindi inaasahang error ang app. Maaari mong subukan muli o i-restart ang app."
     }
   },
   "aboutUs": {

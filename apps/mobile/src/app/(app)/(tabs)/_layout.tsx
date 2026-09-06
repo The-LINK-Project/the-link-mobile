@@ -22,7 +22,11 @@ export default function TabLayout() {
                 options={{
                     title: t("home"),
                     tabBarIcon: ({ color, size, focused }) => (
-                        <Ionicons name={focused ? "home" : "home-outline"} color={color} size={size} />
+                        <Ionicons
+                            name={focused ? "home" : "home-outline"}
+                            color={color}
+                            size={size}
+                        />
                     ),
                 }}
             />
@@ -31,7 +35,11 @@ export default function TabLayout() {
                 options={{
                     title: a("title"),
                     tabBarIcon: ({ color, size, focused }) => (
-                        <Ionicons name={focused ? "person" : "person-outline"} color={color} size={size} />
+                        <Ionicons
+                            name={focused ? "person" : "person-outline"}
+                            color={color}
+                            size={size}
+                        />
                     ),
                 }}
             />

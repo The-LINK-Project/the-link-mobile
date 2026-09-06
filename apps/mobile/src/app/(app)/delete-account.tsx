@@ -31,12 +31,9 @@ export default function DeleteAccountScreen() {
         setError(null);
         try {
             await api.deleteAccount();
-            try {
-                await signOut();
-            } catch {
-                // The Clerk session is usually gone already once the user is deleted
-            }
-            router.replace("/sign-in");
+            // Signing out remounts the app on the sign-in screen. If Clerk has
+            // already dropped the session, the next API 401 signs out instead.
+            await signOut().catch(() => undefined);
         } catch {
             setError(t("deleteFailed"));
         } finally {

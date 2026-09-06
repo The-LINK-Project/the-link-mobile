@@ -17,6 +17,7 @@
       "verifyBody": "We sent a 6-digit code to {email}. Enter it below.",
       "code": "Verification code",
       "verify": "Verify",
+      "changeEmail": "Use a different email",
       "genericError": "Something went wrong. Please try again.",
       "mfaUnsupported": "Two-factor sign-in isn't available in the app yet. Please sign in on thelinkproject.org.",
       "forgotPassword": "Forgot your password?",
@@ -26,14 +27,12 @@
       "sendCode": "Send code",
       "resetPassword": "Set new password",
       "backToSignIn": "Back to sign in",
-      "sessionExpired": "Your session expired. Please sign in again.",
       "username": "Username",
       "usernameHint": "4–64 letters, numbers, _ or -"
     },
     "account": {
       "title": "Account",
       "language": "Language",
-      "chooseLanguage": "Choose a language",
       "signOut": "Sign out",
       "privacy": "Privacy policy",
       "deleteAccount": "Delete account",
@@ -55,20 +54,11 @@
     },
     "common": {
       "retry": "Try again",
-      "loading": "Loading…",
-      "offline": "You appear to be offline. Check your connection and try again.",
       "offlineBanner": "No internet connection",
-      "close": "Close",
       "crashTitle": "Something went wrong",
       "crashBody": "The app hit an unexpected error. You can try again or restart the app.",
       "authUnavailableTitle": "Sign-in service unavailable",
-      "authUnavailableBody": "We could not reach the sign-in service. Check your connection and try again.",
-      "notFound": "This page could not be found."
-    },
-    "about": {
-      "faqTitle": "Frequently asked questions",
-      "contactTitle": "Get in touch",
-      "contactWeb": "Contact us on the website"
+      "authUnavailableBody": "We could not reach the sign-in service. Check your connection and try again."
     },
     "foundation": {
       "home": "Home",
@@ -81,12 +71,7 @@
       "sharedAccount": "Your profile and password are shared with the LINK website.",
       "deleteWarning": "This deletes your LINK account on both the mobile app and website. Your data in both apps will be removed. This cannot be undone.",
       "deleteTyped": "Type DELETE to confirm",
-      "deletePending": "Your account was deleted. Data cleanup may take a moment.",
       "syncError": "We could not load your mobile account. Check your connection and try again.",
-      "back": "Back",
-      "cancel": "Cancel",
-      "about": "About LINK",
-      "privacy": "Privacy",
       "signOutError": "Could not sign out. Please try again."
     },
     "privacy": {

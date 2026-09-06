@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.expo
+.vercel
+apps/mobile/android
+apps/mobile/ios
+package-lock.json
+expo-env.d.ts

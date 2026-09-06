@@ -19,9 +19,7 @@ export function OfflineBanner() {
     useEffect(() => {
         const unsubscribe = NetInfo.addEventListener((state) => {
             // isInternetReachable is null while unknown — treat as online
-            setOffline(
-                state.isConnected === false || state.isInternetReachable === false,
-            );
+            setOffline(state.isConnected === false || state.isInternetReachable === false);
         });
         return unsubscribe;
     }, []);

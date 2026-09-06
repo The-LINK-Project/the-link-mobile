@@ -15,13 +15,7 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
     accent: { bg: colors.accentSoft, fg: "#0e6b7b" },
 };
 
-export function Badge({
-    label,
-    tone = "neutral",
-}: {
-    label: string;
-    tone?: Tone;
-}) {
+export function Badge({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
     const palette = TONES[tone];
     return (
         <View style={[styles.badge, { backgroundColor: palette.bg }]}>
