@@ -1,0 +1,29 @@
+{
+  "name": "@link/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/local.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "smoke:live": "tsx --env-file=.env test/live-smoke.ts"
+  },
+  "dependencies": {
+    "@clerk/backend": "3.17.1",
+    "express": "5.2.1",
+    "mongodb": "6.21.0",
+    "svix": "^1.76.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.3"
+  }
+}

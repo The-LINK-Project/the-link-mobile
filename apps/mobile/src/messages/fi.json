@@ -1,0 +1,78 @@
+{
+  "mobile": {
+    "auth": {
+      "welcome": "Maligayang pagdating sa The LINK Project",
+      "tagline": "Magsanay ng totoong Ingles kasama ang AI tutor.",
+      "signIn": "Mag-sign in",
+      "signUp": "Gumawa ng account",
+      "email": "Email",
+      "password": "Password",
+      "firstName": "Pangalan",
+      "lastName": "Apelyido",
+      "continueWithGoogle": "Magpatuloy gamit ang Google",
+      "or": "o",
+      "noAccount": "Bago ka rito?",
+      "haveAccount": "May account ka na?",
+      "verifyTitle": "Tingnan ang iyong email",
+      "verifyBody": "Nagpadala kami ng 6-digit na code sa {email}. Ilagay ito sa ibaba.",
+      "code": "Verification code",
+      "verify": "I-verify",
+      "genericError": "May nangyaring mali. Pakisubukan muli.",
+      "mfaUnsupported": "Hindi pa available sa app ang two-factor sign-in. Mag-sign in sa thelinkproject.org.",
+      "forgotPassword": "Nakalimutan ang password?",
+      "forgotTitle": "I-reset ang iyong password",
+      "forgotBody": "Ilagay ang iyong email at padadalhan ka namin ng 6-digit na code.",
+      "newPassword": "Bagong password",
+      "sendCode": "Ipadala ang code",
+      "resetPassword": "Itakda ang bagong password",
+      "backToSignIn": "Bumalik sa sign in",
+      "sessionExpired": "Nag-expire ang iyong session. Mag-sign in muli.",
+      "username": "Username",
+      "usernameHint": "4–64 na letra, numero, _ o -"
+    },
+    "account": {
+      "title": "Account",
+      "language": "Wika",
+      "chooseLanguage": "Pumili ng wika",
+      "signOut": "Mag-sign out",
+      "privacy": "Patakaran sa privacy",
+      "deleteAccount": "Burahin ang account",
+      "deleteTitle": "Burahin ang iyong account?",
+      "deleteConfirm": "Burahin",
+      "cancel": "Kanselahin",
+      "deleteFailed": "Hindi namin mabura ang iyong account. Pakisubukan muli.",
+      "about": "Tungkol sa amin",
+      "editProfile": "I-edit ang profile",
+      "firstName": "Pangalan",
+      "lastName": "Apelyido",
+      "save": "I-save",
+      "changePassword": "Palitan ang password",
+      "currentPassword": "Kasalukuyang password",
+      "newPassword": "Bagong password",
+      "passwordMinLength": "Gumamit ng hindi bababa sa 8 character.",
+      "genericError": "May nangyaring mali. Pakisubukan muli.",
+      "username": "Username"
+    },
+    "common": {
+      "retry": "Subukan muli",
+      "loading": "Naglo-load…",
+      "offline": "Mukhang offline ka. Suriin ang iyong koneksyon at subukan muli.",
+      "offlineBanner": "Walang koneksyon sa internet",
+      "close": "Isara",
+      "crashTitle": "May nangyaring mali",
+      "crashBody": "Nagkaroon ng hindi inaasahang error ang app. Maaari mong subukan muli o i-restart ang app.",
+      "notFound": "Hindi mahanap ang pahinang ito."
+    },
+    "about": {
+      "faqTitle": "Mga madalas itanong",
+      "contactTitle": "Makipag-ugnayan",
+      "contactWeb": "Makipag-ugnayan sa amin sa website"
+    }
+  },
+  "aboutUs": {
+    "headerCall": "Kilalanin ang Koponan",
+    "headerTitle": "Tungkol sa Amin",
+    "headerDescription": "Kami ay may malasakit sa paggawa ng pagkatuto ng Ingles na madaling ma-access at epektibo para sa lahat. Ang aming dedikadong koponan ay nagsusumikap na lumikha ng mga makabago at makapangyarihang solusyon na makikinabang ang mga migranteng manggagawa.",
+    "role": "Kasama sa Pagkatatag"
+  }
+}

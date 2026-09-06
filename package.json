@@ -1,0 +1,22 @@
+{
+  "name": "the-link-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "scripts": {
+    "dev:api": "npm run dev --workspace @link/api",
+    "dev:mobile": "npm run start --workspace @link/mobile",
+    "android": "npm run android --workspace @link/mobile",
+    "ios": "npm run ios --workspace @link/mobile",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "smoke:live": "npm run smoke:live --workspace @link/api",
+    "build:api": "npm run build --workspace @link/api"
+  }
+}
