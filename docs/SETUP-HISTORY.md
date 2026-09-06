@@ -233,6 +233,13 @@ Native Android testing:
 - account deletion through the phone UI
 - deletion verified in Clerk and MongoDB, followed by disposable-record cleanup
 
+Release-build testing (6 September 2026, evening):
+
+- EAS preview APK with the production Clerk key installed on the Android 14 emulator
+- confirmed the "Sign-in service unavailable" screen appears while Native API was disabled, and that one tap of "Try again" reaches sign-in once it was enabled
+- production sign-up shows first name, last name, username, email, and password
+- development debug build: full sign-up with a `+clerk_test` address and code `424242`, every Account sub-screen, language switching, small-phone layout (360×640 dp), and account deletion verified in Clerk and MongoDB, followed by test-record cleanup
+
 An iOS Simulator was not run because Xcode is not installed on this Mac. Expo bundle generation still validates the shared JavaScript/TypeScript application code for iOS, but a developer with Xcode should perform an iOS-native pass before App Store release.
 
 ## New developer setup

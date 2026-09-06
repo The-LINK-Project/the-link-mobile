@@ -7,7 +7,7 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
-import { USERNAME_PATTERN, useProfileAttributes } from "@/lib/clerkSettings";
+import { USERNAME_PATTERN, useGoogleSignIn, useProfileAttributes } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
 
@@ -17,6 +17,7 @@ export default function SignUpScreen() {
     // Which extra fields the active Clerk instance requires. Development and
     // production intentionally have different profile settings.
     const attributes = useProfileAttributes();
+    const googleEnabled = useGoogleSignIn();
 
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
@@ -214,16 +215,19 @@ export default function SignUpScreen() {
                             />
                         </View>
 
-                        <View style={styles.dividerRow}>
-                            <View style={styles.divider} />
-                            <Text variant="caption">{t("or")}</Text>
-                            <View style={styles.divider} />
-                        </View>
-
-                        <GoogleButton
-                            title={t("continueWithGoogle")}
-                            onError={setError}
-                        />
+                        {googleEnabled ? (
+                            <>
+                                <View style={styles.dividerRow}>
+                                    <View style={styles.divider} />
+                                    <Text variant="caption">{t("or")}</Text>
+                                    <View style={styles.divider} />
+                                </View>
+                                <GoogleButton
+                                    title={t("continueWithGoogle")}
+                                    onError={setError}
+                                />
+                            </>
+                        ) : null}
 
                         <View style={styles.footer}>
                             <Text variant="caption">{t("haveAccount")}</Text>

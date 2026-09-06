@@ -1,20 +1,24 @@
 import { useClerk } from "@clerk/expo";
 import {
     readProfileAttributes,
+    readSocialProvider,
     type AttributeSetting,
     type ClerkEnvironmentSource,
 } from "./profileAttributes";
 
 // Which profile attributes the Clerk instance accepts. The dashboard decides
 // this per instance (User & authentication → Email, phone, username / Personal
-// information): on the current one, username is REQUIRED and first/last name
-// are DISABLED — sending a disabled attribute makes Clerk reject the whole
-// request. The hosted <SignUp /> on the website adapts automatically; the
-// native forms read the same environment payload to do the same.
+// information). Production requires first and last name; development
+// disables them, and sending a disabled attribute makes Clerk reject the
+// whole request. The hosted <SignUp /> on the website adapts automatically;
+// the native forms read the same environment payload to do the same.
 //
 // Core 3 exposes the loaded EnvironmentResource as `__internal_environment`.
 // The reader also accepts the older property name and both resource casing
 // styles so this small compatibility boundary is easy to remove later.
+
+const IS_PRODUCTION_KEY =
+    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_live_") ?? false;
 
 export function useProfileAttributes(): {
     username: AttributeSetting;
@@ -22,15 +26,18 @@ export function useProfileAttributes(): {
     lastName: AttributeSetting;
 } {
     const clerk = useClerk() as unknown as ClerkEnvironmentSource;
-    const settings = readProfileAttributes(
-        clerk,
-        process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_live_") ?? false,
-    );
+    const settings = readProfileAttributes(clerk, IS_PRODUCTION_KEY);
     return {
         username: settings.username,
         firstName: settings.first_name,
         lastName: settings.last_name,
     };
+}
+
+/** True when the instance has Google sign-in switched on (SSO connections). */
+export function useGoogleSignIn(): boolean {
+    const clerk = useClerk() as unknown as ClerkEnvironmentSource;
+    return readSocialProvider(clerk, "oauth_google");
 }
 
 // Clerk's own rule: 4–64 characters, letters/digits/underscore/hyphen

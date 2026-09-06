@@ -7,12 +7,15 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
+import { useGoogleSignIn } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
 
 export default function SignInScreen() {
     const t = useTranslations("mobile.auth");
     const { signIn, fetchStatus } = useSignIn();
+    // Google is a per-instance Clerk setting; hide the button where it is off
+    const googleEnabled = useGoogleSignIn();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -99,13 +102,16 @@ export default function SignInScreen() {
                     </Link>
                 </View>
 
-                <View style={styles.dividerRow}>
-                    <View style={styles.divider} />
-                    <Text variant="caption">{t("or")}</Text>
-                    <View style={styles.divider} />
-                </View>
-
-                <GoogleButton title={t("continueWithGoogle")} onError={setError} />
+                {googleEnabled ? (
+                    <>
+                        <View style={styles.dividerRow}>
+                            <View style={styles.divider} />
+                            <Text variant="caption">{t("or")}</Text>
+                            <View style={styles.divider} />
+                        </View>
+                        <GoogleButton title={t("continueWithGoogle")} onError={setError} />
+                    </>
+                ) : null}
 
                 <View style={styles.footer}>
                     <Text variant="caption">{t("noAccount")}</Text>

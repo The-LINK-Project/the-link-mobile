@@ -11,7 +11,7 @@ import { colors, fontSize, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
 
 import { Text } from "./Text";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
+type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive" | "ghostDestructive";
 type Size = "sm" | "md" | "lg";
 
 type Props = Omit<PressableProps, "style" | "children"> & {
@@ -29,6 +29,7 @@ const TEXT_COLOR: Record<Variant, string> = {
     outline: colors.foreground,
     ghost: colors.foreground,
     destructive: colors.white,
+    ghostDestructive: colors.destructive,
 };
 
 export function Button({
@@ -94,6 +95,7 @@ const styles = StyleSheet.create({
     outline: { backgroundColor: colors.surface, borderColor: colors.border },
     ghost: { backgroundColor: "transparent" },
     destructive: { backgroundColor: colors.destructive },
+    ghostDestructive: { backgroundColor: "transparent" },
     size_sm: { minHeight: 40, paddingHorizontal: spacing.md },
     size_md: { minHeight: TOUCH_TARGET, paddingHorizontal: spacing.lg },
     size_lg: { minHeight: 56, paddingHorizontal: spacing.xl },

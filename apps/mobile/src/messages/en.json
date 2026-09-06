@@ -79,7 +79,7 @@
       "contactBody": "Have a question or want to get in touch with the LINK team?",
       "contactAction": "Open contact page",
       "sharedAccount": "Your profile and password are shared with the LINK website.",
-      "deleteWarning": "This deletes your Link account on both the mobile app and website. Your data in both apps will be removed. This cannot be undone.",
+      "deleteWarning": "This deletes your LINK account on both the mobile app and website. Your data in both apps will be removed. This cannot be undone.",
       "deleteTyped": "Type DELETE to confirm",
       "deletePending": "Your account was deleted. Data cleanup may take a moment.",
       "syncError": "We could not load your mobile account. Check your connection and try again.",
@@ -88,6 +88,15 @@
       "about": "About LINK",
       "privacy": "Privacy",
       "signOutError": "Could not sign out. Please try again."
+    },
+    "privacy": {
+      "accountTitle": "Your LINK account",
+      "accountBody": "Clerk manages your sign-in details. The mobile app stores your Clerk account ID, email, username, name and profile image URL in its own database. It does not store your password.",
+      "sharedTitle": "Shared account, separate app data",
+      "sharedBody": "Your login and profile are shared with the LINK website. Mobile activity data is kept separately. This version does not record audio or collect lesson results.",
+      "deleteTitle": "Deleting your account",
+      "deleteBody": "Deleting your account removes your shared Clerk identity and starts data removal in both apps. The mobile database keeps only an opaque account ID and deletion time so delayed updates cannot restore deleted information. Technical request counters expire automatically.",
+      "contactHint": "Use Contact us in Account to ask the LINK team about your data."
     }
   },
   "aboutUs": {
