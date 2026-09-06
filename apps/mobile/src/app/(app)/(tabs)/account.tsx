@@ -1,33 +1,158 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "expo-router";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { Button, Screen, Text } from "@/components/ui";
+import { StyleSheet, View } from "react-native";
+
+import { Button, Card, ListRow, Screen, Text } from "@/components/ui";
 import { LOCALES, LOCALE_LABELS, useLocale, useTranslations } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
+
 export default function AccountScreen() {
-  const {user}=useUser(), {signOut}=useClerk();
-  const client=useQueryClient();
-  const [locale,setLocale]=useLocale();
-  const [languages,setLanguages]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
-  const t=useTranslations("mobile.account"), f=useTranslations("mobile.foundation");
-  async function logout(){setBusy(true);setError("");try{await signOut();client.clear();}catch{setError(f("signOutError"));}finally{setBusy(false);}}
-  return <Screen edges={["top","left","right"]}>
-    <Text variant="title" style={styles.title}>{t("title")}</Text>
-    <Text variant="heading">{user?.username || user?.fullName || user?.primaryEmailAddress?.emailAddress}</Text>
-    <Text variant="caption">{user?.primaryEmailAddress?.emailAddress}</Text>
-    <Text variant="caption" style={styles.note}>{f("sharedAccount")}</Text>
-    <Link href="/edit-profile" style={styles.row}>{t("editProfile")}</Link>
-    {user?.passwordEnabled ? <Link href="/change-password" style={styles.row}>{t("changePassword")}</Link> : null}
-    <Pressable accessibilityRole="button" accessibilityState={{expanded:languages}} onPress={()=>setLanguages(!languages)} style={styles.row}><Text>{t("language")} · {LOCALE_LABELS[locale]}</Text></Pressable>
-    {languages ? <View>{LOCALES.map(l=><Pressable key={l} accessibilityRole="radio" accessibilityState={{selected:l===locale}} style={styles.row} onPress={()=>{void setLocale(l);setLanguages(false);}}><Text color={l===locale?colors.primaryDark:colors.foreground}>{LOCALE_LABELS[l]}</Text></Pressable>)}</View>:null}
-    <Link href="/about" style={styles.row}>{t("about")}</Link>
-    <Link href="/contact" style={styles.row}>{f("contact")}</Link>
-    <Link href="/privacy" style={styles.row}>{t("privacy")}</Link>
-    {error?<Text color={colors.destructive}>{error}</Text>:null}
-    <Button title={t("signOut")} loading={busy} onPress={()=>void logout()} variant="outline" style={styles.signOut}/>
-    <Link href="/delete-account" style={[styles.row,styles.delete]}>{t("deleteAccount")}</Link>
-  </Screen>;
+    const t = useTranslations("mobile.account");
+    const f = useTranslations("mobile.foundation");
+    const router = useRouter();
+    const { user } = useUser();
+    const { signOut } = useClerk();
+    const client = useQueryClient();
+    const [locale, setLocale] = useLocale();
+    const [languagesOpen, setLanguagesOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const email = user?.primaryEmailAddress?.emailAddress;
+    const displayName = user?.username || user?.fullName || email;
+
+    async function logout() {
+        setBusy(true);
+        setError(null);
+        try {
+            await signOut();
+            client.clear();
+        } catch {
+            setError(f("signOutError"));
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return (
+        <Screen edges={["top", "left", "right"]} contentContainerStyle={styles.content}>
+            <Text variant="title">{t("title")}</Text>
+
+            <View style={styles.identity}>
+                {user?.imageUrl ? (
+                    <Image
+                        source={{ uri: user.imageUrl }}
+                        style={styles.avatar}
+                        accessibilityLabel={displayName}
+                        cachePolicy="memory-disk"
+                    />
+                ) : null}
+                <View style={styles.identityText}>
+                    <Text variant="heading" numberOfLines={1}>
+                        {displayName}
+                    </Text>
+                    {email && email !== displayName ? (
+                        <Text variant="caption" numberOfLines={1}>
+                            {email}
+                        </Text>
+                    ) : null}
+                </View>
+            </View>
+            <Text variant="caption">{f("sharedAccount")}</Text>
+
+            <Card padded={false}>
+                <ListRow
+                    icon="person-outline"
+                    title={t("editProfile")}
+                    onPress={() => router.push("/edit-profile")}
+                />
+                {user?.passwordEnabled ? (
+                    <ListRow
+                        icon="key-outline"
+                        title={t("changePassword")}
+                        onPress={() => router.push("/change-password")}
+                    />
+                ) : null}
+                <ListRow
+                    icon="language-outline"
+                    title={t("language")}
+                    value={LOCALE_LABELS[locale]}
+                    trailing="none"
+                    accessibilityState={{ expanded: languagesOpen }}
+                    onPress={() => setLanguagesOpen((open) => !open)}
+                    last={!languagesOpen}
+                />
+                {languagesOpen
+                    ? LOCALES.map((option, index) => (
+                          <ListRow
+                              key={option}
+                              title={LOCALE_LABELS[option]}
+                              trailing="check"
+                              inset
+                              selected={option === locale}
+                              accessibilityRole="radio"
+                              last={index === LOCALES.length - 1}
+                              onPress={() => {
+                                  void setLocale(option);
+                                  setLanguagesOpen(false);
+                              }}
+                          />
+                      ))
+                    : null}
+            </Card>
+
+            <Card padded={false}>
+                <ListRow
+                    icon="people-outline"
+                    title={t("about")}
+                    onPress={() => router.push("/about")}
+                />
+                <ListRow
+                    icon="mail-outline"
+                    title={f("contact")}
+                    onPress={() => router.push("/contact")}
+                />
+                <ListRow
+                    icon="shield-checkmark-outline"
+                    title={t("privacy")}
+                    onPress={() => router.push("/privacy")}
+                    last
+                />
+            </Card>
+
+            {error ? (
+                <Text variant="caption" color={colors.destructive}>
+                    {error}
+                </Text>
+            ) : null}
+
+            <View style={styles.actions}>
+                <Button
+                    title={t("signOut")}
+                    variant="outline"
+                    loading={busy}
+                    onPress={() => void logout()}
+                />
+                <Button
+                    title={t("deleteAccount")}
+                    variant="ghostDestructive"
+                    disabled={busy}
+                    onPress={() => router.push("/delete-account")}
+                    style={styles.delete}
+                />
+            </View>
+        </Screen>
+    );
 }
-const styles=StyleSheet.create({title:{marginVertical:spacing.lg},note:{marginVertical:spacing.xl},row:{paddingVertical:spacing.lg,minHeight:52,fontSize:16,color:colors.foreground,borderBottomWidth:1,borderBottomColor:colors.hairline},signOut:{marginTop:spacing.xl},delete:{color:colors.destructive,marginTop:spacing.md}});
+
+const styles = StyleSheet.create({
+    content: { gap: spacing.lg, paddingTop: spacing.xl },
+    identity: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+    identityText: { flex: 1, gap: spacing.xs },
+    avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.mutedSurface },
+    actions: { gap: spacing.sm, marginTop: spacing.sm },
+    delete: { alignSelf: "center" },
+});
