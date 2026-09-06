@@ -3,14 +3,7 @@ import { StyleSheet, Text as RNText, type TextProps } from "react-native";
 import { colors, fontSize } from "@/lib/theme";
 
 type Variant =
-    | "display"
-    | "title"
-    | "heading"
-    | "subheading"
-    | "body"
-    | "bodyStrong"
-    | "caption"
-    | "label";
+    "display" | "title" | "heading" | "subheading" | "body" | "bodyStrong" | "caption" | "label";
 
 type Props = TextProps & {
     variant?: Variant;
@@ -18,13 +11,7 @@ type Props = TextProps & {
     center?: boolean;
 };
 
-export function Text({
-    variant = "body",
-    color,
-    center,
-    style,
-    ...rest
-}: Props) {
+export function Text({ variant = "body", color, center, style, ...rest }: Props) {
     return (
         <RNText
             // Respect system font scaling but cap it so buttons and badges

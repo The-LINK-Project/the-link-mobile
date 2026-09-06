@@ -1,4 +1,5 @@
 import { useClerk } from "@clerk/expo";
+import { useMemo } from "react";
 import {
     readProfileAttributes,
     readSocialProvider,
@@ -27,11 +28,18 @@ export function useProfileAttributes(): {
 } {
     const clerk = useClerk() as unknown as ClerkEnvironmentSource;
     const settings = readProfileAttributes(clerk, IS_PRODUCTION_KEY);
-    return {
-        username: settings.username,
-        firstName: settings.first_name,
-        lastName: settings.last_name,
-    };
+    // Stable identity while the settings are unchanged, so callbacks that
+    // depend on it can actually memoise
+    const key = JSON.stringify(settings);
+    return useMemo(
+        () => ({
+            username: settings.username,
+            firstName: settings.first_name,
+            lastName: settings.last_name,
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [key],
+    );
 }
 
 /** True when the instance has Google sign-in switched on (SSO connections). */

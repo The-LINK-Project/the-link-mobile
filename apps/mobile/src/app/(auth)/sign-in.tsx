@@ -23,8 +23,10 @@ export default function SignInScreen() {
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
 
+    const canSubmit = !!email.trim() && !!password;
+
     const handleSignIn = useCallback(async () => {
-        if (submittingRef.current) return;
+        if (!canSubmit || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -57,7 +59,7 @@ export default function SignInScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [email, password, signIn, t]);
+    }, [canSubmit, email, password, signIn, t]);
 
     return (
         <Screen edges={["top", "bottom", "left", "right"]}>
@@ -92,11 +94,16 @@ export default function SignInScreen() {
                         title={t("signIn")}
                         size="lg"
                         loading={busy || fetchStatus === "fetching"}
-                        disabled={!email || !password}
+                        disabled={!canSubmit}
                         onPress={handleSignIn}
                     />
                     <Link href="/forgot-password" asChild>
-                        <Text variant="caption" center color={colors.primaryDark} style={styles.forgot}>
+                        <Text
+                            variant="caption"
+                            center
+                            color={colors.primaryDark}
+                            style={styles.forgot}
+                        >
                             {t("forgotPassword")}
                         </Text>
                     </Link>

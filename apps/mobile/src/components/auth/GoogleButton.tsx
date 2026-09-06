@@ -7,11 +7,12 @@ import { Platform } from "react-native";
 
 import { Button, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
-import { useTranslations } from "@/lib/i18n";
 import { USERNAME_PATTERN } from "@/lib/clerkSettings";
+import { useTranslations } from "@/lib/i18n";
 import { colors } from "@/lib/theme";
 
 const EMPTY_FIELDS: string[] = [];
+const PROFILE_FIELDS = ["username", "first_name", "last_name"];
 
 // Closes the in-app browser tab once the OAuth redirect lands back in the app
 WebBrowser.maybeCompleteAuthSession();
@@ -27,6 +28,11 @@ function useWarmUpBrowser() {
     }, []);
 }
 
+/**
+ * "Continue with Google". When Google returns a brand-new user whose profile
+ * lacks fields the Clerk instance requires, the missing fields appear above
+ * the button and a second press completes the sign-up.
+ */
 export function GoogleButton({
     title,
     onError,
@@ -36,18 +42,22 @@ export function GoogleButton({
 }) {
     useWarmUpBrowser();
     const { startSSOFlow } = useSSO();
+    const t = useTranslations("mobile.auth");
     const [busy, setBusy] = useState(false);
     const sendingRef = useRef(false);
-    const t = useTranslations("mobile.auth");
-    const ta = useTranslations("mobile.account");
     const [pending, setPending] = useState<Awaited<ReturnType<typeof startSSOFlow>> | null>(null);
     const [username, setUsername] = useState("");
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const missing = pending?.signUp?.missingFields ?? EMPTY_FIELDS;
 
+    const canComplete =
+        (!missing.includes("username") || USERNAME_PATTERN.test(username.trim())) &&
+        (!missing.includes("first_name") || !!firstName.trim()) &&
+        (!missing.includes("last_name") || !!lastName.trim());
+
     const handlePress = useCallback(async () => {
-        if (sendingRef.current) return;
+        if (sendingRef.current || !canComplete) return;
         sendingRef.current = true;
         setBusy(true);
         try {
@@ -70,36 +80,77 @@ export function GoogleButton({
             });
             if (result.createdSessionId && result.setActive) {
                 await result.setActive({ session: result.createdSessionId });
-            } else if (result.signUp?.status === "missing_requirements" &&
+            } else if (
+                result.signUp?.status === "missing_requirements" &&
                 result.signUp.missingFields.length > 0 &&
-                result.signUp.missingFields.every((field) => ["username", "first_name", "last_name"].includes(field))) {
+                result.signUp.missingFields.every((field) => PROFILE_FIELDS.includes(field))
+            ) {
                 setPending(result);
             } else if (result.authSessionResult?.type === "success") {
-                onError(result.signIn?.status === "needs_second_factor" ? t("mfaUnsupported") : t("genericError"));
+                onError(
+                    result.signIn?.status === "needs_second_factor"
+                        ? t("mfaUnsupported")
+                        : t("genericError"),
+                );
             }
+            // Any other outcome means the person dismissed the browser tab
         } catch (error) {
             onError(clerkErrorMessage(error, t("genericError")));
         } finally {
             sendingRef.current = false;
             setBusy(false);
         }
-    }, [firstName, lastName, missing, onError, pending, startSSOFlow, t, username]);
+    }, [canComplete, firstName, lastName, missing, onError, pending, startSSOFlow, t, username]);
 
     return (
         <>
-        {missing.includes("username") ? <TextField label={ta("username")} value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} /> : null}
-        {missing.includes("first_name") ? <TextField label={ta("firstName")} value={firstName} onChangeText={setFirstName} /> : null}
-        {missing.includes("last_name") ? <TextField label={ta("lastName")} value={lastName} onChangeText={setLastName} /> : null}
-        <Button
-            title={pending ? t("signUp") : title}
-            disabled={(missing.includes("username") && !USERNAME_PATTERN.test(username.trim())) ||
-                (missing.includes("first_name") && !firstName.trim()) ||
-                (missing.includes("last_name") && !lastName.trim())}
-            variant="outline"
-            loading={busy}
-            onPress={handlePress}
-            icon={<Ionicons name="logo-google" size={18} color={colors.foreground} />}
-        />
+            {missing.includes("first_name") ? (
+                <TextField
+                    label={t("firstName")}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoComplete="given-name"
+                    textContentType="givenName"
+                />
+            ) : null}
+            {missing.includes("last_name") ? (
+                <TextField
+                    label={t("lastName")}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoComplete="family-name"
+                    textContentType="familyName"
+                />
+            ) : null}
+            {missing.includes("username") ? (
+                <TextField
+                    label={t("username")}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="username-new"
+                    textContentType="username"
+                    error={
+                        username.trim() && !USERNAME_PATTERN.test(username.trim())
+                            ? t("usernameHint")
+                            : null
+                    }
+                />
+            ) : null}
+            <Button
+                title={pending ? t("signUp") : title}
+                variant={pending ? "primary" : "outline"}
+                size={pending ? "lg" : "md"}
+                disabled={!canComplete}
+                loading={busy}
+                onPress={handlePress}
+                icon={
+                    pending ? undefined : (
+                        <Ionicons name="logo-google" size={18} color={colors.foreground} />
+                    )
+                }
+            />
         </>
     );
 }

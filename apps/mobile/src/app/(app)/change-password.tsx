@@ -23,9 +23,10 @@ export default function ChangePasswordScreen() {
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
 
+    const canSave = !!currentPassword && newPassword.length >= 8;
+
     const save = useCallback(async () => {
-        if (!user) return;
-        if (submittingRef.current) return;
+        if (!user || !canSave || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -42,7 +43,7 @@ export default function ChangePasswordScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [currentPassword, newPassword, router, t, user]);
+    }, [canSave, currentPassword, newPassword, router, t, user]);
 
     return (
         <Screen edges={["bottom", "left", "right"]}>
@@ -78,7 +79,7 @@ export default function ChangePasswordScreen() {
                         title={t("save")}
                         size="lg"
                         loading={busy}
-                        disabled={!currentPassword || newPassword.length < 8}
+                        disabled={!canSave}
                         onPress={save}
                     />
                 </View>

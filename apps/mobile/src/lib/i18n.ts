@@ -23,18 +23,6 @@ export const LOCALES = ["en", "bn", "ta", "bu", "fi", "in"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
-// Our historical locale codes → real BCP 47 tags, for Intl APIs like
-// toLocaleDateString ("bu" is Burmese = my, "fi" is Filipino = fil,
-// "in" is Bahasa Indonesia = id)
-export const BCP47: Record<Locale, string> = {
-    en: "en",
-    bn: "bn",
-    ta: "ta",
-    bu: "my",
-    fi: "fil",
-    in: "id",
-};
-
 export const LOCALE_LABELS: Record<Locale, string> = {
     en: "English",
     bn: "বাংলা",
@@ -140,9 +128,8 @@ export function useTranslations(namespace: string) {
     // the locale explicitly also makes the result independent of i18n.locale
     // timing.
     return useMemo(
-        () =>
-            (key: string, options?: Record<string, unknown>) =>
-                i18n.t(`${namespace}.${key}`, { locale, ...options }),
+        () => (key: string, options?: Record<string, unknown>) =>
+            i18n.t(`${namespace}.${key}`, { locale, ...options }),
         [namespace, locale],
     );
 }

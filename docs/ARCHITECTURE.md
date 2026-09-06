@@ -68,7 +68,7 @@ Mobile DELETE /v1/me
         └──▶ mobile API immediately tombstones its local profile
 ```
 
-The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. Future feature owners must extend the deletion service when they add new user-owned collections.
+The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. Future feature owners must extend the deletion service when they add new user-owned collections.
 
 Clerk events for people who have only used the website do not create records in the mobile database. `user.created` and `user.updated` synchronize only an existing mobile member; `user.deleted` cleans up only an existing mobile record.
 

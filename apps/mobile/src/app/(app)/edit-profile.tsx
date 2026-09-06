@@ -29,9 +29,18 @@ export default function EditProfileScreen() {
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
 
+    const usernameOk =
+        !attributes.username.enabled ||
+        (username.trim() === "" && !attributes.username.required) ||
+        USERNAME_PATTERN.test(username.trim());
+    const firstNameOk =
+        !attributes.firstName.enabled || !attributes.firstName.required || !!firstName.trim();
+    const lastNameOk =
+        !attributes.lastName.enabled || !attributes.lastName.required || !!lastName.trim();
+    const canSave = usernameOk && firstNameOk && lastNameOk;
+
     const save = useCallback(async () => {
-        if (!user) return;
-        if (submittingRef.current) return;
+        if (!user || !canSave || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -41,8 +50,8 @@ export default function EditProfileScreen() {
                 ...(attributes.firstName.enabled ? { firstName: firstName.trim() } : {}),
                 ...(attributes.lastName.enabled ? { lastName: lastName.trim() } : {}),
             });
-            // The Mongo copy follows via the Clerk user.updated webhook;
-            // refetch it next time it's read so the two agree
+            // GET /v1/me re-syncs the Mongo copy from Clerk on its next read,
+            // so drop the cached profile
             queryClient.invalidateQueries({ queryKey: queryKeys.me });
             router.back();
         } catch (err) {
@@ -51,20 +60,7 @@ export default function EditProfileScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [attributes, firstName, lastName, queryClient, router, t, user, username]);
-
-    const usernameOk =
-        !attributes.username.enabled ||
-        (username.trim() === "" && !attributes.username.required) ||
-        USERNAME_PATTERN.test(username.trim());
-    const firstNameOk =
-        !attributes.firstName.enabled ||
-        !attributes.firstName.required ||
-        !!firstName.trim();
-    const lastNameOk =
-        !attributes.lastName.enabled ||
-        !attributes.lastName.required ||
-        !!lastName.trim();
+    }, [attributes, canSave, firstName, lastName, queryClient, router, t, user, username]);
 
     return (
         <Screen edges={["bottom", "left", "right"]}>
@@ -90,6 +86,7 @@ export default function EditProfileScreen() {
                             onChangeText={setFirstName}
                             autoComplete="given-name"
                             textContentType="givenName"
+                            onSubmitEditing={save}
                         />
                     ) : null}
                     {attributes.lastName.enabled ? (
@@ -113,7 +110,7 @@ export default function EditProfileScreen() {
                         title={t("save")}
                         size="lg"
                         loading={busy}
-                        disabled={!usernameOk || !firstNameOk || !lastNameOk}
+                        disabled={!canSave}
                         onPress={save}
                     />
                 </View>

@@ -36,14 +36,20 @@ export function ListRow({
     last = false,
     inset = false,
     disabled,
+    accessibilityRole = "button",
+    accessibilityState,
     ...rest
 }: Props) {
     const color = tone === "destructive" ? colors.destructive : colors.foreground;
     return (
         <Pressable
-            accessibilityRole="button"
+            accessibilityRole={accessibilityRole}
             accessibilityLabel={value ? `${title}, ${value}` : title}
-            accessibilityState={{ disabled: !!disabled, selected }}
+            accessibilityState={{
+                disabled: !!disabled,
+                ...(accessibilityRole === "radio" ? { checked: selected } : { selected }),
+                ...accessibilityState,
+            }}
             disabled={disabled}
             {...rest}
             style={({ pressed }) => [
@@ -54,7 +60,11 @@ export function ListRow({
             ]}
         >
             {icon ? (
-                <Ionicons name={icon} size={22} color={tone === "destructive" ? color : colors.muted} />
+                <Ionicons
+                    name={icon}
+                    size={22}
+                    color={tone === "destructive" ? color : colors.muted}
+                />
             ) : null}
             <Text color={color} style={styles.title} numberOfLines={1}>
                 {title}

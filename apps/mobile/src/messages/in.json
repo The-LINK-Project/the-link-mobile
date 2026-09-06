@@ -26,14 +26,12 @@
       "sendCode": "Kirim kode",
       "resetPassword": "Atur kata sandi baru",
       "backToSignIn": "Kembali ke halaman masuk",
-      "sessionExpired": "Sesi Anda telah berakhir. Silakan masuk lagi.",
       "username": "Nama pengguna",
       "usernameHint": "4–64 huruf, angka, _ atau -"
     },
     "account": {
       "title": "Akun",
       "language": "Bahasa",
-      "chooseLanguage": "Pilih bahasa",
       "signOut": "Keluar",
       "privacy": "Kebijakan privasi",
       "deleteAccount": "Hapus akun",
@@ -55,18 +53,9 @@
     },
     "common": {
       "retry": "Coba lagi",
-      "loading": "Memuat…",
-      "offline": "Sepertinya Anda sedang offline. Periksa koneksi Anda dan coba lagi.",
       "offlineBanner": "Tidak ada koneksi internet",
-      "close": "Tutup",
       "crashTitle": "Terjadi kesalahan",
-      "crashBody": "Aplikasi mengalami kesalahan tak terduga. Anda dapat mencoba lagi atau memulai ulang aplikasi.",
-      "notFound": "Halaman ini tidak ditemukan."
-    },
-    "about": {
-      "faqTitle": "Pertanyaan yang sering diajukan",
-      "contactTitle": "Hubungi kami",
-      "contactWeb": "Hubungi kami di situs web"
+      "crashBody": "Aplikasi mengalami kesalahan tak terduga. Anda dapat mencoba lagi atau memulai ulang aplikasi."
     }
   },
   "aboutUs": {

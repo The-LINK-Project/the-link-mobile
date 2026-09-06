@@ -30,9 +30,20 @@ export default function SignUpScreen() {
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
 
+    const usernameOk =
+        !attributes.username.enabled ||
+        (attributes.username.required
+            ? USERNAME_PATTERN.test(username.trim())
+            : username.trim() === "" || USERNAME_PATTERN.test(username.trim()));
+    const firstNameOk = !attributes.firstName.required || !!firstName.trim();
+    const lastNameOk = !attributes.lastName.required || !!lastName.trim();
+    const canSubmit =
+        !!email.trim() && password.length >= 8 && usernameOk && firstNameOk && lastNameOk;
+    const canVerify = code.trim().length === 6;
+
     // Step 1: create the sign-up and send the email code
     const handleSignUp = useCallback(async () => {
-        if (submittingRef.current) return;
+        if (!canSubmit || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -67,21 +78,13 @@ export default function SignUpScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [attributes, email, firstName, lastName, password, signUp, t, username]);
-
-    const usernameOk =
-        !attributes.username.enabled ||
-        (attributes.username.required
-            ? USERNAME_PATTERN.test(username.trim())
-            : username.trim() === "" || USERNAME_PATTERN.test(username.trim()));
-    const firstNameOk = !attributes.firstName.required || !!firstName.trim();
-    const lastNameOk = !attributes.lastName.required || !!lastName.trim();
+    }, [attributes, canSubmit, email, firstName, lastName, password, signUp, t, username]);
 
     // Step 2: verify the code and activate the session. The Clerk webhook
-    // webhook keeps an existing Mongo profile current, and /v1/me creates the
-    // mobile profile on first authenticated use.
+    // keeps an existing Mongo profile current, and /v1/me creates the mobile
+    // profile on first authenticated use.
     const handleVerify = useCallback(async () => {
-        if (submittingRef.current) return;
+        if (!canVerify || submittingRef.current) return;
         submittingRef.current = true;
         setBusy(true);
         setError(null);
@@ -105,7 +108,7 @@ export default function SignUpScreen() {
             submittingRef.current = false;
             setBusy(false);
         }
-    }, [code, signUp, t]);
+    }, [canVerify, code, signUp, t]);
 
     return (
         <Screen edges={["top", "bottom", "left", "right"]}>
@@ -136,8 +139,18 @@ export default function SignUpScreen() {
                                 title={t("verify")}
                                 size="lg"
                                 loading={busy || fetchStatus === "fetching"}
-                                disabled={code.trim().length < 6}
+                                disabled={!canVerify}
                                 onPress={handleVerify}
+                            />
+                            <Button
+                                title={t("changeEmail")}
+                                variant="ghost"
+                                disabled={busy}
+                                onPress={() => {
+                                    setCode("");
+                                    setError(null);
+                                    setPendingVerification(false);
+                                }}
                             />
                         </View>
                     </>
@@ -208,9 +221,7 @@ export default function SignUpScreen() {
                                 title={t("signUp")}
                                 size="lg"
                                 loading={busy || fetchStatus === "fetching"}
-                                disabled={
-                                    !email || password.length < 8 || !usernameOk || !firstNameOk || !lastNameOk
-                                }
+                                disabled={!canSubmit}
                                 onPress={handleSignUp}
                             />
                         </View>
@@ -222,10 +233,7 @@ export default function SignUpScreen() {
                                     <Text variant="caption">{t("or")}</Text>
                                     <View style={styles.divider} />
                                 </View>
-                                <GoogleButton
-                                    title={t("continueWithGoogle")}
-                                    onError={setError}
-                                />
+                                <GoogleButton title={t("continueWithGoogle")} onError={setError} />
                             </>
                         ) : null}
 
