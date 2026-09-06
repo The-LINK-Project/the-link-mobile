@@ -74,6 +74,7 @@ Clerk events for people who have only used the website do not create records in 
 
 ## Failure behavior
 
+- If Clerk cannot finish loading in the app (offline, or a Clerk instance with Native API disabled), the app shows a "Sign-in service unavailable" screen with a retry button instead of staying on the splash screen.
 - Missing, invalid, expired, revoked, or deleted sessions receive HTTP 401.
 - A temporary Clerk backend failure receives HTTP 503.
 - Requests over the per-user limit receive HTTP 429 with `Retry-After`.
