@@ -159,4 +159,6 @@ The API is an independently linked Vercel Express project. Production Expo build
 
 The Clerk Dashboard must retain two separate webhook endpoints: the existing website webhook and the mobile API webhook. Both receive `user.deleted`; each backend removes only the data it owns.
 
+The production Clerk instance must have **Native API** enabled (Configure → Native applications). Without it, every request from a production build fails with `native_api_disabled` and the app shows its "Sign-in service unavailable" screen. See [docs/SETUP-HISTORY.md](docs/SETUP-HISTORY.md#native-api-on-the-production-instance).
+
 See [docs/SETUP-HISTORY.md](docs/SETUP-HISTORY.md) for the exact setup that the founders and developers should know about.

@@ -120,6 +120,31 @@ https://www.thelinkproject.org/api/webhook/clerk
 
 The mobile webhook was tested with a signed example delivery and returned HTTP 200.
 
+### Native API on the production instance
+
+Clerk's Frontend API refuses requests from native apps unless the instance's **Native API** is switched on. Development instances have it on by default. The production instance did not, so every production build sat behind the splash screen: each request from the app returned HTTP 400 with the error code `native_api_disabled`.
+
+Before the first production or preview build can sign anyone in, a Clerk admin must:
+
+1. Open the Clerk Dashboard and select the LINK application.
+2. Switch to the **Production** instance.
+3. Open **Configure → Native applications**.
+4. Enable **Native API**.
+
+This does not change the website: it only allows non-browser clients to use the same instance. A quick check from a terminal, replacing `<fapi-domain>` with the production Frontend API domain (`clerk.thelinkproject.org`):
+
+```bash
+curl -s "https://<fapi-domain>/v1/environment?_is_native=1" -H "x-mobile: 1"
+```
+
+While disabled, the response contains `native_api_disabled`. When enabled, it returns the environment JSON.
+
+The app now shows a "Sign-in service unavailable" screen with a retry button when Clerk fails to load, instead of staying on the splash screen. The same screen appears after 15 seconds when the phone is offline at launch.
+
+### Profile fields differ per instance
+
+The production instance requires first and last name; the development instance disables them. Sign-up and profile editing read the instance's attribute settings from Clerk at runtime, so each build shows exactly the fields its instance requires.
+
 ### Shared account deletion
 
 Deleting from mobile deletes the shared Clerk user. This signs the person out of both mobile and web. Clerk then calls both webhooks, and each application removes only the data it owns.

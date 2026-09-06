@@ -61,6 +61,8 @@
       "close": "Close",
       "crashTitle": "Something went wrong",
       "crashBody": "The app hit an unexpected error. You can try again or restart the app.",
+      "authUnavailableTitle": "Sign-in service unavailable",
+      "authUnavailableBody": "We could not reach the sign-in service. Check your connection and try again.",
       "notFound": "This page could not be found."
     },
     "about": {

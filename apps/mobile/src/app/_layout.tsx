@@ -1,10 +1,10 @@
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useClerk } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -17,6 +17,7 @@ import { colors, spacing } from "@/lib/theme";
 
 void SplashScreen.preventAutoHideAsync();
 const key = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const LOAD_TIMEOUT_MS = 15_000;
 function AppShell() {
   const ready = useApiAuth();
   const localeReady = useLocaleReady();
@@ -29,16 +30,46 @@ function AccountQueries() {
   useEffect(() => () => { client.clear(); }, [client]);
   return <QueryClientProvider client={client}><AppShell /></QueryClientProvider>;
 }
-function Accounts() {
+// Shown when Clerk cannot finish its first load (no network, or a Clerk
+// instance whose Native API is switched off). Without this the app would sit
+// behind the splash screen forever, because nothing under ClerkProvider
+// renders until Clerk reports loaded.
+function AuthUnavailable({ onRetry }: { onRetry: () => void }) {
+  useEffect(() => { void SplashScreen.hideAsync(); }, []);
+  return <View style={styles.error}><Text variant="heading">{i18n.t("mobile.common.authUnavailableTitle")}</Text>
+    <Text variant="caption">{i18n.t("mobile.common.authUnavailableBody")}</Text>
+    <Button title={i18n.t("mobile.common.retry")} onPress={onRetry} /></View>;
+}
+function Accounts({ onRetry }: { onRetry: () => void }) {
   const { isLoaded, userId } = useAuth();
+  const clerk = useClerk();
+  // Offline, Clerk stays in "loading" rather than failing, so also give up
+  // waiting after a while. Clerk keeps loading underneath; if it succeeds
+  // later the app proceeds on its own.
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [isLoaded]);
+  const retry = useCallback(() => {
+    // Remounting ClerkProvider re-runs Clerk's own load sequence. The React
+    // SDK caches its wrapper in a static singleton, so drop that first or the
+    // new provider would pick the failed one back up.
+    (clerk as unknown as { constructor: { clearInstance?: () => void } }).constructor.clearInstance?.();
+    onRetry();
+  }, [clerk, onRetry]);
+  if (clerk.status === "error" || (timedOut && !isLoaded)) return <AuthUnavailable onRetry={retry} />;
   if (!isLoaded) return null;
   // No persisted personal data. Changing accounts remounts the entire cache.
   return <AccountQueries key={userId ?? "signed-out"} />;
 }
 export default function RootLayout() {
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
   if (!key || !API_BASE_URL) throw new Error("Configure the mobile .env using .env.example before starting.");
   return <GestureHandlerRootView style={{flex:1}}><KeyboardProvider><SafeAreaProvider>
-    <ClerkProvider publishableKey={key} tokenCache={tokenCache}><Accounts /></ClerkProvider>
+    <ClerkProvider key={attempt} publishableKey={key} tokenCache={tokenCache}><Accounts onRetry={retry} /></ClerkProvider>
   </SafeAreaProvider></KeyboardProvider></GestureHandlerRootView>;
 }
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
