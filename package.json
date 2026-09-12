@@ -19,9 +19,15 @@
     "smoke:live": "npm run smoke:live --workspace @link/api",
     "build:api": "npm run build --workspace @link/api",
     "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
-    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\""
+    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
+    "patch-package": "^8.0.1",
     "prettier": "3.9.6"
+  },
+  "dependencies": {
+    "expo-haptics": "~57.0.3",
+    "expo-speech": "~57.0.3"
   }
 }
