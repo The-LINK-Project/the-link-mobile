@@ -234,6 +234,18 @@ describe("summarize", () => {
         expect(summary.firstTryCorrect).toBe(mrtBasics.exercises.length - 1);
     });
 
+    it("does not count a matching run with a wrong pairing as right first time", () => {
+        // The exercise still passes; it just was not clean.
+        const messy = sessionReducer(initSession(mrtBasics), {
+            type: "submit",
+            answer: { kind: "pairs", wrongAttempts: 1 },
+        });
+
+        expect(messy.result?.correct).toBe(true);
+        expect(messy.records["ex-1-pairs"].firstTryCorrect).toBe(false);
+        expect(summarize(messy).firstTryCorrect).toBe(0);
+    });
+
     it("lists the vocabulary the lesson practises", () => {
         const summary = summarize(initSession(mrtBasics));
         expect(summary.practisedTerms).toContain("top up");

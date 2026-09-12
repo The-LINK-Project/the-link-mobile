@@ -12,6 +12,10 @@ import { colors, spacing } from "@/lib/theme";
 // Home lists the lessons available to the learner. The empty state is kept as
 // the fallback for when the catalogue is empty, which is what a fresh install
 // will see until lessons are published from the API.
+//
+// A failed profile sync is reported above the lessons rather than instead of
+// them. Lesson content does not depend on the profile, so an API outage must
+// not take away the only thing on this screen a learner came here to do.
 export default function HomeScreen() {
     const t = useTranslations("mobile.foundation");
     const me = useMe();
@@ -28,10 +32,12 @@ export default function HomeScreen() {
                 <Text variant="title">{t("welcome")}</Text>
             </View>
 
+            {me.isError ? (
+                <ErrorState message={t("syncError")} onRetry={() => void me.refetch()} />
+            ) : null}
+
             {me.isPending ? (
                 <LoadingState />
-            ) : me.isError ? (
-                <ErrorState message={t("syncError")} onRetry={() => void me.refetch()} />
             ) : lessons.length > 0 ? (
                 <View style={styles.lessons}>
                     {lessons.map((lesson) => (

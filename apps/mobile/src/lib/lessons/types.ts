@@ -192,6 +192,21 @@ export type GradeResult = {
     /** The model answer, always shown after grading. */
     modelAnswer: string;
     /**
+     * What `modelAnswer` actually is, so feedback can label it correctly.
+     *
+     * For a listening exercise it is the English that was spoken, which the
+     * learner never saw — revealing it teaches the word. Calling that "another
+     * way to say it" would be wrong, since it is not a rephrasing of anything.
+     */
+    modelAnswerKind?: "answer" | "audio";
+    /**
+     * False when the exercise was completed but not cleanly, so the summary can
+     * stop counting it as right first time. Matching sets this after a wrong
+     * pairing: the exercise still passes, because a rejected pair is corrected
+     * in the moment rather than failing the learner.
+     */
+    firstPassClean?: boolean;
+    /**
      * Keywords the learner missed. Lets feedback say what was absent rather than
      * only restating the whole sentence.
      */

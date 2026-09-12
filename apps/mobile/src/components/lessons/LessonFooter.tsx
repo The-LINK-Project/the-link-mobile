@@ -95,7 +95,7 @@ export function LessonFooter({
           right but phrased it differently. */}
             {!result.modelAnswer || (result.correct && !result.accepted) ? null : (
                 <Text variant="caption">
-                    {t("modelAnswer")}
+                    {t(result.modelAnswerKind === "audio" ? "audioWas" : "modelAnswer")}
                     {"  "}
                     <Text variant="bodyStrong">{result.modelAnswer}</Text>
                 </Text>

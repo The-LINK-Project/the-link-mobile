@@ -163,17 +163,23 @@ export function gradeAnswer(exercise: Exercise, answer: Answer): GradeResult {
     const modelAnswer = modelAnswerFor(exercise);
 
     switch (exercise.type) {
-        case "matchPairs":
-            // Pairs are judged as they are tapped; reaching the end is a pass. The
-            // attempt count is kept so the summary can tell a clean run from a messy
-            // one without failing the exercise.
-            return {
-                correct: true,
-                modelAnswer,
-                accepted: answer.kind === "pairs" && answer.wrongAttempts > 0,
-            };
+        case "matchPairs": {
+            // Pairs are judged as they are tapped; reaching the end is a pass. A
+            // wrong pairing along the way does not fail the exercise, but it does
+            // mean this was not a clean first pass.
+            const clean = answer.kind === "pairs" && answer.wrongAttempts === 0;
+            return { correct: true, modelAnswer, accepted: !clean, firstPassClean: clean };
+        }
 
         case "listenChooseMeaning":
+            return {
+                correct: answer.kind === "choice" && answer.choiceId === exercise.correctChoiceId,
+                modelAnswer,
+                // The spoken English, not a rephrasing: the learner has not seen
+                // this word yet, and the correct meaning is already on screen.
+                modelAnswerKind: "audio",
+            };
+
         case "fillBlank":
             return {
                 correct: answer.kind === "choice" && answer.choiceId === exercise.correctChoiceId,

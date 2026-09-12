@@ -120,11 +120,29 @@ describe("gradeAnswer", () => {
         expect(gradeAnswer(pairs, { kind: "pairs", wrongAttempts: 0 })).toMatchObject({
             correct: true,
             accepted: false,
+            firstPassClean: true,
         });
+        // Still a pass: a wrong pairing is corrected in the moment. But it was
+        // not a clean first pass, so the summary must not count it as one.
         expect(gradeAnswer(pairs, { kind: "pairs", wrongAttempts: 2 })).toMatchObject({
             correct: true,
             accepted: true,
+            firstPassClean: false,
         });
+    });
+
+    it("labels the listening reveal as the audio rather than a rephrasing", () => {
+        // The learner never saw this word, so showing it teaches it. Calling it
+        // "another way to say it" would be wrong: it rephrases nothing.
+        const result = gradeAnswer(listen, { kind: "choice", choiceId: "c-wrong-1" });
+        expect(result.modelAnswer).toBe(listen.audioText);
+        expect(result.modelAnswerKind).toBe("audio");
+    });
+
+    it("does not label a word-bank model answer as audio", () => {
+        expect(gradeAnswer(arrange, { kind: "tokens", tokens: ["I"] }).modelAnswerKind).toBe(
+            undefined,
+        );
     });
 
     it("treats a mismatched answer shape as wrong rather than throwing", () => {

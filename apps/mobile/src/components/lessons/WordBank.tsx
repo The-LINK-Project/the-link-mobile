@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui";
+import { useTranslations } from "@/lib/i18n";
 import { colors, radius, spacing } from "@/lib/theme";
 
 import { Tile } from "./Tile";
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function WordBank({ tokens, placed, onChange, disabled, outcome, placeholder }: Props) {
+    const t = useTranslations("mobile.lessons");
     const used = new Set(placed);
 
     return (
@@ -56,7 +58,7 @@ export function WordBank({ tokens, placed, onChange, disabled, outcome, placehol
                                       : "default"
                             }
                             disabled={disabled}
-                            accessibilityHint="Tap to remove this word"
+                            accessibilityHint={t("tileRemove")}
                             // Removing from the middle keeps the rest of the sentence intact.
                             onPress={() => onChange(placed.filter((_, index) => index !== slot))}
                         />
@@ -73,7 +75,7 @@ export function WordBank({ tokens, placed, onChange, disabled, outcome, placehol
                         // the bank never reflows mid-exercise.
                         state={used.has(tokenIndex) ? "used" : "default"}
                         disabled={disabled}
-                        accessibilityHint="Tap to add this word to your answer"
+                        accessibilityHint={t("tileAdd")}
                         onPress={() => onChange([...placed, tokenIndex])}
                     />
                 ))}
