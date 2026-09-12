@@ -2,17 +2,20 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 
+import { LessonCard } from "@/components/lessons/LessonCard";
 import { ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
+import { listLessons } from "@/lib/lessons/data";
 import { useMe } from "@/lib/queries";
 import { colors, spacing } from "@/lib/theme";
 
-// The Home tab is intentionally empty: lessons, games, and activities are
-// mobile-owned features that have not been designed yet. This screen only
-// proves the account is synced and leaves an obvious place for them.
+// Home lists the lessons available to the learner. The empty state is kept as
+// the fallback for when the catalogue is empty, which is what a fresh install
+// will see until lessons are published from the API.
 export default function HomeScreen() {
     const t = useTranslations("mobile.foundation");
     const me = useMe();
+    const lessons = listLessons();
 
     return (
         <Screen edges={["top", "left", "right"]} contentContainerStyle={styles.content}>
@@ -29,6 +32,12 @@ export default function HomeScreen() {
                 <LoadingState />
             ) : me.isError ? (
                 <ErrorState message={t("syncError")} onRetry={() => void me.refetch()} />
+            ) : lessons.length > 0 ? (
+                <View style={styles.lessons}>
+                    {lessons.map((lesson) => (
+                        <LessonCard key={lesson.id} lesson={lesson} />
+                    ))}
+                </View>
             ) : (
                 <View style={styles.empty}>
                     <View style={styles.emptyIcon}>
@@ -49,6 +58,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     content: { paddingTop: spacing.xl },
     header: { gap: spacing.lg },
+    lessons: { gap: spacing.md, paddingTop: spacing.xl },
     logo: { width: 56, height: 56, borderRadius: 14 },
     empty: {
         flex: 1,
