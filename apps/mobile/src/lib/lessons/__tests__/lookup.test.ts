@@ -103,8 +103,23 @@ describe("lesson shape", () => {
     it("offers enough word-bank tiles to build each target sentence", () => {
         for (const exercise of mrtBasics.exercises) {
             if (exercise.type !== "arrangeWords" && exercise.type !== "translateWordBank") continue;
+
+            // Tiles may be phrases ("Jurong East"), so compare word multisets
+            // rather than tiles to words. Counting consumes each word once, so
+            // a sentence needing a word twice cannot pass on a single tile, and
+            // "ten" cannot be satisfied by a tile that merely contains it.
+            const available = new Map<string, number>();
+            for (const word of exercise.tokens.flatMap((token) => token.split(" "))) {
+                available.set(word, (available.get(word) ?? 0) + 1);
+            }
+
             for (const word of exercise.target.split(" ")) {
-                expect(exercise.tokens.join(" ")).toContain(word);
+                const remaining = available.get(word) ?? 0;
+                expect({ exercise: exercise.id, word, remaining }).toMatchObject({
+                    remaining: expect.any(Number),
+                });
+                expect(remaining).toBeGreaterThan(0);
+                available.set(word, remaining - 1);
             }
         }
     });

@@ -138,9 +138,12 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
                     ...state.records,
                     [exercise.id]: {
                         attempts,
-                        // Only a clean first attempt counts. Once wrong, always
-                        // marked: an existing record means this is a retry.
-                        firstTryCorrect: result.correct && !previous,
+                        // Only a clean first attempt counts. An existing record
+                        // means this is a retry, and `firstPassClean: false`
+                        // means the exercise passed but not cleanly — a matching
+                        // run with a wrong pairing in it.
+                        firstTryCorrect:
+                            result.correct && !previous && result.firstPassClean !== false,
                     },
                 },
                 // Re-queue a missed exercise once, at the end, so it comes back after
