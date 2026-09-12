@@ -1,0 +1,84 @@
+diff --git a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
+index 6115e87..957527c 100644
+--- a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
++++ b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
+@@ -50,7 +50,7 @@ public:
+    `scheduleTask` dispatches through `fn`, which the host implements against
+    the real react::RuntimeScheduler.
+    */
+-  SWIFT_RETURNS_RETAINED RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
++  RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
+       : nativeScheduler(scheduler), scheduleFn(fn) {}
+ 
+   /**
+@@ -58,7 +58,7 @@ public:
+    caller's thread — intended for standalone runtimes (e.g. tests) that have
+    no React scheduler.
+    */
+-  SWIFT_RETURNS_RETAINED RuntimeScheduler() {}
++  RuntimeScheduler() {}
+ 
+   RuntimeScheduler(const RuntimeScheduler &) = delete;
+ 
+diff --git a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
+index 00f7329..15d8708 100644
+--- a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
++++ b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI/Runtime/JavaScriptRuntime.swift
+@@ -760,8 +760,10 @@ private func createFunctionClosure(
+     // synchronous call, so the `nonisolated(unsafe)` capture is sound. This removes a per-call class
+     // allocation + retain/release + dealloc that profiling showed dominating the no-op `@JS` host-call
+     // floor.
+-    nonisolated(unsafe) let thisPtr = thisPtr
+-    nonisolated(unsafe) let argumentsPtr = argumentsPtr
++    // Xcode 26.3 (Swift 6.2.4) rejects sending these non-Sendable pointers into the nested
++    // closure even with `nonisolated(unsafe)`; box them so the call-scoped reasoning above holds.
++    let thisPtr = CallScopedPointer(thisPtr)
++    let argumentsPtr = CallScopedPointer(argumentsPtr)
+     nonisolated(unsafe) let resultPtr = resultPtr
+ 
+     // See `withGuaranteedContext` for why neither the context nor the runtime is retained here, and
+@@ -769,8 +771,8 @@ private func createFunctionClosure(
+     withGuaranteedContext(context) { (context: HostFunctionContext, runtime) in
+       resultPtr.pointee = JavaScriptActor.assumeIsolated {
+         return forwardingSwiftErrorsToJS(runtime: runtime) {
+-          let this = UnsafeMutablePointer(mutating: thisPtr).move()
+-          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr, count: argumentsCount)
++          let this = UnsafeMutablePointer(mutating: thisPtr.pointer).move()
++          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr.pointer, count: argumentsCount)
+           let thisValue = JavaScriptValue(runtime, this)
+           return try context.call(thisValue, consume arguments).asJSIValue()
+         }
+@@ -803,8 +805,10 @@ private func createFunctionClosure(
+     // handed in as a borrowed `JavaScriptUnownedValue` pointing straight at the C++-owned `this` slot:
+     // it is not moved out and no owning `JavaScriptValue` is allocated, so the closure avoids the
+     // per-call `weak`-runtime form/destroy and heap object that the owning `this` pays.
+-    nonisolated(unsafe) let thisPtr = thisPtr
+-    nonisolated(unsafe) let argumentsPtr = argumentsPtr
++    // Xcode 26.3 (Swift 6.2.4) rejects sending these non-Sendable pointers into the nested
++    // closure even with `nonisolated(unsafe)`; box them so the call-scoped reasoning above holds.
++    let thisPtr = CallScopedPointer(thisPtr)
++    let argumentsPtr = CallScopedPointer(argumentsPtr)
+     nonisolated(unsafe) let resultPtr = resultPtr
+ 
+     // See `withGuaranteedContext` for why neither the context nor the runtime is retained here, and
+@@ -812,8 +816,8 @@ private func createFunctionClosure(
+     withGuaranteedContext(context) { (context: UnownedThisHostFunctionContext, runtime) in
+       resultPtr.pointee = JavaScriptActor.assumeIsolated {
+         return forwardingSwiftErrorsToJS(runtime: runtime) {
+-          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr, count: argumentsCount)
+-          let thisValue = JavaScriptUnownedValue(runtime.pointee, thisPtr)
++          let arguments = JavaScriptValuesBuffer(runtime, start: argumentsPtr.pointer, count: argumentsCount)
++          let thisValue = JavaScriptUnownedValue(runtime.pointee, thisPtr.pointer)
+           return try context.call(thisValue, consume arguments).asJSIValue()
+         }
+       }
+@@ -841,3 +845,9 @@ extension JavaScriptRuntime {
+     }
+   }
+ }
++
++/// Sendable box for a raw pointer that is only read within a synchronous, call-scoped closure.
++private struct CallScopedPointer<T: ~Copyable>: @unchecked Sendable {
++  let pointer: UnsafePointer<T>
++  init(_ pointer: UnsafePointer<T>) { self.pointer = pointer }
++}
