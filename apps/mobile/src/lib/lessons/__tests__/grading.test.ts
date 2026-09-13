@@ -176,6 +176,27 @@ describe("gradeAnswer", () => {
         ).toBe("");
     });
 
+    it("can require an exact sentence when order carries the meaning", () => {
+        const strict = {
+            ...arrange,
+            grading: { mode: "exactSentence" } as const,
+        };
+
+        expect(
+            gradeAnswer(mrtBasics, strict, {
+                kind: "tokens",
+                tokens: ["I", "want", "to", "top up", "ten", "dollars"],
+            }).correct,
+        ).toBe(true);
+        // The same words in a different order no longer pass.
+        expect(
+            gradeAnswer(mrtBasics, strict, {
+                kind: "tokens",
+                tokens: ["ten", "dollars", "I", "want", "to", "top up"],
+            }).correct,
+        ).toBe(false);
+    });
+
     it("treats a mismatched answer shape as wrong rather than throwing", () => {
         expect(gradeAnswer(mrtBasics, arrange, { kind: "choice", choiceId: "nope" }).correct).toBe(
             false,

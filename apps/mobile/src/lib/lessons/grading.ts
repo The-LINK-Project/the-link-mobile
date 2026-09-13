@@ -12,7 +12,7 @@
  */
 
 import { phraseById } from "./lookup";
-import type { Answer, Exercise, GradeResult, GradingRule, Lesson } from "./types";
+import type { Answer, Exercise, GradeResult, Lesson, SentenceGradingRule } from "./types";
 
 /**
  * Words never required for an answer to count. Includes the Singapore spoken
@@ -143,13 +143,11 @@ function modelAnswerFor(lesson: Lesson, exercise: Exercise): string {
 function gradeTokens(
     tokens: string[],
     target: string,
-    rule: GradingRule,
+    rule: SentenceGradingRule,
 ): Omit<GradeResult, "modelAnswer"> {
     const answer = tokens.join(" ");
 
-    if (rule.mode !== "keywords") {
-        // No keyword rule authored: fall back to comparing the whole sentence,
-        // still ignoring order-irrelevant noise.
+    if (rule.mode === "exactSentence") {
         const given = meaningfulWords(answer).join(" ");
         const wanted = meaningfulWords(target).join(" ");
         return { correct: given === wanted };

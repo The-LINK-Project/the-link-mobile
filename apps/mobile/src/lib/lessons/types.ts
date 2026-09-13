@@ -49,22 +49,29 @@ export type Phrase = {
     reviewed: boolean;
 };
 
-/** How an answer is judged. Defaults per type live in `grading.ts`. */
-export type GradingRule =
-    /** One choice must match the recorded correct id. */
-    | { mode: "choice" }
-    /** Every pair must be matched. Graded pair by pair as they are tapped. */
-    | { mode: "pairs" }
+/**
+ * How a built sentence is judged.
+ *
+ * Only these two are offered to sentence exercises. Choice and pair grading are
+ * declared inline on the exercises that use them, so a sentence exercise cannot
+ * be given a rule that could never run against a list of words.
+ */
+export type SentenceGradingRule =
     /**
      * Lenient: correct when all `keywords` appear, ignoring order, articles,
      * filler words and small spelling slips. This is the rule that lets
-     * "I want go Jurong" count as understood.
+     * "I want go Jurong" count as understood, and is the default for this app.
      */
     | {
           mode: "keywords";
           keywords: string[];
           /** Extra words never required. */ ignore?: string[];
-      };
+      }
+    /**
+     * Strict: the same words in the same order, ignoring punctuation, case and
+     * filler. Use only where the order carries the meaning on its own.
+     */
+    | { mode: "exactSentence" };
 
 type ExerciseBase = {
     id: string;
@@ -131,7 +138,7 @@ export type ArrangeWordsExercise = ExerciseBase & {
     phraseId: string;
     /** Exactly the words of the phrase, presented shuffled. No extras. */
     tokens: string[];
-    grading: GradingRule;
+    grading: SentenceGradingRule;
 };
 
 /**
@@ -153,7 +160,7 @@ export type TranslateWordBankExercise = ExerciseBase & {
     phraseId: string;
     /** Tiles offered, including decoys. Presented shuffled. */
     tokens: string[];
-    grading: GradingRule;
+    grading: SentenceGradingRule;
 };
 
 /** A sentence with one gap, filled by tapping one of a few tiles. */
