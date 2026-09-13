@@ -6,7 +6,7 @@ import { useTranslations } from "@/lib/i18n";
 import { useLocalized } from "@/lib/lessons/localized";
 import type { SessionSummary } from "@/lib/lessons/session";
 import type { Lesson } from "@/lib/lessons/types";
-import { colors, radius, spacing } from "@/lib/theme";
+import { colors, spacing } from "@/lib/theme";
 
 /**
  * End-of-lesson screen.
@@ -30,18 +30,13 @@ export function LessonSummary({ lesson, summary, onDone, onRetry }: Props) {
 
     return (
         <View style={styles.container}>
+            {/* Names the lesson that was finished, and sits left-aligned like
+                every other screen in the app. A centred badge reads as a generic
+                congratulations panel that could belong to any product. */}
             <View style={styles.hero}>
-                <View style={styles.icon}>
-                    <Ionicons
-                        name={perfect ? "trophy" : "checkmark-done"}
-                        size={36}
-                        color={colors.primaryDark}
-                    />
-                </View>
-                <Text variant="title" center>
-                    {t("summaryTitle")}
-                </Text>
-                <Text variant="caption" center>
+                <Text variant="label">{localized(lesson.title)}</Text>
+                <Text variant="title">{t("summaryTitle")}</Text>
+                <Text variant="caption">
                     {perfect
                         ? t("summaryPerfect")
                         : t("summaryReviewed", { count: summary.reviewed })}
@@ -68,7 +63,7 @@ export function LessonSummary({ lesson, summary, onDone, onRetry }: Props) {
                 <Text variant="label">{t("summaryNextTime")}</Text>
                 {/* Ending on the phrases makes the point of the lesson concrete: these
             are the sentences they can now say at a station. */}
-                {lesson.phrases.map((phrase) => (
+                {summary.phrases.map((phrase) => (
                     <View key={phrase.id} style={styles.phrase}>
                         <Text variant="bodyStrong">{phrase.text}</Text>
                         <Text variant="caption">{localized(phrase.meaning)}</Text>
@@ -106,16 +101,7 @@ export function LessonSummary({ lesson, summary, onDone, onRetry }: Props) {
 
 const styles = StyleSheet.create({
     container: { gap: spacing.xl, paddingBottom: spacing.xl },
-    hero: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
-    icon: {
-        width: 72,
-        height: 72,
-        borderRadius: radius.full,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: colors.primarySoft,
-        marginBottom: spacing.sm,
-    },
+    hero: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.lg },
     section: { gap: spacing.sm },
     terms: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
     phrase: {

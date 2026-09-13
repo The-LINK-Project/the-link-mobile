@@ -7,12 +7,14 @@ import type {
     Lesson,
     ListenChooseMeaningExercise,
     MatchPairsExercise,
+    SelectPictureExercise,
     TranslateWordBankExercise,
 } from "@/lib/lessons/types";
 
 import type { ExerciseProps } from "./exercises/shared";
 
 import { ArrangeWords } from "./exercises/ArrangeWords";
+import { SelectPicture } from "./exercises/SelectPicture";
 import { FillBlank } from "./exercises/FillBlank";
 import { ListenChooseMeaning } from "./exercises/ListenChooseMeaning";
 import { TapThePairs } from "./exercises/TapThePairs";
@@ -53,6 +55,10 @@ function forExercise<E extends Exercise>(rest: Omit<Props, "exercise">) {
 
 export function ExerciseRenderer({ exercise, ...rest }: Props) {
     switch (exercise.type) {
+        case "selectPicture":
+            return (
+                <SelectPicture exercise={exercise} {...forExercise<SelectPictureExercise>(rest)} />
+            );
         case "matchPairs":
             return <TapThePairs exercise={exercise} {...forExercise<MatchPairsExercise>(rest)} />;
         case "listenChooseMeaning":

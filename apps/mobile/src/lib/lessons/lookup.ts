@@ -6,7 +6,7 @@
  * reference back into content when a component needs to draw it.
  */
 
-import type { Lesson, MeaningChoice, VocabItem } from "./types";
+import type { Lesson, MeaningChoice, Phrase, VocabItem } from "./types";
 
 /**
  * Vocabulary items for the given ids, in the order asked for.
@@ -27,6 +27,44 @@ export function vocabByIds(lesson: Lesson, ids: string[]): VocabItem[] {
     }
 
     return ids.map((id) => byId.get(id)).filter((item): item is VocabItem => item !== undefined);
+}
+
+/**
+ * Vocabulary for a picture exercise, checked for drawable options.
+ *
+ * A word with no picture would render as an empty tile, silently reducing the
+ * number of options and sometimes removing the answer itself. That is an
+ * authoring mistake, so it fails loudly while the lesson is being written.
+ */
+export function picturableVocab(lesson: Lesson, ids: string[]): VocabItem[] {
+    const items = vocabByIds(lesson, ids);
+    const missing = items.filter((item) => !item.picture).map((item) => item.id);
+
+    if (missing.length > 0) {
+        const message = `Lesson "${lesson.id}" uses a picture exercise for vocabulary with no picture: ${missing.join(", ")}`;
+        if (__DEV__) throw new Error(message);
+        console.warn(message);
+    }
+
+    return items.filter((item) => item.picture);
+}
+
+/**
+ * The phrase an exercise builds towards.
+ *
+ * Like vocabulary, a dangling reference is an authoring mistake and fails while
+ * the lesson is being written rather than showing a blank sentence to a learner.
+ */
+export function phraseById(lesson: Lesson, id: string): Phrase | undefined {
+    const phrase = lesson.phrases.find((item) => item.id === id);
+
+    if (!phrase) {
+        const message = `Lesson "${lesson.id}" references unknown phrase: ${id}`;
+        if (__DEV__) throw new Error(message);
+        console.warn(message);
+    }
+
+    return phrase;
 }
 
 /**

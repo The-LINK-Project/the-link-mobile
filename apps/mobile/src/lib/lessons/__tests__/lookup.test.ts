@@ -1,6 +1,7 @@
 import { mrtBasics } from "../data/mrt-basics";
+import { normalize } from "../grading";
 import { localized } from "../localized";
-import { choiceText, vocabByIds } from "../lookup";
+import { choiceText, phraseById, picturableVocab, vocabByIds } from "../lookup";
 import type { Lesson, MeaningChoice } from "../types";
 
 describe("vocabByIds", () => {
@@ -63,6 +64,9 @@ describe("content model", () => {
         const referenced = mrtBasics.exercises.flatMap((exercise) => [
             ...exercise.practises,
             ...(exercise.type === "matchPairs" ? exercise.vocabIds : []),
+            ...(exercise.type === "selectPicture"
+                ? [exercise.vocabId, ...exercise.choiceVocabIds]
+                : []),
             ...(exercise.type === "listenChooseMeaning"
                 ? exercise.choices.flatMap((choice) => (choice.vocabId ? [choice.vocabId] : []))
                 : []),
@@ -94,6 +98,64 @@ describe("content model", () => {
     });
 });
 
+describe("phraseById", () => {
+    it("resolves the sentence an exercise builds towards", () => {
+        expect(phraseById(mrtBasics, "p-top-up-ten")?.text).toBe("I want to top up ten dollars.");
+    });
+
+    it("throws in development on a reference that matches nothing", () => {
+        expect(() => phraseById(mrtBasics, "p-nope")).toThrow(/p-nope/);
+    });
+
+    it("points every sentence exercise at a phrase the lesson defines", () => {
+        for (const exercise of mrtBasics.exercises) {
+            if (exercise.type !== "arrangeWords" && exercise.type !== "translateWordBank") continue;
+            expect(() => phraseById(mrtBasics, exercise.phraseId)).not.toThrow();
+        }
+    });
+});
+
+describe("picturableVocab", () => {
+    it("returns items that have a picture", () => {
+        const items = picturableVocab(mrtBasics, ["v-platform", "v-exit"]);
+        expect(items.map((item) => item.picture)).toEqual(["platform", "exit"]);
+    });
+
+    it("throws in development when an option cannot be drawn", () => {
+        // An option with no picture renders as an empty tile, which silently
+        // reduces the number of choices and can remove the answer itself.
+        expect(() => picturableVocab(mrtBasics, ["v-platform", "v-tap-out"])).toThrow(/v-tap-out/);
+    });
+});
+
+describe("picture exercises", () => {
+    it("only offers options that can actually be drawn", () => {
+        for (const exercise of mrtBasics.exercises) {
+            if (exercise.type !== "selectPicture") continue;
+            expect(() => picturableVocab(mrtBasics, exercise.choiceVocabIds)).not.toThrow();
+        }
+    });
+
+    it("always includes the answer among the options", () => {
+        for (const exercise of mrtBasics.exercises) {
+            if (exercise.type !== "selectPicture") continue;
+            expect(exercise.choiceVocabIds).toContain(exercise.vocabId);
+        }
+    });
+
+    it("offers options that look distinguishable from one another", () => {
+        // Two tiles drawing the same picture would make the exercise unfair
+        // rather than harder: a wrong answer the learner could not have avoided.
+        for (const exercise of mrtBasics.exercises) {
+            if (exercise.type !== "selectPicture") continue;
+            const pictures = picturableVocab(mrtBasics, exercise.choiceVocabIds).map(
+                (item) => item.picture,
+            );
+            expect(new Set(pictures).size).toBe(pictures.length);
+        }
+    });
+});
+
 describe("lesson shape", () => {
     it("gives every exercise a unique id", () => {
         const ids = (mrtBasics as Lesson).exercises.map((exercise) => exercise.id);
@@ -109,11 +171,14 @@ describe("lesson shape", () => {
             // a sentence needing a word twice cannot pass on a single tile, and
             // "ten" cannot be satisfied by a tile that merely contains it.
             const available = new Map<string, number>();
-            for (const word of exercise.tokens.flatMap((token) => token.split(" "))) {
+            for (const word of exercise.tokens.flatMap((token) => normalize(token).split(" "))) {
                 available.set(word, (available.get(word) ?? 0) + 1);
             }
 
-            for (const word of exercise.target.split(" ")) {
+            // Punctuation lives on the phrase ("... ten dollars.") but never on
+            // a tile, so compare normalized words.
+            const target = normalize(phraseById(mrtBasics, exercise.phraseId)!.text);
+            for (const word of target.split(" ")) {
                 const remaining = available.get(word) ?? 0;
                 expect({ exercise: exercise.id, word, remaining }).toMatchObject({
                     remaining: expect.any(Number),

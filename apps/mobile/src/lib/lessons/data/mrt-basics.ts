@@ -92,6 +92,7 @@ export const mrtBasics: Lesson = {
                 bn: "যেখানে ট্রেনের জন্য অপেক্ষা করেন",
                 ta: "ரயிலுக்குக் காத்திருக்கும் இடம்",
             },
+            picture: "platform",
             reviewed: false,
         },
         {
@@ -102,6 +103,7 @@ export const mrtBasics: Lesson = {
                 bn: "যাত্রার জন্য যে টাকা দেন",
                 ta: "பயணத்திற்குச் செலுத்தும் பணம்",
             },
+            picture: "money",
             reviewed: false,
         },
         {
@@ -112,6 +114,7 @@ export const mrtBasics: Lesson = {
                 bn: "কার্ডে টাকা ভরা",
                 ta: "அட்டையில் பணம் சேர்ப்பது",
             },
+            picture: "card",
             reviewed: false,
         },
         {
@@ -132,6 +135,7 @@ export const mrtBasics: Lesson = {
                 bn: "যে স্টেশনে অন্য লাইনে বদল করেন",
                 ta: "வேறு வழித்தடத்திற்கு மாறும் நிலையம்",
             },
+            picture: "transfer",
             reviewed: false,
         },
         {
@@ -142,6 +146,7 @@ export const mrtBasics: Lesson = {
                 bn: "ট্রেন থেকে নামা",
                 ta: "ரயிலில் இறங்குவது",
             },
+            picture: "train",
             reviewed: false,
         },
         {
@@ -152,6 +157,7 @@ export const mrtBasics: Lesson = {
                 bn: "বয়স্ক, গর্ভবতী বা আহত ব্যক্তিদের আসন",
                 ta: "முதியோர், கர்ப்பிணி, காயமடைந்தோருக்கான இருக்கை",
             },
+            picture: "seat",
             reviewed: false,
         },
         {
@@ -162,6 +168,7 @@ export const mrtBasics: Lesson = {
                 bn: "স্টেশন থেকে বের হওয়ার পথ",
                 ta: "நிலையத்திலிருந்து வெளியேறும் வழி",
             },
+            picture: "exit",
             reviewed: false,
         },
     ],
@@ -210,7 +217,26 @@ export const mrtBasics: Lesson = {
     ],
 
     exercises: [
-        // 1. Recognition first: match English terms to their meaning. No reading of
+        // 1. First exposure, before any reading is asked for: hear the word and
+        //    pick what it shows. Duolingo opens on its equivalent whenever new
+        //    vocabulary is introduced, on the reasoning that recognition should
+        //    come before production. The distractors are words this lesson also
+        //    teaches, so the wrong tiles are still practice.
+        {
+            id: "ex-0-picture",
+            type: "selectPicture",
+            instruction: {
+                en: "Which one is this?",
+                bn: "এটি কোনটি?",
+                ta: "இது எது?",
+            },
+            practises: ["v-platform"],
+            vocabId: "v-platform",
+            choiceVocabIds: ["v-platform", "v-exit", "v-fare"],
+            grading: { mode: "choice" },
+        },
+
+        // 2. Recognition: match English terms to their meaning. No reading of
         //    full English sentences, no production.
         {
             id: "ex-1-pairs",
@@ -223,7 +249,7 @@ export const mrtBasics: Lesson = {
             grading: { mode: "pairs" },
         },
 
-        // 2. Listening: hear the term, pick the meaning in your own language.
+        // 3. Listening: hear the term, pick the meaning in your own language.
         //
         // Distractors must not be near-homophones of the audio. "tap out" and
         // "top up" are almost indistinguishable in a synthetic voice, and both
@@ -265,19 +291,21 @@ export const mrtBasics: Lesson = {
             grading: { mode: "choice" },
         },
 
-        // 3. Constrained production: order a sentence you have already heard.
+        // 4. Constrained production: order a sentence you have already heard.
         //    Graded on keywords so a different word order still passes.
         {
             id: "ex-3-arrange",
             type: "arrangeWords",
             instruction: { en: "Put the words in order" },
             practises: ["v-top-up"],
-            target: "I want to top up ten dollars",
-            tokens: ["I", "want", "to", "top up", "ten", "dollars", "platform", "tomorrow"],
+            phraseId: "p-top-up-ten",
+            // No decoys: this exercise is about word order, so every tile
+            // belongs in the sentence and every word of the sentence is here.
+            tokens: ["I", "want", "to", "top up", "ten", "dollars"],
             grading: { mode: "keywords", keywords: ["want", "top up", "ten", "dollars"] },
         },
 
-        // 4. Full production from a prompt in the learner's own language.
+        // 5. Full production from a prompt in the learner's own language.
         {
             id: "ex-4-translate",
             type: "translateWordBank",
@@ -288,12 +316,12 @@ export const mrtBasics: Lesson = {
                 bn: "জুরং ইস্ট যাওয়ার জন্য কোন প্ল্যাটফর্ম?",
                 ta: "ஜூரோங் ஈஸ்ட் செல்ல எந்த நடைமேடை?",
             },
-            target: "Which platform for Jurong East",
+            phraseId: "p-which-platform",
             tokens: ["Which", "platform", "for", "Jurong East", "fare", "exit", "please"],
             grading: { mode: "keywords", keywords: ["which", "platform", "jurong east"] },
         },
 
-        // 5. Ends on an easier recognition item, the way Duolingo closes a lesson
+        // 6. Ends on an easier recognition item, the way Duolingo closes a lesson
         //    on a success rather than the hardest thing in it.
         {
             id: "ex-5-fill",

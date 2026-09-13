@@ -11,7 +11,8 @@
  * lets the same rules grade a spoken transcript later without changes.
  */
 
-import type { Answer, Exercise, GradeResult, GradingRule } from "./types";
+import { phraseById } from "./lookup";
+import type { Answer, Exercise, GradeResult, GradingRule, Lesson } from "./types";
 
 /**
  * Words never required for an answer to count. Includes the Singapore spoken
@@ -114,11 +115,11 @@ export function missingKeywords(answer: string, keywords: string[], ignore?: str
 }
 
 /** The model answer string for an exercise, used in feedback. */
-function modelAnswerFor(exercise: Exercise): string {
+function modelAnswerFor(lesson: Lesson, exercise: Exercise): string {
     switch (exercise.type) {
         case "arrangeWords":
         case "translateWordBank":
-            return exercise.target;
+            return phraseById(lesson, exercise.phraseId)?.text ?? "";
         case "fillBlank":
             return (
                 exercise.choices.find((choice) => choice.id === exercise.correctChoiceId)?.label ??
@@ -126,6 +127,11 @@ function modelAnswerFor(exercise: Exercise): string {
             );
         case "listenChooseMeaning":
             return exercise.audioText;
+        case "selectPicture":
+            // The word is already the prompt, on screen throughout. Repeating it
+            // as a "correct solution" would tell the learner nothing; the tile
+            // they should have picked is marked instead.
+            return "";
         case "matchPairs":
             // Nothing useful to show: finishing means every pair was matched
             // correctly, so there is no better answer to offer. The footer
@@ -159,8 +165,8 @@ function gradeTokens(
 }
 
 /** Grade one answer. Pure: same inputs always give the same result. */
-export function gradeAnswer(exercise: Exercise, answer: Answer): GradeResult {
-    const modelAnswer = modelAnswerFor(exercise);
+export function gradeAnswer(lesson: Lesson, exercise: Exercise, answer: Answer): GradeResult {
+    const modelAnswer = modelAnswerFor(lesson, exercise);
 
     switch (exercise.type) {
         case "matchPairs": {
@@ -170,6 +176,12 @@ export function gradeAnswer(exercise: Exercise, answer: Answer): GradeResult {
             const clean = answer.kind === "pairs" && answer.wrongAttempts === 0;
             return { correct: true, modelAnswer, accepted: !clean, firstPassClean: clean };
         }
+
+        case "selectPicture":
+            return {
+                correct: answer.kind === "choice" && answer.choiceId === exercise.vocabId,
+                modelAnswer,
+            };
 
         case "listenChooseMeaning":
             return {
@@ -190,7 +202,7 @@ export function gradeAnswer(exercise: Exercise, answer: Answer): GradeResult {
         case "translateWordBank": {
             if (answer.kind !== "tokens") return { correct: false, modelAnswer };
             return {
-                ...gradeTokens(answer.tokens, exercise.target, exercise.grading),
+                ...gradeTokens(answer.tokens, modelAnswer, exercise.grading),
                 modelAnswer,
             };
         }

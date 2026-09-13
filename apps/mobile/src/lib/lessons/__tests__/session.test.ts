@@ -3,6 +3,7 @@ import { buildQueue, initSession, sessionReducer, summarize } from "../session";
 import type { Answer, Exercise, Lesson } from "../types";
 
 const correctFor: Record<string, Answer> = {
+    "ex-0-picture": { kind: "choice", choiceId: "v-platform" },
     "ex-1-pairs": { kind: "pairs", wrongAttempts: 0 },
     "ex-2-listen": { kind: "choice", choiceId: "c-correct" },
     "ex-3-arrange": { kind: "tokens", tokens: ["I", "want", "to", "top up", "ten", "dollars"] },
@@ -22,9 +23,23 @@ function answerAndAdvance(state: State, answer: Answer): State {
     return sessionReducer(submitted, { type: "next" });
 }
 
+/** The right answer for whatever is currently on screen. */
+function correctAt(state: State): Answer {
+    return correctFor[state.queue[state.position]];
+}
+
 /** Answer whatever is on screen correctly. */
 function answerCorrectly(state: State): State {
-    return answerAndAdvance(state, correctFor[state.queue[state.position]]);
+    return answerAndAdvance(state, correctAt(state));
+}
+
+/** Walk forward until the named exercise is the one on screen. */
+function at(id: string): State {
+    return until(
+        initSession(mrtBasics, LEARNER),
+        (state) => state.queue[state.position] === id,
+        answerCorrectly,
+    );
 }
 
 /**
@@ -40,8 +55,19 @@ function until(state: State, done: (state: State) => boolean, step: (state: Stat
     throw new Error("session did not reach the expected state");
 }
 
+/**
+ * Bengali rather than English for the default run: every exercise applies, so a
+ * test about session flow is not silently exercising a shorter lesson. English
+ * learners skip the translation exercise, which has its own tests.
+ */
+const LEARNER = "bn" as const;
+
 function playPerfectly(lesson: Lesson) {
-    return until(initSession(lesson), (state) => state.phase === "finished", answerCorrectly);
+    return until(
+        initSession(lesson, LEARNER),
+        (state) => state.phase === "finished",
+        answerCorrectly,
+    );
 }
 
 /**
@@ -53,17 +79,30 @@ function playPerfectly(lesson: Lesson) {
  */
 function atFailableExercise(): State {
     return until(
-        initSession(mrtBasics),
+        initSession(mrtBasics, LEARNER),
         (state) => state.queue[state.position] !== "ex-1-pairs",
         answerCorrectly,
     );
 }
 
 describe("buildQueue", () => {
-    it("keeps every exercise exactly once", () => {
-        const queue = buildQueue(mrtBasics.exercises);
+    it("keeps every applicable exercise exactly once", () => {
+        const queue = buildQueue(mrtBasics.exercises, "bn");
         expect(queue).toHaveLength(mrtBasics.exercises.length);
         expect(new Set(queue).size).toBe(queue.length);
+    });
+
+    it("leaves out translation for a learner already reading in English", () => {
+        // The prompt would fall back to English, asking the learner to build a
+        // sentence that is already on screen above the tiles.
+        const queue = buildQueue(mrtBasics.exercises, "en");
+        expect(queue).not.toContain("ex-4-translate");
+        expect(queue).toHaveLength(mrtBasics.exercises.length - 1);
+    });
+
+    it("leaves out translation for a language the prompt has no words in", () => {
+        // Burmese ships as an app language but has no lesson content yet.
+        expect(buildQueue(mrtBasics.exercises, "bu")).not.toContain("ex-4-translate");
     });
 
     it("avoids showing the same exercise type twice in a row", () => {
@@ -73,7 +112,7 @@ describe("buildQueue", () => {
             { id: "c", type: "arrangeWords" },
         ] as unknown as Exercise[];
 
-        expect(buildQueue(repeated)).toEqual(["a", "c", "b"]);
+        expect(buildQueue(repeated, "en")).toEqual(["a", "c", "b"]);
     });
 
     it("falls back to authored order when every exercise shares a type", () => {
@@ -82,27 +121,39 @@ describe("buildQueue", () => {
             { id: "b", type: "fillBlank" },
         ] as unknown as Exercise[];
 
-        expect(buildQueue(sameType)).toEqual(["a", "b"]);
+        expect(buildQueue(sameType, "en")).toEqual(["a", "b"]);
     });
 });
 
 describe("session flow", () => {
     it("starts on the first exercise, answering", () => {
-        const state = initSession(mrtBasics);
+        const state = initSession(mrtBasics, LEARNER);
         expect(state.phase).toBe("answering");
         expect(state.position).toBe(0);
         expect(state.draft).toBeNull();
     });
 
     it("finishes immediately for a lesson with no exercises", () => {
-        expect(initSession({ ...mrtBasics, exercises: [] }).phase).toBe("finished");
+        expect(initSession({ ...mrtBasics, exercises: [] }, LEARNER).phase).toBe("finished");
+    });
+
+    it("finishes immediately when no exercise applies to the learner", () => {
+        const onlyTranslation = {
+            ...mrtBasics,
+            exercises: mrtBasics.exercises.filter((e) => e.type === "translateWordBank"),
+        };
+        expect(initSession(onlyTranslation, "en").phase).toBe("finished");
+    });
+
+    it("reports progress against the exercises the learner will actually see", () => {
+        const english = initSession(mrtBasics, "en");
+        expect(english.queue).toHaveLength(mrtBasics.exercises.length - 1);
+        expect(summarize(english).total).toBe(mrtBasics.exercises.length - 1);
     });
 
     it("holds the graded result until the learner continues", () => {
-        const state = sessionReducer(initSession(mrtBasics), {
-            type: "submit",
-            answer: correctFor["ex-1-pairs"],
-        });
+        const start = initSession(mrtBasics, LEARNER);
+        const state = sessionReducer(start, { type: "submit", answer: correctAt(start) });
         expect(state.phase).toBe("graded");
         expect(state.result?.correct).toBe(true);
         // Position must not move while the feedback footer is still up.
@@ -110,10 +161,8 @@ describe("session flow", () => {
     });
 
     it("ignores a draft change once the answer has been graded", () => {
-        const graded = sessionReducer(initSession(mrtBasics), {
-            type: "submit",
-            answer: correctFor["ex-1-pairs"],
-        });
+        const start = initSession(mrtBasics, LEARNER);
+        const graded = sessionReducer(start, { type: "submit", answer: correctAt(start) });
         expect(sessionReducer(graded, { type: "draft", answer: WRONG })).toBe(graded);
     });
 
@@ -151,7 +200,7 @@ describe("session flow", () => {
     });
 
     it("ignores a submit with no answer", () => {
-        const state = initSession(mrtBasics);
+        const state = initSession(mrtBasics, LEARNER);
         expect(sessionReducer(state, { type: "submit" })).toBe(state);
     });
 
@@ -236,18 +285,19 @@ describe("summarize", () => {
 
     it("does not count a matching run with a wrong pairing as right first time", () => {
         // The exercise still passes; it just was not clean.
-        const messy = sessionReducer(initSession(mrtBasics), {
+        const messy = sessionReducer(at("ex-1-pairs"), {
             type: "submit",
             answer: { kind: "pairs", wrongAttempts: 1 },
         });
 
         expect(messy.result?.correct).toBe(true);
         expect(messy.records["ex-1-pairs"].firstTryCorrect).toBe(false);
-        expect(summarize(messy).firstTryCorrect).toBe(0);
+        // Everything before it was answered cleanly, so only matching is missing.
+        expect(summarize(messy).firstTryCorrect).toBe(messy.position);
     });
 
     it("lists the vocabulary the lesson practises", () => {
-        const summary = summarize(initSession(mrtBasics));
+        const summary = summarize(initSession(mrtBasics, LEARNER));
         expect(summary.practisedTerms).toContain("top up");
         expect(summary.practisedTerms).toContain("platform");
     });
