@@ -27,3 +27,21 @@ jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" 
 jest.mock("@/components/ui/KeyboardAvoiding", () => ({
     KeyboardAvoiding: ({ children }: { children?: React.ReactNode }) => children,
 }));
+
+/**
+ * Safe-area insets resolve to zero under test.
+ *
+ * The real provider measures a device, so without it any screen calling
+ * `useSafeAreaInsets` renders against nothing and unmounts. Tests assert on
+ * content rather than on padding, so fixed zeros are the honest stand-in.
+ */
+jest.mock("react-native-safe-area-context", () => {
+    const insets = { top: 0, bottom: 0, left: 0, right: 0 };
+    return {
+        useSafeAreaInsets: () => insets,
+        useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+        SafeAreaProvider: ({ children }: { children?: React.ReactNode }) => children,
+        SafeAreaView: ({ children }: { children?: React.ReactNode }) => children,
+        initialWindowMetrics: { insets, frame: { x: 0, y: 0, width: 390, height: 844 } },
+    };
+});

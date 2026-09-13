@@ -100,7 +100,7 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
         next,
         restart,
         summary,
-    } = useLessonSession(lesson);
+    } = useLessonSession(lesson, screenReader);
 
     const confirmQuit = useCallback(() => {
         Alert.alert(t("quitTitle"), t("quitBody"), [
