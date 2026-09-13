@@ -99,6 +99,7 @@
       "playSlow": "Slower",
       "tapToListen": "Tap to listen",
       "buildSentence": "Tap the words to build your answer",
+      "optionPosition": "Picture {index} of {total}",
       "tileAdd": "Tap to add this word to your answer",
       "tileRemove": "Tap to remove this word",
       "audioWas": "You heard:",

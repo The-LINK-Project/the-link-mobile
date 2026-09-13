@@ -2,6 +2,7 @@ import { gradeAnswer, meaningfulWords, missingKeywords, normalize } from "../gra
 import { mrtBasics } from "../data/mrt-basics";
 import type {
     ArrangeWordsExercise,
+    SelectPictureExercise,
     FillBlankExercise,
     ListenChooseMeaningExercise,
     MatchPairsExercise,
@@ -15,6 +16,9 @@ const fill = mrtBasics.exercises.find(
 )!;
 const listen = mrtBasics.exercises.find(
     (exercise): exercise is ListenChooseMeaningExercise => exercise.type === "listenChooseMeaning",
+)!;
+const picture = mrtBasics.exercises.find(
+    (exercise): exercise is SelectPictureExercise => exercise.type === "selectPicture",
 )!;
 const pairs = mrtBasics.exercises.find(
     (exercise): exercise is MatchPairsExercise => exercise.type === "matchPairs",
@@ -71,18 +75,18 @@ describe("missingKeywords", () => {
 
 describe("gradeAnswer", () => {
     it("accepts jumbled but understandable word order", () => {
-        const result = gradeAnswer(arrange, {
+        const result = gradeAnswer(mrtBasics, arrange, {
             kind: "tokens",
             tokens: ["I", "want", "top up", "ten", "dollars"],
         });
         expect(result.correct).toBe(true);
         // Right words, not the model sentence: acknowledged rather than marked wrong.
         expect(result.accepted).toBe(true);
-        expect(result.modelAnswer).toBe("I want to top up ten dollars");
+        expect(result.modelAnswer).toBe("I want to top up ten dollars.");
     });
 
     it("marks a word-perfect answer as correct without the accepted flag", () => {
-        const result = gradeAnswer(arrange, {
+        const result = gradeAnswer(mrtBasics, arrange, {
             kind: "tokens",
             tokens: ["I", "want", "to", "top up", "ten", "dollars"],
         });
@@ -91,13 +95,16 @@ describe("gradeAnswer", () => {
     });
 
     it("rejects an answer that drops a required word and says which", () => {
-        const result = gradeAnswer(arrange, { kind: "tokens", tokens: ["I", "want", "dollars"] });
+        const result = gradeAnswer(mrtBasics, arrange, {
+            kind: "tokens",
+            tokens: ["I", "want", "dollars"],
+        });
         expect(result.correct).toBe(false);
         expect(result.missing).toEqual(["top up", "ten"]);
     });
 
     it("ignores decoy tiles that do not change the meaning", () => {
-        const result = gradeAnswer(arrange, {
+        const result = gradeAnswer(mrtBasics, arrange, {
             kind: "tokens",
             tokens: ["I", "want", "to", "top up", "ten", "dollars", "tomorrow"],
         });
@@ -105,26 +112,33 @@ describe("gradeAnswer", () => {
     });
 
     it("grades single-choice exercises against the recorded answer", () => {
-        expect(gradeAnswer(fill, { kind: "choice", choiceId: "f-out" }).correct).toBe(true);
-        expect(gradeAnswer(fill, { kind: "choice", choiceId: "f-in" }).correct).toBe(false);
+        expect(gradeAnswer(mrtBasics, fill, { kind: "choice", choiceId: "f-out" }).correct).toBe(
+            true,
+        );
+        expect(gradeAnswer(mrtBasics, fill, { kind: "choice", choiceId: "f-in" }).correct).toBe(
+            false,
+        );
         expect(
-            gradeAnswer(listen, { kind: "choice", choiceId: listen.correctChoiceId }).correct,
+            gradeAnswer(mrtBasics, listen, { kind: "choice", choiceId: listen.correctChoiceId })
+                .correct,
         ).toBe(true);
     });
 
     it("returns the model answer for a wrong choice so feedback can show it", () => {
-        expect(gradeAnswer(fill, { kind: "choice", choiceId: "f-up" }).modelAnswer).toBe("out");
+        expect(gradeAnswer(mrtBasics, fill, { kind: "choice", choiceId: "f-up" }).modelAnswer).toBe(
+            "out",
+        );
     });
 
     it("passes a completed matching exercise and flags a messy run", () => {
-        expect(gradeAnswer(pairs, { kind: "pairs", wrongAttempts: 0 })).toMatchObject({
+        expect(gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 0 })).toMatchObject({
             correct: true,
             accepted: false,
             firstPassClean: true,
         });
         // Still a pass: a wrong pairing is corrected in the moment. But it was
         // not a clean first pass, so the summary must not count it as one.
-        expect(gradeAnswer(pairs, { kind: "pairs", wrongAttempts: 2 })).toMatchObject({
+        expect(gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 2 })).toMatchObject({
             correct: true,
             accepted: true,
             firstPassClean: false,
@@ -134,18 +148,37 @@ describe("gradeAnswer", () => {
     it("labels the listening reveal as the audio rather than a rephrasing", () => {
         // The learner never saw this word, so showing it teaches it. Calling it
         // "another way to say it" would be wrong: it rephrases nothing.
-        const result = gradeAnswer(listen, { kind: "choice", choiceId: "c-wrong-1" });
+        const result = gradeAnswer(mrtBasics, listen, { kind: "choice", choiceId: "c-wrong-1" });
         expect(result.modelAnswer).toBe(listen.audioText);
         expect(result.modelAnswerKind).toBe("audio");
     });
 
     it("does not label a word-bank model answer as audio", () => {
-        expect(gradeAnswer(arrange, { kind: "tokens", tokens: ["I"] }).modelAnswerKind).toBe(
-            undefined,
-        );
+        expect(
+            gradeAnswer(mrtBasics, arrange, { kind: "tokens", tokens: ["I"] }).modelAnswerKind,
+        ).toBe(undefined);
+    });
+
+    it("grades a picture choice against the word being asked about", () => {
+        expect(
+            gradeAnswer(mrtBasics, picture, { kind: "choice", choiceId: picture.vocabId }).correct,
+        ).toBe(true);
+        expect(
+            gradeAnswer(mrtBasics, picture, { kind: "choice", choiceId: "v-exit" }).correct,
+        ).toBe(false);
+    });
+
+    it("offers no written solution for a picture exercise", () => {
+        // The word is the prompt, on screen the whole time. Repeating it as a
+        // "correct solution" would tell the learner nothing.
+        expect(
+            gradeAnswer(mrtBasics, picture, { kind: "choice", choiceId: "v-exit" }).modelAnswer,
+        ).toBe("");
     });
 
     it("treats a mismatched answer shape as wrong rather than throwing", () => {
-        expect(gradeAnswer(arrange, { kind: "choice", choiceId: "nope" }).correct).toBe(false);
+        expect(gradeAnswer(mrtBasics, arrange, { kind: "choice", choiceId: "nope" }).correct).toBe(
+            false,
+        );
     });
 });

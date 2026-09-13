@@ -21,8 +21,11 @@
 
 import { useCallback, useMemo, useReducer } from "react";
 
+import { getLocale, useLocale, type Locale } from "@/lib/i18n";
+
 import { gradeAnswer } from "./grading";
-import type { Answer, Exercise, GradeResult, Lesson } from "./types";
+import { hasTranslation } from "./localized";
+import type { Answer, Exercise, GradeResult, Lesson, Phrase } from "./types";
 
 /** Per-exercise outcome, keyed by exercise id. */
 export type ExerciseRecord = {
@@ -35,6 +38,12 @@ export type SessionPhase = "answering" | "graded" | "finished";
 
 export type SessionState = {
     lesson: Lesson;
+    /**
+     * The language the run was built for. Captured once at the start: switching
+     * language mid-lesson changes the words on screen, but must not rebuild the
+     * queue under the learner.
+     */
+    locale: Locale;
     /** Exercise ids in the order they will be shown. Grows when a mistake is re-queued. */
     queue: string[];
     position: number;
@@ -70,6 +79,20 @@ type SessionAction =
     | { type: "restart" };
 
 /**
+ * Can this exercise teach anything to a learner reading in `locale`?
+ *
+ * Translating into English only makes sense from another language. A learner
+ * whose language is English, or whose language the prompt has not been
+ * translated into, would see the prompt fall back to English and be asked to
+ * build the sentence already displayed above the tiles. That is not a hard
+ * exercise, it is an incoherent one, so it is left out of the run entirely.
+ */
+export function appliesToLearner(exercise: Exercise, locale: Locale): boolean {
+    if (exercise.type !== "translateWordBank") return true;
+    return hasTranslation(exercise.prompt, locale);
+}
+
+/**
  * Order the exercises for one run.
  *
  * Keeps the authored order, but avoids showing the same exercise type twice in
@@ -79,8 +102,8 @@ type SessionAction =
  * becomes worth building once lessons are generated rather than hand-written,
  * and this is deliberately the cheap version until then.
  */
-export function buildQueue(exercises: Exercise[]): string[] {
-    const remaining = [...exercises];
+export function buildQueue(exercises: Exercise[], locale: Locale): string[] {
+    const remaining = exercises.filter((exercise) => appliesToLearner(exercise, locale));
     const ordered: Exercise[] = [];
 
     while (remaining.length > 0) {
@@ -94,12 +117,14 @@ export function buildQueue(exercises: Exercise[]): string[] {
     return ordered.map((exercise) => exercise.id);
 }
 
-export function initSession(lesson: Lesson): SessionState {
+export function initSession(lesson: Lesson, locale: Locale = getLocale()): SessionState {
+    const queue = buildQueue(lesson.exercises, locale);
     return {
         lesson,
-        queue: buildQueue(lesson.exercises),
+        locale,
+        queue,
         position: 0,
-        phase: lesson.exercises.length === 0 ? "finished" : "answering",
+        phase: queue.length === 0 ? "finished" : "answering",
         draft: null,
         result: null,
         records: {},
@@ -125,7 +150,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
             const exercise = exerciseById(state.lesson, state.queue[state.position]);
             if (!answer || !exercise) return state;
 
-            const result = gradeAnswer(exercise, answer);
+            const result = gradeAnswer(state.lesson, exercise, answer);
             const previous = state.records[exercise.id];
             const attempts = (previous?.attempts ?? 0) + 1;
 
@@ -172,7 +197,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         }
 
         case "restart":
-            return initSession(state.lesson);
+            return initSession(state.lesson, state.locale);
     }
 }
 
@@ -185,24 +210,51 @@ export type SessionSummary = {
     reviewed: number;
     /** Vocabulary terms this run practised. */
     practisedTerms: string[];
+    /**
+     * Sentences the run actually taught.
+     *
+     * Only phrases built by an exercise the learner was shown. Listing every
+     * phrase in the lesson would promise a learner sentences they never
+     * practised — including ones skipped because they do not apply to their
+     * language.
+     */
+    phrases: Phrase[];
 };
 
 export function summarize(state: SessionState): SessionSummary {
-    const total = state.lesson.exercises.length;
+    // Exercises that do not apply to this learner's language were never shown,
+    // so counting them would report a score out of a total they never saw.
+    const shown = state.lesson.exercises.filter((exercise) =>
+        appliesToLearner(exercise, state.locale),
+    );
+    const total = shown.length;
     const records = Object.values(state.records);
     const firstTryCorrect = records.filter((record) => record.firstTryCorrect).length;
 
-    const practisedIds = new Set(state.lesson.exercises.flatMap((exercise) => exercise.practises));
+    const practisedIds = new Set(shown.flatMap((exercise) => exercise.practises));
     const practisedTerms = state.lesson.vocab
         .filter((item) => practisedIds.has(item.id))
         .map((item) => item.term);
 
-    return { total, firstTryCorrect, reviewed: state.requeued.length, practisedTerms };
+    const taughtPhraseIds = new Set(
+        shown.flatMap((exercise) =>
+            exercise.type === "arrangeWords" || exercise.type === "translateWordBank"
+                ? [exercise.phraseId]
+                : [],
+        ),
+    );
+    const phrases = state.lesson.phrases.filter((phrase) => taughtPhraseIds.has(phrase.id));
+
+    return { total, firstTryCorrect, reviewed: state.requeued.length, practisedTerms, phrases };
 }
 
 /** Session state plus the handlers a screen needs. */
 export function useLessonSession(lesson: Lesson) {
-    const [state, dispatch] = useReducer(sessionReducer, lesson, initSession);
+    const [locale] = useLocale();
+    // Initialised once; a later language change does not rebuild the queue.
+    const [state, dispatch] = useReducer(sessionReducer, { lesson, locale }, (initial) =>
+        initSession(initial.lesson, initial.locale),
+    );
 
     const exercise = useMemo(
         () => exerciseById(state.lesson, state.queue[state.position]),

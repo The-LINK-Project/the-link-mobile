@@ -10,6 +10,8 @@
  * Nothing else in the app should switch on exercise type.
  */
 
+import type { PictureKey } from "./icons";
+
 /** A supported learner language. Mirrors `Locale` in `lib/i18n`. */
 export type LearnerLanguage = "en" | "bn" | "ta";
 
@@ -26,6 +28,11 @@ export type VocabItem = {
     term: string;
     /** Plain-words gloss, shown on the intro screen and in feedback. */
     meaning: Localized;
+    /**
+     * Which picture stands for this word, when one can. Only words a single
+     * picture can carry get a key; everything else is taught through text.
+     */
+    picture?: PictureKey;
     /**
      * False until a native speaker has checked the non-English strings on this
      * item. Surfaced in dev so untrusted copy cannot quietly ship.
@@ -107,21 +114,44 @@ export type ListenChooseMeaningExercise = ExerciseBase & {
     grading: { mode: "choice" };
 };
 
-/** Put a shuffled English sentence back in order by tapping tiles. */
+/**
+ * Put a shuffled English sentence back in order by tapping tiles.
+ *
+ * This type never has decoys. The task is ordering, so a leftover tile is not a
+ * harder puzzle, it is a contradiction: the learner is told to arrange the words
+ * and then finds a word that does not belong anywhere.
+ */
 export type ArrangeWordsExercise = ExerciseBase & {
     type: "arrangeWords";
-    /** The model sentence, shown in feedback. */
-    target: string;
-    /** Tiles offered, already including any decoys. Presented shuffled. */
+    /**
+     * The sentence being built, by id. Taken from `Lesson.phrases` rather than
+     * restated, so the summary can promise a learner only the sentences the run
+     * actually taught them.
+     */
+    phraseId: string;
+    /** Exactly the words of the phrase, presented shuffled. No extras. */
     tokens: string[];
     grading: GradingRule;
 };
 
-/** Prompt in the learner's language; build the English sentence from tiles. */
+/**
+ * Prompt in the learner's language; build the English sentence from tiles.
+ *
+ * Only shown to a learner whose language the prompt is translated into. With no
+ * translation the prompt falls back to English, and the exercise degenerates
+ * into copying the sentence already on screen — it would ask the learner to say
+ * in English something that is already in English.
+ *
+ * Unlike `arrangeWords`, this type does use decoys: the learner is producing a
+ * sentence rather than reordering a known one, so tiles that do not belong are
+ * a real part of the task.
+ */
 export type TranslateWordBankExercise = ExerciseBase & {
     type: "translateWordBank";
     prompt: Localized;
-    target: string;
+    /** The sentence being built, by id, from `Lesson.phrases`. */
+    phraseId: string;
+    /** Tiles offered, including decoys. Presented shuffled. */
     tokens: string[];
     grading: GradingRule;
 };
@@ -136,7 +166,33 @@ export type FillBlankExercise = ExerciseBase & {
     grading: { mode: "choice" };
 };
 
+/**
+ * A word, and pictures to choose between.
+ *
+ * Duolingo's version puts the prompt in the learner's own language and captions
+ * each picture with the target word, so reading the caption does not give the
+ * answer away. This one shows the English word and leaves the pictures
+ * uncaptioned: with the prompt already in English, a caption would turn the
+ * exercise into matching two identical strings.
+ *
+ * Meaning has to come from the picture, which is what makes this the one
+ * exercise that asks nothing of a learner's reading at all.
+ */
+export type SelectPictureExercise = ExerciseBase & {
+    type: "selectPicture";
+    /** The word being asked about. Must have a picture of its own. */
+    vocabId: string;
+    /**
+     * Every option, including the answer. Each must have a picture. Duolingo
+     * draws distractors from words the lesson already taught, which gives them
+     * free retrieval practice rather than wasting the tiles.
+     */
+    choiceVocabIds: string[];
+    grading: { mode: "choice" };
+};
+
 export type Exercise =
+    | SelectPictureExercise
     | MatchPairsExercise
     | ListenChooseMeaningExercise
     | ArrangeWordsExercise
@@ -170,6 +226,8 @@ export type Lesson = {
  * it handles whatever is on screen, and validates the shape at runtime.
  */
 export type AnswerByExercise = {
+    /** The chosen option's vocabulary id. */
+    selectPicture: { kind: "choice"; choiceId: string };
     matchPairs: {
         kind: "pairs";
         /** Wrong pairings before finishing. Never fails the exercise. */
