@@ -12,7 +12,9 @@ import { mrtBasics } from "./mrt-basics";
 const LESSONS: Lesson[] = [mrtBasics];
 
 export function listLessons(): Lesson[] {
-    return LESSONS;
+    // A copy: this list stands in for an API response, and a caller sorting or
+    // filtering it in place must not reorder the catalogue for everyone else.
+    return [...LESSONS];
 }
 
 export function getLesson(id: string): Lesson | undefined {

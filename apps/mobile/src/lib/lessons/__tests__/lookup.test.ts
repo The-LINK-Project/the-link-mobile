@@ -1,3 +1,4 @@
+import { listLessons } from "../data";
 import { mrtBasics } from "../data/mrt-basics";
 import { normalize } from "../grading";
 import { localized } from "../localized";
@@ -153,6 +154,14 @@ describe("picture exercises", () => {
             );
             expect(new Set(pictures).size).toBe(pictures.length);
         }
+    });
+});
+
+describe("lesson catalogue", () => {
+    it("hands out a copy, so a caller cannot reorder it for everyone", () => {
+        const first = listLessons();
+        first.reverse();
+        expect(listLessons()[0].id).toBe("mrt-basics");
     });
 });
 
