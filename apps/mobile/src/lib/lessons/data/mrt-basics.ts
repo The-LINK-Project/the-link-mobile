@@ -48,9 +48,9 @@ export const mrtBasics: Lesson = {
         {
             id: "note-top-up",
             text: {
-                en: "Top up your card at the machine inside the station, or at 7-Eleven and Cheers shops.",
-                bn: "স্টেশনের ভেতরের মেশিনে, অথবা 7-Eleven ও Cheers দোকানে কার্ডে টাকা ভরতে পারেন।",
-                ta: "நிலையத்தில் உள்ள இயந்திரத்தில், அல்லது 7-Eleven, Cheers கடைகளில் பணம் சேர்க்கலாம்.",
+                en: "Top up your card free at the machine inside the station. 7-Eleven and Cheers shops also top up, but charge a small fee each time.",
+                bn: "স্টেশনের ভেতরের মেশিনে বিনামূল্যে টাকা ভরতে পারেন। 7-Eleven ও Cheers দোকানেও ভরা যায়, কিন্তু প্রতিবার সামান্য ফি লাগে।",
+                ta: "நிலையத்தில் உள்ள இயந்திரத்தில் கட்டணமின்றி பணம் சேர்க்கலாம். 7-Eleven, Cheers கடைகளிலும் முடியும், ஆனால் ஒவ்வொரு முறையும் சிறிய கட்டணம் உண்டு.",
             },
             reviewed: false,
         },

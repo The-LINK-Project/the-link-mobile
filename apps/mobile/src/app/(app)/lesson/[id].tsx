@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { AccessibilityInfo, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseRenderer } from "@/components/lessons/ExerciseRenderer";
@@ -9,7 +9,7 @@ import { SELF_GRADING } from "@/components/lessons/exercises/shared";
 import { LessonFooter } from "@/components/lessons/LessonFooter";
 import { LessonProgress } from "@/components/lessons/LessonProgress";
 import { LessonSummary } from "@/components/lessons/LessonSummary";
-import { ErrorState, Screen, Text } from "@/components/ui";
+import { ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
 import { useLocalized } from "@/lib/lessons/localized";
@@ -30,6 +30,7 @@ import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 export default function LessonScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const lesson = getLesson(id);
+    const screenReader = useScreenReader();
 
     if (!lesson) {
         return (
@@ -39,10 +40,48 @@ export default function LessonScreen() {
         );
     }
 
-    return <LessonRunner lessonId={lesson.id} />;
+    // The run is built once, and which exercises it contains depends on this,
+    // so wait rather than building a queue and correcting it a frame later.
+    if (screenReader === null) {
+        return (
+            <Screen>
+                <LoadingState />
+            </Screen>
+        );
+    }
+
+    return <LessonRunner lessonId={lesson.id} screenReader={screenReader} />;
 }
 
-function LessonRunner({ lessonId }: { lessonId: string }) {
+/**
+ * Whether a screen reader is running, or null until that is known.
+ *
+ * Picture exercises are left out for screen-reader users, because the tiles
+ * deliberately do not name themselves and a label would read the answer aloud.
+ */
+function useScreenReader(): boolean | null {
+    const [enabled, setEnabled] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        const settle = (value: boolean) => {
+            if (active) setEnabled(value);
+        };
+        AccessibilityInfo.isScreenReaderEnabled().then(settle, () => settle(false));
+
+        // Turning a screen reader on mid-lesson does not rebuild the current
+        // run, but the next lesson started will respect it.
+        const subscription = AccessibilityInfo.addEventListener("screenReaderChanged", settle);
+        return () => {
+            active = false;
+            subscription.remove();
+        };
+    }, []);
+
+    return enabled;
+}
+
+function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
     const t = useTranslations("mobile.lessons");
     const localized = useLocalized();
     const router = useRouter();

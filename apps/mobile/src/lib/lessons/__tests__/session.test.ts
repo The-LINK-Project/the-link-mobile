@@ -100,6 +100,15 @@ describe("buildQueue", () => {
         expect(queue).toHaveLength(mrtBasics.exercises.length - 1);
     });
 
+    it("leaves out picture exercises when a screen reader is running", () => {
+        // The tiles deliberately do not name themselves, so a label would read
+        // the answer aloud. An exercise that can only be guessed at is worse
+        // than one that is not offered.
+        const queue = buildQueue(mrtBasics.exercises, LEARNER, true);
+        expect(queue).not.toContain("ex-0-picture");
+        expect(buildQueue(mrtBasics.exercises, LEARNER, false)).toContain("ex-0-picture");
+    });
+
     it("leaves out translation for a language the prompt has no words in", () => {
         // Burmese ships as an app language but has no lesson content yet.
         expect(buildQueue(mrtBasics.exercises, "bu")).not.toContain("ex-4-translate");
@@ -238,6 +247,14 @@ describe("mistakes", () => {
         expect(state.queue).toHaveLength(lengthAfterFirstMiss);
     });
 
+    it("counts an exercise as done while its feedback is still on screen", () => {
+        const start = atFailableExercise();
+        const before = start.position / start.queue.length;
+        const graded = sessionReducer(start, { type: "submit", answer: correctAt(start) });
+
+        expect((graded.position + 1) / graded.queue.length).toBeGreaterThan(before);
+    });
+
     it("never lets progress move backwards", () => {
         let state = atFailableExercise();
         const missAt = state.position;
@@ -296,10 +313,35 @@ describe("summarize", () => {
         expect(summarize(messy).firstTryCorrect).toBe(messy.position);
     });
 
-    it("lists the vocabulary the lesson practises", () => {
-        const summary = summarize(initSession(mrtBasics, LEARNER));
+    it("lists the vocabulary the run practised", () => {
+        const summary = summarize(playPerfectly(mrtBasics));
         expect(summary.practisedTerms).toContain("top up");
         expect(summary.practisedTerms).toContain("platform");
+    });
+
+    it("credits nothing before the learner has answered anything", () => {
+        // A summary taken mid-lesson must not claim words from exercises still
+        // ahead of the learner.
+        const summary = summarize(initSession(mrtBasics, LEARNER));
+        expect(summary.practisedTerms).toEqual([]);
+        expect(summary.phrases).toEqual([]);
+    });
+
+    it("promises only the sentences the run actually built", () => {
+        const bengali = summarize(playPerfectly(mrtBasics));
+        expect(bengali.phrases.map((phrase) => phrase.id)).toEqual([
+            "p-which-platform",
+            "p-top-up-ten",
+        ]);
+
+        // English skips the translation exercise, so its sentence is not taught
+        // and must not be promised at the end.
+        const english = until(
+            initSession(mrtBasics, "en"),
+            (state) => state.phase === "finished",
+            answerCorrectly,
+        );
+        expect(summarize(english).phrases.map((phrase) => phrase.id)).toEqual(["p-top-up-ten"]);
     });
 });
 

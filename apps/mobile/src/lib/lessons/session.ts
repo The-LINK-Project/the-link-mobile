@@ -44,6 +44,8 @@ export type SessionState = {
      * queue under the learner.
      */
     locale: Locale;
+    /** Whether a screen reader was running when the run was built. */
+    screenReader: boolean;
     /** Exercise ids in the order they will be shown. Grows when a mistake is re-queued. */
     queue: string[];
     position: number;
@@ -87,7 +89,16 @@ type SessionAction =
  * build the sentence already displayed above the tiles. That is not a hard
  * exercise, it is an incoherent one, so it is left out of the run entirely.
  */
-export function appliesToLearner(exercise: Exercise, locale: Locale): boolean {
+export function appliesToLearner(
+    exercise: Exercise,
+    locale: Locale,
+    screenReader = false,
+): boolean {
+    // A picture exercise cannot be done without seeing the pictures, and the
+    // tiles deliberately do not name themselves — a label would read the answer
+    // aloud. Rather than present an exercise that can only be guessed at, it is
+    // left out, the same way an inapplicable translation is.
+    if (exercise.type === "selectPicture") return !screenReader;
     if (exercise.type !== "translateWordBank") return true;
     return hasTranslation(exercise.prompt, locale);
 }
@@ -102,8 +113,10 @@ export function appliesToLearner(exercise: Exercise, locale: Locale): boolean {
  * becomes worth building once lessons are generated rather than hand-written,
  * and this is deliberately the cheap version until then.
  */
-export function buildQueue(exercises: Exercise[], locale: Locale): string[] {
-    const remaining = exercises.filter((exercise) => appliesToLearner(exercise, locale));
+export function buildQueue(exercises: Exercise[], locale: Locale, screenReader = false): string[] {
+    const remaining = exercises.filter((exercise) =>
+        appliesToLearner(exercise, locale, screenReader),
+    );
     const ordered: Exercise[] = [];
 
     while (remaining.length > 0) {
@@ -117,11 +130,16 @@ export function buildQueue(exercises: Exercise[], locale: Locale): string[] {
     return ordered.map((exercise) => exercise.id);
 }
 
-export function initSession(lesson: Lesson, locale: Locale = getLocale()): SessionState {
-    const queue = buildQueue(lesson.exercises, locale);
+export function initSession(
+    lesson: Lesson,
+    locale: Locale = getLocale(),
+    screenReader = false,
+): SessionState {
+    const queue = buildQueue(lesson.exercises, locale, screenReader);
     return {
         lesson,
         locale,
+        screenReader,
         queue,
         position: 0,
         phase: queue.length === 0 ? "finished" : "answering",
@@ -197,7 +215,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         }
 
         case "restart":
-            return initSession(state.lesson, state.locale);
+            return initSession(state.lesson, state.locale, state.screenReader);
     }
 }
 
@@ -225,19 +243,23 @@ export function summarize(state: SessionState): SessionSummary {
     // Exercises that do not apply to this learner's language were never shown,
     // so counting them would report a score out of a total they never saw.
     const shown = state.lesson.exercises.filter((exercise) =>
-        appliesToLearner(exercise, state.locale),
+        appliesToLearner(exercise, state.locale, state.screenReader),
     );
     const total = shown.length;
     const records = Object.values(state.records);
     const firstTryCorrect = records.filter((record) => record.firstTryCorrect).length;
 
-    const practisedIds = new Set(shown.flatMap((exercise) => exercise.practises));
+    // Only exercises the learner actually reached. Identical to `shown` at the
+    // end of a run, but a summary taken mid-lesson should not credit words from
+    // exercises still ahead of them.
+    const attempted = shown.filter((exercise) => state.records[exercise.id] !== undefined);
+    const practisedIds = new Set(attempted.flatMap((exercise) => exercise.practises));
     const practisedTerms = state.lesson.vocab
         .filter((item) => practisedIds.has(item.id))
         .map((item) => item.term);
 
     const taughtPhraseIds = new Set(
-        shown.flatMap((exercise) =>
+        attempted.flatMap((exercise) =>
             exercise.type === "arrangeWords" || exercise.type === "translateWordBank"
                 ? [exercise.phraseId]
                 : [],
@@ -249,11 +271,13 @@ export function summarize(state: SessionState): SessionSummary {
 }
 
 /** Session state plus the handlers a screen needs. */
-export function useLessonSession(lesson: Lesson) {
+export function useLessonSession(lesson: Lesson, screenReader = false) {
     const [locale] = useLocale();
     // Initialised once; a later language change does not rebuild the queue.
-    const [state, dispatch] = useReducer(sessionReducer, { lesson, locale }, (initial) =>
-        initSession(initial.lesson, initial.locale),
+    const [state, dispatch] = useReducer(
+        sessionReducer,
+        { lesson, locale, screenReader },
+        (initial) => initSession(initial.lesson, initial.locale, initial.screenReader),
     );
 
     const exercise = useMemo(
@@ -264,8 +288,18 @@ export function useLessonSession(lesson: Lesson) {
     return {
         state,
         exercise,
-        /** 0 to 1, for the progress bar. Never decreases within a run. */
-        progress: state.queue.length === 0 ? 1 : state.position / state.queue.length,
+        /**
+         * 0 to 1, for the progress bar. Never decreases within a run.
+         *
+         * A graded exercise counts as done while its feedback is still on
+         * screen, so the bar moves on the answer rather than waiting for the
+         * learner to press Continue. Re-queuing a missed exercise lengthens the
+         * queue at the same moment, which slows the bar but cannot rewind it.
+         */
+        progress:
+            state.queue.length === 0
+                ? 1
+                : (state.position + (state.phase === "graded" ? 1 : 0)) / state.queue.length,
         isLastStep: state.position === state.queue.length - 1,
         setDraft: useCallback((answer: Answer | null) => dispatch({ type: "draft", answer }), []),
         /**
