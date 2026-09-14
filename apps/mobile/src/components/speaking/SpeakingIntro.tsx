@@ -1,8 +1,8 @@
 import { Linking, StyleSheet, View } from "react-native";
 
 import { Button, Card, ListRow, Text } from "@/components/ui";
-import { LOCALE_LABELS, useTranslations } from "@/lib/i18n";
-import type { TutorLanguage } from "@/lib/speaking/context";
+import { useTranslations } from "@/lib/i18n";
+import { TUTOR_LANGUAGE_LABELS, type TutorLanguage } from "@/lib/speaking/context";
 import { spacing } from "@/lib/theme";
 
 type Props = {
@@ -47,7 +47,7 @@ export function SpeakingIntro({
                         {languages.map((option, index) => (
                             <ListRow
                                 key={option}
-                                title={LOCALE_LABELS[option]}
+                                title={TUTOR_LANGUAGE_LABELS[option]}
                                 trailing="check"
                                 selected={option === language}
                                 accessibilityRole="radio"

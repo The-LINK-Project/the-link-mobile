@@ -1,20 +1,28 @@
 import { getLocale, useLocale, type Locale } from "@/lib/i18n";
 
-import type { Localized } from "./types";
+import type { LearnerLanguage, Localized } from "./types";
+
+/**
+ * Languages lesson content is translated into. Listed rather than derived, so
+ * adding one is a deliberate edit in one place.
+ */
+function isTranslated(language: string): language is Exclude<LearnerLanguage, "en"> {
+    return language === "bn" || language === "ta" || language === "hi";
+}
 
 /**
  * Resolve lesson content into one language.
  *
- * Lesson content is authored in English, Bengali and Tamil. The app ships six
+ * Lesson content is authored in English, Bengali, Tamil and Hindi. The app ships six
  * locales, so anything else falls back to English rather than showing an empty
  * string — the same policy `lib/i18n` uses for UI copy.
  *
  * Pure, and takes the locale explicitly. Components should use `useLocalized`
  * instead; this form is for grading, tests and anything outside React.
  */
-export function localized(value: Localized, locale: Locale): string {
-    if (locale === "bn" || locale === "ta") {
-        const translated = value[locale];
+export function localized(value: Localized, language: Locale | LearnerLanguage): string {
+    if (isTranslated(language)) {
+        const translated = value[language];
         if (translated) return translated;
     }
     return value.en;
@@ -47,10 +55,9 @@ export function useLocalized() {
  * The supported set is narrower than the app's locale list, and is listed here
  * rather than derived, so adding a language is a deliberate edit in one place.
  */
-export function hasTranslation(value: Localized, locale: Locale): boolean {
-    if (locale === "bn" || locale === "ta") return Boolean(value[locale]);
+export function hasTranslation(value: Localized, language: Locale | LearnerLanguage): boolean {
     // English is the fallback, so it is never a translation of itself.
-    return false;
+    return isTranslated(language) && Boolean(value[language]);
 }
 
 /** The current locale, for the rare non-React caller that needs it. */

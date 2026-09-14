@@ -12,8 +12,11 @@
 
 import type { PictureKey } from "./icons";
 
-/** A supported learner language. Mirrors `Locale` in `lib/i18n`. */
-export type LearnerLanguage = "en" | "bn" | "ta";
+/**
+ * A language lesson content can be written in. Hindi is wider than the app's
+ * own locales: only speaking practice uses it so far.
+ */
+export type LearnerLanguage = "en" | "bn" | "ta" | "hi";
 
 /**
  * Text the learner reads in their own language. `en` is required because it is

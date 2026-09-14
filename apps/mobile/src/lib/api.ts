@@ -8,6 +8,8 @@ let getToken: TokenGetter = async () => null;
 // Bumped whenever the signed-in user changes, so in-flight requests started
 // under a previous account are discarded instead of resolving into the new one.
 let authGeneration = 0;
+/** The account the current generation belongs to. */
+let authAccount: string | null | undefined;
 
 // Called when the API answers 401 while we believed we were signed in —
 // the session was revoked or expired underneath us. Registered by useApiAuth.
@@ -21,7 +23,14 @@ export function useApiAuth() {
     const { getToken: clerkGetToken, isSignedIn, signOut, userId } = useAuth();
     const [readyFor, setReadyFor] = useState<string | null | undefined>(undefined);
     useLayoutEffect(() => {
-        const generation = ++authGeneration;
+        // Only a different account invalidates requests in flight. Clerk also
+        // hands out new functions when it refreshes a session token, and treating
+        // that as an account switch discarded any response slower than a refresh.
+        const account = isSignedIn ? (userId ?? null) : null;
+        if (account !== authAccount) {
+            ++authGeneration;
+            authAccount = account;
+        }
         getToken = isSignedIn ? () => clerkGetToken() : async () => null;
         onUnauthorized = isSignedIn
             ? () => {
@@ -31,14 +40,16 @@ export function useApiAuth() {
         // Children must wait until the imperative token bridge is installed.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setReadyFor(userId ?? null);
-        return () => {
-            if (authGeneration === generation) {
-                ++authGeneration;
-                getToken = async () => null;
-                onUnauthorized = null;
-            }
-        };
     }, [clerkGetToken, isSignedIn, signOut, userId]);
+    useLayoutEffect(
+        () => () => {
+            ++authGeneration;
+            authAccount = undefined;
+            getToken = async () => null;
+            onUnauthorized = null;
+        },
+        [],
+    );
     return readyFor !== undefined && readyFor === (userId ?? null);
 }
 
@@ -141,7 +152,7 @@ export type ApiUser = {
 
 /** One turn of speaking practice. Mirrors `TurnRequest` in the API. */
 export type TutorTurnRequest = {
-    language: "bn" | "ta";
+    language: "bn" | "ta" | "hi";
     scene: string;
     words: string[];
     phrases: string[];
@@ -174,6 +185,6 @@ export const api = {
         request<TutorTurnResponse>("/v1/tutor/turn", {
             method: "POST",
             body: turn,
-            timeoutMs: 90_000,
+            timeoutMs: 120_000,
         }),
 };

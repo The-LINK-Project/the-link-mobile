@@ -148,6 +148,7 @@
       "you": "You",
       "notHeard": "Voice message (not clear)",
       "starting": "The tutor is getting ready…",
+      "micStarting": "Starting the microphone…",
       "thinking": "The tutor is listening…",
       "tapToSpeak": "Tap to speak",
       "record": "Start recording",

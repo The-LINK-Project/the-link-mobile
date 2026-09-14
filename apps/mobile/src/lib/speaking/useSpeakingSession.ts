@@ -31,6 +31,14 @@ export function useSpeakingSession(context: SpeakingContext) {
                 dispatch({ type: "replied", response, audioUri });
                 return true;
             } catch (error) {
+                if (__DEV__) {
+                    console.warn(
+                        "Tutor turn failed:",
+                        error instanceof ApiError
+                            ? `${error.status} ${error.message}`
+                            : String(error),
+                    );
+                }
                 const busy = error instanceof ApiError && error.status === 429;
                 dispatch({ type: "failed", error: busy ? "tooMany" : "sendFailed" });
                 return false;

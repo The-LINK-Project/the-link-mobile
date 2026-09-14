@@ -10,17 +10,14 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { readConfig } from "../src/config.js";
-import { createGeminiTutor } from "../src/gemini.js";
+import { tutorFromConfig } from "../src/gemini.js";
 import { allowedWords, findViolations, parseTurnRequest, runTurn } from "../src/tutor.js";
 import { mrtContext } from "./tutor-fixture.js";
 
 const config = readConfig();
 assert.ok(config.geminiApiKey, "Set GEMINI_API_KEY in apps/api/.env");
-const tutor = createGeminiTutor({
-    apiKey: config.geminiApiKey,
-    tutorModel: config.tutorModel,
-    speechModel: config.speechModel,
-});
+// Built the way the server builds it, so Cloud Text-to-Speech is checked too when configured.
+const tutor = tutorFromConfig({ ...config, geminiApiKey: config.geminiApiKey });
 
 const context = mrtContext("bn");
 const allowed = allowedWords(context);
@@ -39,7 +36,10 @@ assert.deepEqual(findViolations(opening.reply, allowed), []);
 assert.ok(opening.audio, "The speech model returned no audio");
 writeFileSync("artifacts/tutor-opening.wav", Buffer.from(opening.audio.data, "base64"));
 
-const learner = await tutor.speak("Which platform for Jurong East?", 30_000);
+const learner = await tutor.speak(
+    { text: "Which platform for Jurong East?", language: "bn" },
+    30_000,
+);
 assert.ok(learner, "The speech model returned no audio for the learner's line");
 const answer = await runTurn(
     turn({

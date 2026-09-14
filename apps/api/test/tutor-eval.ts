@@ -17,7 +17,15 @@ import { extname, join } from "node:path";
 
 import { readConfig } from "../src/config.js";
 import { createGeminiTutor } from "../src/gemini.js";
-import { allowedWords, systemInstruction, turnPrompt, type TurnRequest } from "../src/tutor.js";
+import {
+    allowedWords,
+    readTranscript,
+    systemInstruction,
+    TRANSCRIBE_PROMPT,
+    transcriptionInstruction,
+    turnPrompt,
+    type TurnRequest,
+} from "../src/tutor.js";
 import { mrtContext } from "./tutor-fixture.js";
 
 const DIRECTORY = "artifacts/eval";
@@ -32,7 +40,7 @@ const MIME_TYPES: Record<string, string> = {
 const config = readConfig();
 assert.ok(config.geminiApiKey, "Set GEMINI_API_KEY in apps/api/.env");
 const apiKey = config.geminiApiKey;
-const models = (process.env.EVAL_MODELS ?? config.tutorModel)
+const models = (process.env.EVAL_MODELS ?? config.tutorModels.join(","))
     .split(",")
     .map((model) => model.trim())
     .filter(Boolean);
@@ -64,7 +72,11 @@ const clips = files.flatMap((file) => {
 assert.ok(clips.length > 0, "No usable recordings found");
 
 for (const model of models) {
-    const tutor = createGeminiTutor({ apiKey, tutorModel: model, speechModel: config.speechModel });
+    const tutor = createGeminiTutor({
+        apiKey,
+        tutorModels: [model],
+        speechModels: config.speechModels,
+    });
     let rejectedCorrect = 0;
     let acceptedWrong = 0;
     let failed = 0;
@@ -82,22 +94,33 @@ for (const model of models) {
         };
         const started = Date.now();
         try {
+            // The same two steps as a real turn: write the recording down without
+            // the lesson, then judge those words against the goal.
+            const heard = readTranscript(
+                await tutor.transcribe(
+                    {
+                        system: transcriptionInstruction(request.language),
+                        prompt: TRANSCRIBE_PROMPT,
+                        audio: clip.audio,
+                    },
+                    20_000,
+                ),
+            );
             const draft = await tutor.draft(
                 {
                     system: systemInstruction(request, allowedWords(request)),
-                    prompt: turnPrompt(request),
-                    audio: clip.audio,
+                    prompt: turnPrompt(request, heard),
                 },
                 60_000,
             );
             const elapsed = Date.now() - started;
             timings.push(elapsed);
-            const judged = draft.understood && draft.goalMet;
+            const judged = heard !== "" && draft.goalMet;
             if (clip.expected && !judged) rejectedCorrect++;
             if (!clip.expected && judged) acceptedWrong++;
             const verdict = judged === clip.expected ? "ok   " : "WRONG";
             console.log(
-                `  ${verdict} ${clip.file}  expected ${clip.expected ? "said" : "missed"}, judged ${judged ? "said" : "missed"}  ${elapsed}ms  heard: ${draft.heard}`,
+                `  ${verdict} ${clip.file}  expected ${clip.expected ? "said" : "missed"}, judged ${judged ? "said" : "missed"}  ${elapsed}ms  heard: ${heard || "(nothing)"}`,
             );
         } catch (error) {
             failed++;
