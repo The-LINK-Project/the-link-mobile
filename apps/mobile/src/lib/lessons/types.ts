@@ -211,6 +211,29 @@ export type ExerciseType = Exercise["type"];
 /** A note about how something works in Singapore, shown before the exercises. */
 export type TopicNote = { id: string; text: Localized; reviewed: boolean };
 
+/**
+ * One thing to say aloud in speaking practice: a sentence the lesson taught, or
+ * a single word. The tutor asks for it by its meaning, so that meaning has to
+ * exist in the learner's language.
+ */
+export type SpeakingGoal = {
+    id: string;
+    /** English that must be heard for the goal to count. */
+    keywords: string[];
+} & ({ phraseId: string; vocabId?: never } | { vocabId: string; phraseId?: never });
+
+/**
+ * The spoken role-play after the exercises. Only goals the run taught are
+ * practised, so a learner is never asked for something they skipped.
+ */
+export type SpeakingPractice = {
+    /** The role-play, in English, for the tutor. Never shown to the learner. */
+    scene: string;
+    /** English the tutor may say without it being taught, such as place names. */
+    names: string[];
+    goals: SpeakingGoal[];
+};
+
 export type Lesson = {
     id: string;
     title: Localized;
@@ -222,6 +245,7 @@ export type Lesson = {
     vocab: VocabItem[];
     phrases: Phrase[];
     exercises: Exercise[];
+    speaking?: SpeakingPractice;
 };
 
 /**

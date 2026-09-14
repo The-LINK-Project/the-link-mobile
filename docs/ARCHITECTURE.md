@@ -54,6 +54,27 @@ The user profile stores only:
 
 Passwords and session tokens are never stored in MongoDB.
 
+## Speaking practice
+
+After a lesson, a learner can practise saying its sentences aloud with an AI tutor. The tutor speaks the learner's language (Bengali or Tamil) and uses only the English that run taught.
+
+```text
+Expo app ── recording + lesson context ──▶ POST /v1/tutor/turn ──▶ Gemini: hear, judge, reply
+                                                  │
+                                                  ├── word rule: every English word must be taught
+                                                  │   (model rewrites, then falls back to lesson text)
+                                                  │
+                                                  └──▶ Gemini speech ──▶ WAV back to the app
+```
+
+- **The English word rule is enforced in code, not only in the prompt.** Both tutor languages have their own scripts, so every run of Latin letters in a reply is English. Each one is checked against the run's vocabulary, its taught sentences, the lesson's listed place names, and `a`, `an`, `the`, `and`. A reply that breaks the rule is rewritten by the model up to twice, then replaced by a line built only from lesson content. Speech is generated from the checked text and nothing else.
+- **Nothing is stored.** A recording travels inside the request and is forwarded to Gemini. The transcript and reply go back to the app and exist only on screen. There is no collection, so nothing to add to account deletion. The app deletes a recording once it is sent or thrown away, and the tutor's audio when the screen closes.
+- **Use a paid Gemini API key.** On the free tier Google may use submitted content, including voice, to improve its products, and human reviewers may read it. On the paid tier it does not, and keeps logs only briefly for abuse monitoring.
+- The server decides what each turn means (said it, try again, or move on after three tries), and the app only applies that result. A question, or talk about something else, does not use up a try, up to four per goal, and the tutor steers anything off-topic back to the lesson.
+- A recording is judged by the model with the expected sentence in front of it. It is told to allow a strong accent but never to fill in words that were not said. How well that holds for Bangladeshi and Tamil speakers can only be measured on their own recordings, with `npm run eval:tutor`.
+- Tutor turns have their own limit of 12 a minute, on top of the general request limit.
+- `GEMINI_API_KEY` is optional. Without it the rest of the API runs and the tutor route answers 503.
+
 ## Account deletion
 
 The Clerk user is the shared account. Therefore, deleting an account in mobile intentionally removes access to both the mobile app and website.

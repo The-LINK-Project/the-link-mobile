@@ -139,8 +139,41 @@ export type ApiUser = {
     photo: string;
 };
 
+/** One turn of speaking practice. Mirrors `TurnRequest` in the API. */
+export type TutorTurnRequest = {
+    language: "bn" | "ta";
+    scene: string;
+    words: string[];
+    phrases: string[];
+    names: string[];
+    goals: { id: string; target: string; keywords: string[]; ask: string }[];
+    goalIndex: number;
+    attempt: number;
+    /** Turns on the current goal that were questions rather than attempts. */
+    asides: number;
+    history: { role: "tutor" | "learner"; text: string }[];
+    audio?: { mimeType: "audio/wav" | "audio/aac"; data: string };
+};
+
+export type TutorTurnResponse = {
+    heard: string;
+    reply: string;
+    /** `aside`: the learner asked something instead of trying, which costs no try. */
+    outcome: "opening" | "aside" | "retry" | "met" | "moveOn";
+    finished: boolean;
+    audio: { mimeType: "audio/wav"; data: string } | null;
+};
+
 export const api = {
     me: () => request<{ user: ApiUser }>("/v1/me"),
     deleteAccount: () =>
         request<{ success: true; cleanupPending: boolean }>("/v1/me", { method: "DELETE" }),
+    // Transcribing, replying, checking the reply and speaking it happen in one
+    // request, so a turn gets far longer than an ordinary call.
+    tutorTurn: (turn: TutorTurnRequest) =>
+        request<TutorTurnResponse>("/v1/tutor/turn", {
+            method: "POST",
+            body: turn,
+            timeoutMs: 90_000,
+        }),
 };

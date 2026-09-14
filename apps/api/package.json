@@ -11,7 +11,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "smoke:live": "tsx --env-file=.env test/live-smoke.ts"
+    "smoke:live": "tsx --env-file=.env test/live-smoke.ts",
+    "smoke:tutor": "tsx --env-file=.env test/tutor-smoke.ts",
+    "eval:tutor": "tsx --env-file=.env test/tutor-eval.ts"
   },
   "dependencies": {
     "@clerk/backend": "3.17.1",

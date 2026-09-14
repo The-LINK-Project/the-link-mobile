@@ -4,6 +4,8 @@ import { Webhook } from "svix";
 import type { Db } from "mongodb";
 import { readConfig } from "./config.js";
 import { database } from "./database.js";
+import { createGeminiTutor } from "./gemini.js";
+import { parseTurnRequest, runTurn, type TutorModel } from "./tutor.js";
 import { deleteMobileUser, syncUser, type Identity } from "./users.js";
 
 type Authenticated = { userId: string; sessionId: string };
@@ -13,6 +15,7 @@ type Dependencies = {
     getIdentity: (id: string) => Promise<Identity>;
     deleteIdentity: (id: string) => Promise<unknown>;
     verifyEvent: (body: string, headers: Record<string, string>) => unknown;
+    tutor: () => TutorModel;
 };
 
 class HttpError extends Error {
@@ -26,6 +29,8 @@ class HttpError extends Error {
 
 const WEBHOOK_EVENTS = ["user.created", "user.updated", "user.deleted"];
 const REQUESTS_PER_MINUTE = 60;
+// Each tutor turn is several model calls, so it has a much smaller budget of its own.
+const TUTOR_TURNS_PER_MINUTE = 12;
 
 // One Clerk client per process; the config does not change at runtime.
 let clerkClient: ReturnType<typeof createClerkClient> | undefined;
@@ -43,6 +48,19 @@ function clerk() {
 function statusOf(error: unknown): number | undefined {
     const status = (error as { status?: unknown }).status;
     return typeof status === "number" ? status : undefined;
+}
+
+/** Counts one request in the current minute for `key` and returns the running total. */
+async function countRequest(db: Db, key: string): Promise<number> {
+    const window = Math.floor(Date.now() / 60000);
+    const record = await db
+        .collection<{ _id: string; count: number; expiresAt: Date }>("rate_limits")
+        .findOneAndUpdate(
+            { _id: `${key}:${window}` },
+            { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((window + 2) * 60000) } },
+            { upsert: true, returnDocument: "after" },
+        );
+    return record?.count ?? 0;
 }
 
 const defaults: Dependencies = {
@@ -78,6 +96,15 @@ const defaults: Dependencies = {
         if (!secret) throw new HttpError(503, "Webhook is not configured");
         return new Webhook(secret).verify(body, headers);
     },
+    tutor() {
+        const config = readConfig();
+        if (!config.geminiApiKey) throw new HttpError(503, "Speaking practice is not configured");
+        return createGeminiTutor({
+            apiKey: config.geminiApiKey,
+            tutorModel: config.tutorModel,
+            speechModel: config.speechModel,
+        });
+    },
 };
 
 export function createApp(overrides: Partial<Dependencies> = {}) {
@@ -94,7 +121,7 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
                 "Access-Control-Allow-Origin": origin,
                 Vary: "Origin",
                 "Access-Control-Allow-Headers": "Authorization, Content-Type",
-                "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+                "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
             });
         }
         if (req.method === "OPTIONS") {
@@ -170,16 +197,7 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         }
         res.locals.userId = auth.userId;
 
-        const db = await dep.db();
-        const window = Math.floor(Date.now() / 60000);
-        const limit = await db
-            .collection<{ _id: string; count: number; expiresAt: Date }>("rate_limits")
-            .findOneAndUpdate(
-                { _id: `${auth.userId}:${window}` },
-                { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((window + 2) * 60000) } },
-                { upsert: true, returnDocument: "after" },
-            );
-        if ((limit?.count ?? 0) > REQUESTS_PER_MINUTE) {
+        if ((await countRequest(await dep.db(), auth.userId)) > REQUESTS_PER_MINUTE) {
             res.set("Retry-After", "60");
             throw new HttpError(429, "Please wait a minute and try again");
         }
@@ -207,6 +225,25 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
                 message: (error as Error).message,
             });
             res.status(202).json({ success: true, cleanupPending: true });
+        }
+    });
+
+    app.post("/v1/tutor/turn", express.json({ limit: "3mb" }), async (req, res) => {
+        const userId = res.locals.userId as string;
+        if ((await countRequest(await dep.db(), `tutor:${userId}`)) > TUTOR_TURNS_PER_MINUTE) {
+            res.set("Retry-After", "60");
+            throw new HttpError(429, "Please wait a minute and try again");
+        }
+        const parsed = parseTurnRequest(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+
+        const tutor = dep.tutor();
+        try {
+            res.json(await runTurn(parsed.value, tutor));
+        } catch (error) {
+            // Only the reason is logged: the request carries what the learner said.
+            console.error("Tutor turn failed", { message: (error as Error).message });
+            throw new HttpError(503, "The tutor is not available right now");
         }
     });
 
