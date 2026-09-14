@@ -14,11 +14,18 @@ import type { Lesson, Localized, SpeakingGoal } from "@/lib/lessons/types";
 export type TutorLanguage = TutorTurnRequest["language"];
 
 /**
- * Languages the tutor teaches from. Both are written in their own scripts,
+ * Languages the tutor teaches from. Each is written in a script of its own,
  * which is what lets the server pick out every English word and check it. A
  * language written in Latin letters could not be checked that way.
  */
-export const TUTOR_LANGUAGES: readonly TutorLanguage[] = ["bn", "ta"];
+export const TUTOR_LANGUAGES: readonly TutorLanguage[] = ["bn", "ta", "hi"];
+
+/** Each language by its own name, since the learner may not read English. */
+export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguage, string> = {
+    bn: "বাংলা",
+    ta: "தமிழ்",
+    hi: "हिन्दी",
+};
 
 /** What a finished run covered. */
 export type PractisedRun = { vocabIds: string[]; phraseIds: string[] };

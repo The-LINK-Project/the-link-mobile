@@ -56,22 +56,27 @@ Passwords and session tokens are never stored in MongoDB.
 
 ## Speaking practice
 
-After a lesson, a learner can practise saying its sentences aloud with an AI tutor. The tutor speaks the learner's language (Bengali or Tamil) and uses only the English that run taught.
+After a lesson, a learner can practise saying its sentences aloud with an AI tutor. The tutor speaks the learner's language (Bengali, Tamil or Hindi) and uses only the English that run taught.
 
 ```text
-Expo app ── recording + lesson context ──▶ POST /v1/tutor/turn ──▶ Gemini: hear, judge, reply
+Expo app ── recording + lesson context ──▶ POST /v1/tutor/turn
+                                                  │
+                                                  ├──▶ Gemini: write down the recording (told nothing about the lesson)
+                                                  ├──▶ Gemini: judge those words against the goal, write the reply
                                                   │
                                                   ├── word rule: every English word must be taught
                                                   │   (model rewrites, then falls back to lesson text)
                                                   │
-                                                  └──▶ Gemini speech ──▶ WAV back to the app
+                                                  └──▶ speech: Cloud Text-to-Speech, else Gemini API voices ──▶ WAV back to the app
 ```
 
-- **The English word rule is enforced in code, not only in the prompt.** Both tutor languages have their own scripts, so every run of Latin letters in a reply is English. Each one is checked against the run's vocabulary, its taught sentences, the lesson's listed place names, and `a`, `an`, `the`, `and`. A reply that breaks the rule is rewritten by the model up to twice, then replaced by a line built only from lesson content. Speech is generated from the checked text and nothing else.
+- **The English word rule is enforced in code, not only in the prompt.** Every tutor language has its own script, so every run of Latin letters in a reply is English. Each one is checked against the run's vocabulary, its taught sentences, the lesson's listed place names, and `a`, `an`, `the`, `and`. A reply that breaks the rule is rewritten by the model up to twice, then replaced by a line built only from lesson content. Speech is generated from the checked text and nothing else.
 - **Nothing is stored.** A recording travels inside the request and is forwarded to Gemini. The transcript and reply go back to the app and exist only on screen. There is no collection, so nothing to add to account deletion. The app deletes a recording once it is sent or thrown away, and the tutor's audio when the screen closes.
 - **Use a paid Gemini API key.** On the free tier Google may use submitted content, including voice, to improve its products, and human reviewers may read it. On the paid tier it does not, and keeps logs only briefly for abuse monitoring.
 - The server decides what each turn means (said it, try again, or move on after three tries), and the app only applies that result. A question, or talk about something else, does not use up a try, up to four per goal, and the tutor steers anything off-topic back to the lesson.
-- A recording is judged by the model with the expected sentence in front of it. It is told to allow a strong accent but never to fill in words that were not said. How well that holds for Bangladeshi and Tamil speakers can only be measured on their own recordings, with `npm run eval:tutor`.
+- **A recording is written down before it is judged, by a request told nothing about the lesson.** Given the expected sentence alongside the audio, both Gemini 3.1 Pro and Gemini 3.8 Flash reported hearing it in a recording of "I want to buy a train ticket". Written down first, that recording is judged a miss. The judge allows words spelled the way they sound and English written in the learner's script, but not a different word. A recording with no words is a missed try, decided in code. How well transcription holds up for real Bangladeshi, Tamil and Indian speakers can only be measured on their own recordings, with `npm run eval:tutor`.
+- **Every Google model has its own quota, even on a billed project.** On Tier 1 the Gemini API's preview voice model allows 100 requests a day. The model settings are ordered lists: when Google answers that a model is out of quota, the next one takes over, and the first is skipped until Google says it resets. A reply is voiced in at most three requests, all in the same voice. A voice that has not answered within 12 seconds gets the next one started alongside it, and whichever finishes first is used. With `GOOGLE_TTS_CREDENTIALS` set, speech goes through Cloud Text-to-Speech first, which allows about 1,500 requests a minute with no daily cap. That API does not accept API keys, so the server signs in as a service account. Only the tutor's checked text is sent to it.
+- `GEMINI_TUTOR_MODEL` defaults to `gemini-3.8-flash`, then `gemini-3.7-flash`. Gemini 3.1 Pro took about twice as long per turn with the same results on the word rule.
 - Tutor turns have their own limit of 12 a minute, on top of the general request limit.
 - `GEMINI_API_KEY` is optional. Without it the rest of the API runs and the tutor route answers 503.
 

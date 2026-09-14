@@ -114,13 +114,28 @@ CLERK_WEBHOOK_SIGNING_SECRET=whsec_replace_me
 CLERK_AUTHORIZED_PARTIES=http://localhost:8081,http://localhost:8082
 PORT=3790
 GEMINI_API_KEY=replace_me
+# Recommended in production: base64 of a Cloud Text-to-Speech service account JSON key
+# GOOGLE_TTS_CREDENTIALS=
 ```
 
 `GEMINI_API_KEY` powers speaking practice and must belong to a paid (billed) Gemini project; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#speaking-practice). The rest of the API runs without it.
 
+Google limits every Gemini model per project, even with billing on. On Tier 1 the preview voice model allows only 100 requests a day, and each tutor reply uses up to three. The API moves to a backup model when one runs out, which stretches the limit but does not remove it. For real learners, set `GOOGLE_TTS_CREDENTIALS` so the tutor's voice comes from Cloud Text-to-Speech, which allows about 1,500 requests a minute with no daily cap:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), open the project that owns the Gemini API key. Enable the **Cloud Text-to-Speech API** and the **Agent Platform API** (`aiplatform.googleapis.com`, formerly the Vertex AI API). The Gemini voices run on Agent Platform: without it every speech request is refused with a 403.
+2. Under **IAM & Admin → Service Accounts**, create a service account and give it the **Agent Platform User** role (`roles/aiplatform.user`; Vertex AI is now called Gemini Enterprise Agent Platform).
+3. Open the service account, go to **Keys → Add key → Create new key → JSON**, and download the file. Keep it out of the repository.
+4. Add it to `apps/api/.env` as one base64 line, then delete the downloaded file:
+
+```bash
+printf 'GOOGLE_TTS_CREDENTIALS=%s\n' "$(base64 -i ~/Downloads/YOUR-KEY-FILE.json | tr -d '\n')" >> apps/api/.env
+```
+
+In Vercel, add `GOOGLE_TTS_CREDENTIALS` with the same base64 value. The API logs `Tutor models` with `cloudSpeech` listed when it is in use.
+
 The API fixes the Mongo database name to `link_mobile` in code. It does not trust a database name copied from another environment.
 
-Never put `MOBILE_MONGODB_URI`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, or `GEMINI_API_KEY` in an `EXPO_PUBLIC_*` variable.
+Never put `MOBILE_MONGODB_URI`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `GEMINI_API_KEY`, or `GOOGLE_TTS_CREDENTIALS` in an `EXPO_PUBLIC_*` variable.
 
 ## Validation
 

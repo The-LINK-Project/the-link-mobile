@@ -7,16 +7,21 @@
  * the time, and a learner who reads almost no English should never hear a word
  * nobody taught them.
  *
+ * A recording is written down before it is judged, by a request that knows
+ * nothing about the lesson. Told which sentence to expect, the model reported
+ * hearing it in recordings of a different sentence, so every learner passed.
+ *
  * Nothing is stored. The recording travels inside the request, is forwarded to
  * the model, and is gone once the response is sent.
  */
 
-export const TUTOR_LANGUAGES = ["bn", "ta"] as const;
+export const TUTOR_LANGUAGES = ["bn", "ta", "hi"] as const;
 export type TutorLanguage = (typeof TUTOR_LANGUAGES)[number];
 
 const LANGUAGES: Record<TutorLanguage, { name: string; script: string }> = {
     bn: { name: "Bengali", script: "Bengali script" },
     ta: { name: "Tamil", script: "Tamil script" },
+    hi: { name: "Hindi", script: "Devanagari script" },
 };
 
 /**
@@ -38,13 +43,18 @@ const MAX_AUDIO_BYTES = 1_500_000;
 const AUDIO_TYPES = ["audio/wav", "audio/aac"];
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
-// The app gives up on a turn after 90 seconds, so every step shares one budget
-// that still leaves room for a slow upload over mobile data.
-const TURN_BUDGET_MS = 65_000;
-const DRAFT_TIMEOUT_MS = 40_000;
+// The app gives up on a turn after 120 seconds, so every step shares one budget
+// that still leaves room for a slow upload over mobile data. Writing the reply is
+// the slowest step and varies the most, so it gets the most generous limit.
+const TURN_BUDGET_MS = 90_000;
+const TRANSCRIBE_TIMEOUT_MS = 20_000;
+const DRAFT_TIMEOUT_MS = 60_000;
 const REWRITE_TIMEOUT_MS = 15_000;
-/** Per sentence: speech is made a sentence at a time, in parallel. */
-const SPEECH_TIMEOUT_MS = 30_000;
+/**
+ * All the time speech gets, retries and backup voices included. Past this the
+ * reply goes out as text: a learner reading it beats a learner still waiting.
+ */
+const SPEECH_BUDGET_MS = 30_000;
 
 export type Audio = { mimeType: string; data: string };
 
@@ -79,10 +89,8 @@ export type TurnRequest = {
     audio?: Audio;
 };
 
-/** What the model makes of one learner turn. */
+/** What the model makes of what the learner said. */
 export type Draft = {
-    heard: string;
-    understood: boolean;
     /** False when the learner asked something or talked about something else. */
     attempted: boolean;
     goalMet: boolean;
@@ -101,13 +109,18 @@ export type TurnResult = {
 };
 
 export type TutorModel = {
-    draft(
-        request: { system: string; prompt: string; audio?: Audio },
+    /** The words in a recording, as the model wrote them; see `readTranscript`. */
+    transcribe(
+        request: { system: string; prompt: string; audio: Audio },
         timeoutMs: number,
-    ): Promise<Draft>;
+    ): Promise<string>;
+    draft(request: { system: string; prompt: string }, timeoutMs: number): Promise<Draft>;
     rewrite(request: { system: string; prompt: string }, timeoutMs: number): Promise<string>;
-    /** WAV bytes, or null when the model produced no audio. */
-    speak(text: string, timeoutMs: number): Promise<Buffer | null>;
+    /** WAV bytes, or null when there is nothing to say. Throws when no voice could speak. */
+    speak(
+        request: { text: string; language: TutorLanguage },
+        timeoutMs: number,
+    ): Promise<Buffer | null>;
 };
 
 // ------------------------------------------------------------------ word rule
@@ -117,7 +130,7 @@ const LATIN_WORD = /[A-Za-z]+(?:['’][A-Za-z]+)*/g;
 /**
  * English words in a piece of text.
  *
- * Both tutor languages are written in their own scripts, so any run of Latin
+ * Every tutor language is written in a script of its own, so any run of Latin
  * letters is English. That is what makes the rule checkable at all.
  */
 export function englishWords(text: string): string[] {
@@ -271,6 +284,39 @@ export function parseTurnRequest(body: unknown): Parsed {
 
 // ------------------------------------------------------------------ prompts
 
+/** What the transcriber writes when nobody speaks in a recording. */
+export const NO_SPEECH = "NO SPEECH";
+export const TRANSCRIBE_PROMPT = "Write down what is said in this recording.";
+
+/**
+ * Instructions for writing a recording down. Nothing about the lesson goes in
+ * here: a model that knows the expected answer hears it.
+ */
+export function transcriptionInstruction(language: TutorLanguage): string {
+    const { name, script } = LANGUAGES[language];
+    return [
+        `You write down what a learner said in a short recording from a language-learning app. The learner is a migrant worker in Singapore whose own language is ${name}. They are learning English, have a strong ${name} accent, and may speak ${name}, English, or both mixed together.`,
+        "- Recordings are often empty: silence, breathing or background noise, because nothing was said or the microphone picked nothing up. Never invent words.",
+        "- Write exactly the words that were said, in order. Do not correct grammar, finish sentences, or add words that were not said.",
+        `- Write ${name} words in ${script} and English words in English letters. An English word used inside a ${name} sentence is still written in English letters.`,
+        "- A strong accent is normal. When a word is clearly an English word said with an accent, write that English word.",
+        `- If you cannot hear a person saying words, write only: ${NO_SPEECH}`,
+    ].join("\n");
+}
+
+/**
+ * What the learner said, or "" when nobody spoke. The marker is matched
+ * loosely, since the model sometimes adds a full stop or quotes to it.
+ */
+export function readTranscript(text: string): string {
+    const heard = text.replace(/\s+/g, " ").trim();
+    const marker = heard
+        .replace(/[^A-Za-z]+/g, " ")
+        .trim()
+        .toUpperCase();
+    return marker === NO_SPEECH ? "" : heard.slice(0, 1000);
+}
+
 function describeGoal(goal: TutorGoal): string {
     const keywords = goal.keywords.map((keyword) => `"${keyword}"`).join(", ");
     return `"${goal.target}" (required English: ${keywords}). What it means, in the learner's language: ${goal.ask}`;
@@ -305,8 +351,8 @@ export function systemInstruction(request: TurnRequest, allowed: Set<string>): s
     ].join("\n");
 }
 
-export function turnPrompt(request: TurnRequest): string {
-    const { name } = LANGUAGES[request.language];
+export function turnPrompt(request: TurnRequest, heard = ""): string {
+    const { name, script } = LANGUAGES[request.language];
     const goal = request.goals[request.goalIndex];
     const next = request.goals[request.goalIndex + 1];
     const lines: string[] = [];
@@ -326,11 +372,14 @@ export function turnPrompt(request: TurnRequest): string {
             `The conversation is starting. Greet the learner, then explain simply in ${name} what you will do together: a short role-play in this scene, where you ask questions in ${name} and they answer in English, and they can ask you anything in ${name} at any time. Then ask your first question.`,
             `First, the learner should say ${describeGoal(goal)}`,
             "This opening may be up to six short sentences.",
-            'Set "heard" to "", "understood" to true, "attempted" to false and "goalMet" to false.',
+            'Set "attempted" and "goalMet" to false.',
         );
     } else {
         lines.push(
-            `The learner's new recording is attached. They are on try ${request.attempt} of ${MAX_ATTEMPTS}.`,
+            heard
+                ? `The learner just answered. Written down from their recording, they said: "${heard}"`
+                : "The learner's recording had no words in it: it was silent, only noise, or too unclear to write down. Kindly tell them you could not hear them. This counts as a missed try.",
+            `That was try ${request.attempt} of ${MAX_ATTEMPTS}.`,
             `Right now the learner should say ${describeGoal(goal)}`,
             next
                 ? `If they manage it, or miss on their last try, move on and ask for the next thing. Next, the learner should say ${describeGoal(next)}`
@@ -339,12 +388,11 @@ export function turnPrompt(request: TurnRequest): string {
                 ? "If they asked a question or talked about something else instead of trying, answer or redirect them, then ask again. That does not use up a try."
                 : "They have already asked several questions about this part. If this is another one, answer it in one sentence, then treat this turn as a missed try.",
             "",
-            "Judging the recording:",
-            `- The learner has a strong ${name} accent. Judge whether they said the English words, not whether they sound like a native speaker. Sounds changed by their accent, an extra vowel before or inside a word, and dropped word endings are all fine.`,
-            `- In "heard", write only what is really in the recording: ${name} in ${name} script and English in English letters, as they said it. Never fill in words because you know what they were meant to say.`,
-            '- Set "understood" to false if the recording is silent, only noise, or too unclear to follow.',
+            "Judging what they said:",
+            `- It was written down from a learner with a strong ${name} accent, so allow for words spelled the way they sounded, such as "a light" for "alight", or an English word written in ${script}. A different English word, or the ${name} word for it, does not count.`,
             '- Set "attempted" to false if they asked a question or talked about something else instead of trying to say the English.',
-            `- Set "goalMet" to true only if the recording contains every required English word, in any order. A missing word, or a clearly different word, is a miss. ${name} words mixed in are fine.`,
+            `- Set "goalMet" to true only if they said every required English word, in any order. A missing word is a miss. ${name} words mixed in are fine.`,
+            '- If the recording had no words, set "attempted" and "goalMet" to false.',
         );
     }
 
@@ -366,16 +414,17 @@ function rewritePrompt(request: TurnRequest, reply: string, violations: string[]
 
 // ------------------------------------------------------------------ turn
 
+/** `understood` is whether the recording had any words in it. */
 export function decideOutcome(
     request: TurnRequest,
-    draft: Pick<Draft, "understood" | "attempted" | "goalMet">,
+    judged: { understood: boolean; attempted: boolean; goalMet: boolean },
 ): { outcome: Outcome; finished: boolean } {
     if (!request.audio) return { outcome: "opening", finished: false };
     const last = request.goalIndex === request.goals.length - 1;
-    if (draft.understood && draft.goalMet) return { outcome: "met", finished: last };
+    if (judged.understood && judged.goalMet) return { outcome: "met", finished: last };
     // A question is not a try. An unclear recording is, so a broken microphone
     // cannot keep the learner on one goal forever.
-    if (draft.understood && !draft.attempted && request.asides < MAX_ASIDES) {
+    if (judged.understood && !judged.attempted && request.asides < MAX_ASIDES) {
         return { outcome: "aside", finished: false };
     }
     if (request.attempt >= MAX_ATTEMPTS) return { outcome: "moveOn", finished: last };
@@ -393,6 +442,7 @@ const FALLBACK_LINES: Record<TutorLanguage, { again: string; wellDone: string; d
         wellDone: "மிகவும் நன்று!",
         done: "இன்றைய பயிற்சி முடிந்தது.",
     },
+    hi: { again: "फिर से कोशिश कीजिए।", wellDone: "बहुत बढ़िया!", done: "आज का अभ्यास पूरा हुआ।" },
 };
 
 /**
@@ -431,11 +481,25 @@ export async function runTurn(
     const allowed = allowedWords(request);
     const system = systemInstruction(request, allowed);
 
+    let heard = "";
+    if (request.audio) {
+        const transcript = await model.transcribe(
+            {
+                system: transcriptionInstruction(request.language),
+                prompt: TRANSCRIBE_PROMPT,
+                audio: request.audio,
+            },
+            Math.min(TRANSCRIBE_TIMEOUT_MS, remaining()),
+        );
+        heard = readTranscript(transcript);
+    }
+
     const draft = await model.draft(
-        { system, prompt: turnPrompt(request), audio: request.audio },
+        { system, prompt: turnPrompt(request, heard) },
         Math.min(DRAFT_TIMEOUT_MS, remaining()),
     );
-    const { outcome, finished } = decideOutcome(request, draft);
+    // An empty recording is a missed try whatever the reply model makes of it.
+    const { outcome, finished } = decideOutcome(request, { ...draft, understood: heard !== "" });
 
     let reply = draft.reply.trim();
     let rewrites = 0;
@@ -464,11 +528,17 @@ export async function runTurn(
     if (rewrites > 0 || fallback) console.info("Tutor reply rewritten", { rewrites, fallback });
 
     // Speech is retried once because the preview voice model sometimes answers
-    // with text instead of audio, which the API reports as a server error.
+    // with text instead of audio, which the API reports as a server error. Both
+    // tries share one budget, so a stalled voice cannot double the wait.
     let audio: TurnResult["audio"] = null;
-    for (let tries = 0; tries < 2 && !audio && remaining() > 5_000; tries++) {
+    const speechDeadline = now() + Math.min(SPEECH_BUDGET_MS, remaining());
+    const speechLeft = () => speechDeadline - now();
+    for (let tries = 0; tries < 2 && !audio && speechLeft() > 5_000; tries++) {
         try {
-            const wav = await model.speak(reply, Math.min(SPEECH_TIMEOUT_MS, remaining()));
+            const wav = await model.speak(
+                { text: reply, language: request.language },
+                speechLeft(),
+            );
             if (wav) audio = { mimeType: "audio/wav", data: wav.toString("base64") };
         } catch (error) {
             console.error("Tutor speech failed", { message: messageOf(error) });
@@ -476,7 +546,7 @@ export async function runTurn(
     }
 
     return {
-        heard: request.audio ? draft.heard.trim().slice(0, 1000) : "",
+        heard,
         reply,
         outcome,
         finished,

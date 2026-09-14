@@ -23,6 +23,7 @@ import {
     type SpeakingContext,
     type TutorLanguage,
 } from "@/lib/speaking/context";
+import { micSettleMs } from "@/lib/speaking/microphone";
 import { usePlayback } from "@/lib/speaking/playback";
 import { useRecorder } from "@/lib/speaking/recorder";
 import { useSpeakingSession } from "@/lib/speaking/useSpeakingSession";
@@ -156,6 +157,7 @@ function Conversation({
     const voice = usePlayback();
     const review = usePlayback();
     const [notice, setNotice] = useState<string | null>(null);
+    const [preparing, setPreparing] = useState(false);
     const [showSummary, setShowSummary] = useState(false);
     const scroll = useRef<ScrollView>(null);
     const autoplayed = useRef<string | null>(null);
@@ -183,6 +185,12 @@ function Conversation({
         voice.stop();
         review.stop();
         setNotice(null);
+        const settle = micSettleMs(Math.min(voice.quietForMs(), review.quietForMs()));
+        if (settle > 0) {
+            setPreparing(true);
+            await new Promise((resolve) => setTimeout(resolve, settle));
+            setPreparing(false);
+        }
         const result = await recorder.start();
         if (result === "denied") setNotice(t("micBlocked"));
         if (result === "failed") setNotice(t("recordFailed"));
@@ -212,8 +220,13 @@ function Conversation({
     }
 
     const opening = state.phase === "opening";
-    const busyLabel =
-        opening && !state.error ? t("starting") : state.phase === "sending" ? t("thinking") : null;
+    const busyLabel = preparing
+        ? t("micStarting")
+        : opening && !state.error
+          ? t("starting")
+          : state.phase === "sending"
+            ? t("thinking")
+            : null;
 
     return (
         <View style={[styles.root, { paddingTop: insets.top }]}>

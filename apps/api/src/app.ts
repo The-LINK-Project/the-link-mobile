@@ -4,7 +4,7 @@ import { Webhook } from "svix";
 import type { Db } from "mongodb";
 import { readConfig } from "./config.js";
 import { database } from "./database.js";
-import { createGeminiTutor } from "./gemini.js";
+import { tutorFromConfig } from "./gemini.js";
 import { parseTurnRequest, runTurn, type TutorModel } from "./tutor.js";
 import { deleteMobileUser, syncUser, type Identity } from "./users.js";
 
@@ -44,6 +44,10 @@ function clerk() {
     }
     return clerkClient;
 }
+
+// Built once per configuration, so what the tutor learns about quotas, and its
+// speech sign-in, carry over from one turn to the next.
+let tutorCache: { settings: string; tutor: TutorModel } | undefined;
 
 function statusOf(error: unknown): number | undefined {
     const status = (error as { status?: unknown }).status;
@@ -99,11 +103,24 @@ const defaults: Dependencies = {
     tutor() {
         const config = readConfig();
         if (!config.geminiApiKey) throw new HttpError(503, "Speaking practice is not configured");
-        return createGeminiTutor({
-            apiKey: config.geminiApiKey,
-            tutorModel: config.tutorModel,
-            speechModel: config.speechModel,
-        });
+        const settings = JSON.stringify([
+            config.geminiApiKey,
+            config.tutorModels,
+            config.speechModels,
+            config.speechCredentials,
+            config.cloudSpeechModels,
+        ]);
+        if (tutorCache?.settings === settings) return tutorCache.tutor;
+        try {
+            const tutor = tutorFromConfig({ ...config, geminiApiKey: config.geminiApiKey });
+            tutorCache = { settings, tutor };
+            return tutor;
+        } catch (error) {
+            console.error("Speaking practice is misconfigured", {
+                message: (error as Error).message,
+            });
+            throw new HttpError(503, "Speaking practice is not configured");
+        }
     },
 };
 

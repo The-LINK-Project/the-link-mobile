@@ -13,6 +13,7 @@ import {
     findViolations,
     MAX_ASIDES,
     parseTurnRequest,
+    readTranscript,
     restoreNames,
     runTurn,
     type Draft,
@@ -81,10 +82,11 @@ function rejection(body: unknown): string {
 function fakeModel(draft: Partial<Draft> = {}, overrides: Partial<TutorModel> = {}) {
     const calls = { rewrites: [] as string[], spoken: [] as string[] };
     const model: TutorModel = {
+        async transcribe() {
+            return "Which platform for Jurong East?";
+        },
         async draft() {
             return {
-                heard: "",
-                understood: true,
                 attempted: true,
                 goalMet: false,
                 reply: `${ASK_PLATFORM} Which platform for Jurong East?`,
@@ -95,7 +97,7 @@ function fakeModel(draft: Partial<Draft> = {}, overrides: Partial<TutorModel> = 
             calls.rewrites.push(prompt);
             return "খুব ভালো! Which platform for Jurong East?";
         },
-        async speak(text) {
+        async speak({ text }) {
             calls.spoken.push(text);
             return pcmToWav(Buffer.alloc(480));
         },
@@ -151,6 +153,17 @@ test("the word rule allows taught English, place names and function words, in an
         "say",
         "ok",
     ]);
+});
+
+test("Hindi is checked like Bengali and Tamil, since Devanagari keeps English visible", () => {
+    const hindi = valid({ ...OPENING, language: "hi" });
+    const allowed = allowedWords(hindi);
+    assert.deepEqual(
+        findViolations("आप MRT स्टेशन पर हैं। Which platform for Jurong East?", allowed),
+        [],
+    );
+    assert.deepEqual(findViolations("बहुत good! फिर से try कीजिए।", allowed), ["good", "try"]);
+    assert.match(fallbackReply({ ...hindi, audio: RECORDING }, "retry"), /फिर से/);
 });
 
 test("turn requests are checked before any model is called", () => {
@@ -229,6 +242,53 @@ test("a question does not use up a try, until the learner has asked a lot on one
     assert.equal(fallbackReply(valid(learnerTurn(0, 1)), "aside"), ASK_PLATFORM);
 });
 
+test("a recording is written down without the lesson's answers, then judged from those words", async () => {
+    const seen = { transcriber: [] as string[], judge: [] as string[] };
+    const { model } = fakeModel(
+        {},
+        {
+            async transcribe({ system, prompt }) {
+                seen.transcriber.push(`${system}\n${prompt}`);
+                return "I want to buy a train ticket";
+            },
+            async draft({ prompt }) {
+                seen.judge.push(prompt);
+                return { attempted: true, goalMet: false, reply: ASK_PLATFORM };
+            },
+        },
+    );
+
+    await runTurn(valid(OPENING), model);
+    assert.equal(seen.transcriber.length, 0);
+
+    const result = await runTurn(valid(learnerTurn(0, 1)), model);
+    assert.equal(seen.transcriber.length, 1);
+    for (const answer of ["Which platform", "Jurong East", ASK_PLATFORM]) {
+        assert.ok(!seen.transcriber[0].includes(answer), `the transcriber was told "${answer}"`);
+    }
+    assert.match(seen.judge[1], /"I want to buy a train ticket"/);
+    assert.equal(result.heard, "I want to buy a train ticket");
+});
+
+test("a recording with nobody speaking is a missed try, whatever the reply model says", async () => {
+    assert.equal(readTranscript(" NO SPEECH "), "");
+    assert.equal(readTranscript('"No speech."'), "");
+    assert.equal(readTranscript(""), "");
+    assert.equal(readTranscript("which\n platform "), "which platform");
+
+    const { model } = fakeModel(
+        { goalMet: true },
+        {
+            async transcribe() {
+                return "NO SPEECH.";
+            },
+        },
+    );
+    const result = await runTurn(valid(learnerTurn(0, 1)), model);
+    assert.equal(result.heard, "");
+    assert.equal(result.outcome, "retry");
+});
+
 test("a reply with untaught English is rewritten before anything is spoken", async (t) => {
     t.mock.method(console, "info", () => undefined);
     const { model, calls } = fakeModel({ reply: "Good! Which platform for Jurong East?" });
@@ -292,6 +352,25 @@ test("when speech fails the checked reply is still returned, without audio", asy
     assert.ok(result.reply.length > 0);
 });
 
+test("speech gets one budget for both tries, so a stalled voice cannot double the wait", async (t) => {
+    t.mock.method(console, "error", () => undefined);
+    let clock = 0;
+    let tries = 0;
+    const { model } = fakeModel(
+        {},
+        {
+            async speak() {
+                tries++;
+                clock += 28_000;
+                throw new Error("Gemini timed out");
+            },
+        },
+    );
+    const result = await runTurn(valid(OPENING), model, () => clock);
+    assert.equal(tries, 1);
+    assert.equal(result.audio, null);
+});
+
 test("speech is wrapped as a playable 16-bit mono WAV", () => {
     const wav = pcmToWav(Buffer.alloc(4800), 24_000);
     assert.equal(wav.toString("ascii", 0, 4), "RIFF");
@@ -317,7 +396,6 @@ test("speech is split between sentences, with a short one joined to the next", (
 test("speaking practice is optional configuration, and a placeholder key counts as missing", () => {
     const config = readConfig(BASE_ENV);
     assert.equal(config.geminiApiKey, undefined);
-    assert.equal(config.tutorModel, "gemini-3.1-pro-preview");
     assert.equal(readConfig({ ...BASE_ENV, GEMINI_API_KEY: "replace_me" }).geminiApiKey, undefined);
     assert.equal(readConfig({ ...BASE_ENV, GEMINI_API_KEY: "key" }).geminiApiKey, "key");
 });
