@@ -338,4 +338,21 @@ export const mrtBasics: Lesson = {
             grading: { mode: "choice" },
         },
     ],
+
+    // Spoken role-play after the exercises. Goals point at taught content, so the
+    // meanings already translated above are what the tutor asks for.
+    speaking: {
+        scene: "The learner is inside an MRT station in Singapore, near the ticket machines and the gates. You are a friendly member of the station staff who helps them.",
+        names: ["MRT", "Jurong East"],
+        goals: [
+            {
+                id: "say-platform",
+                phraseId: "p-which-platform",
+                keywords: ["which", "platform", "jurong east"],
+            },
+            { id: "say-top-up", phraseId: "p-top-up-ten", keywords: ["top up", "ten", "dollars"] },
+            { id: "say-tap-out", vocabId: "v-tap-out", keywords: ["tap out"] },
+            { id: "say-alight", vocabId: "v-alight", keywords: ["alight"] },
+        ],
+    },
 };

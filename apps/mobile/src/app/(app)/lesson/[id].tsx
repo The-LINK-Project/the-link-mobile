@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { AccessibilityInfo, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseRenderer } from "@/components/lessons/ExerciseRenderer";
@@ -14,7 +14,9 @@ import { useTranslations } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
 import { useLocalized } from "@/lib/lessons/localized";
 import { useLessonSession } from "@/lib/lessons/session";
+import { practiceLanguages, runToParams } from "@/lib/speaking/context";
 import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
+import { useScreenReader } from "@/lib/useScreenReader";
 
 /**
  * One lesson session.
@@ -30,6 +32,8 @@ import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 export default function LessonScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const lesson = getLesson(id);
+    // Picture exercises are left out for screen-reader users, because the tiles
+    // deliberately do not name themselves and a label would read the answer aloud.
     const screenReader = useScreenReader();
 
     if (!lesson) {
@@ -51,34 +55,6 @@ export default function LessonScreen() {
     }
 
     return <LessonRunner lessonId={lesson.id} screenReader={screenReader} />;
-}
-
-/**
- * Whether a screen reader is running, or null until that is known.
- *
- * Picture exercises are left out for screen-reader users, because the tiles
- * deliberately do not name themselves and a label would read the answer aloud.
- */
-function useScreenReader(): boolean | null {
-    const [enabled, setEnabled] = useState<boolean | null>(null);
-
-    useEffect(() => {
-        let active = true;
-        const settle = (value: boolean) => {
-            if (active) setEnabled(value);
-        };
-        AccessibilityInfo.isScreenReaderEnabled().then(settle, () => settle(false));
-
-        // Turning a screen reader on mid-lesson does not rebuild the current
-        // run, but the next lesson started will respect it.
-        const subscription = AccessibilityInfo.addEventListener("screenReaderChanged", settle);
-        return () => {
-            active = false;
-            subscription.remove();
-        };
-    }, []);
-
-    return enabled;
 }
 
 function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
@@ -110,6 +86,11 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
     }, [t, router]);
 
     if (state.phase === "finished") {
+        const run = {
+            vocabIds: summary.practisedVocabIds,
+            phraseIds: summary.phrases.map((phrase) => phrase.id),
+        };
+        const canSpeak = practiceLanguages(lesson, run).length > 0;
         return (
             <Screen edges={["top", "left", "right"]}>
                 <LessonSummary
@@ -117,6 +98,17 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
                     summary={summary}
                     onDone={() => router.back()}
                     onRetry={restart}
+                    // Replaces the lesson rather than stacking on top of it, so
+                    // finishing the practice goes straight home.
+                    onSpeak={
+                        canSpeak
+                            ? () =>
+                                  router.replace({
+                                      pathname: "/speak/[id]",
+                                      params: { id: lesson.id, ...runToParams(run) },
+                                  })
+                            : undefined
+                    }
                 />
             </Screen>
         );

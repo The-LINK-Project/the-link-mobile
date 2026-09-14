@@ -89,6 +89,12 @@ npm run android
 
 The Android emulator can reach the host API with `http://10.0.2.2:3790`. Alternatively, keep `http://127.0.0.1:3790` and run `adb reverse tcp:3790 tcp:3790`. A physical phone must use the computer's LAN address while both devices are on the same network.
 
+Speaking practice records audio through `expo-audio`, a native module. After pulling it, regenerate the native projects and rebuild the development client:
+
+```bash
+npx expo prebuild --clean
+```
+
 ## Environment variables
 
 Mobile-safe values in `apps/mobile/.env`:
@@ -107,11 +113,14 @@ CLERK_SECRET_KEY=sk_test_replace_me
 CLERK_WEBHOOK_SIGNING_SECRET=whsec_replace_me
 CLERK_AUTHORIZED_PARTIES=http://localhost:8081,http://localhost:8082
 PORT=3790
+GEMINI_API_KEY=replace_me
 ```
+
+`GEMINI_API_KEY` powers speaking practice and must belong to a paid (billed) Gemini project; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#speaking-practice). The rest of the API runs without it.
 
 The API fixes the Mongo database name to `link_mobile` in code. It does not trust a database name copied from another environment.
 
-Never put `MOBILE_MONGODB_URI`, `CLERK_SECRET_KEY`, or `CLERK_WEBHOOK_SIGNING_SECRET` in an `EXPO_PUBLIC_*` variable.
+Never put `MOBILE_MONGODB_URI`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, or `GEMINI_API_KEY` in an `EXPO_PUBLIC_*` variable.
 
 ## Validation
 
@@ -132,6 +141,18 @@ npm run smoke:live
 ```
 
 The live smoke test deletes only the user and database records it creates.
+
+With `GEMINI_API_KEY` set, this runs two real tutor turns against Gemini, checks the English word rule held, and saves the tutor's voice to `apps/api/artifacts/tutor-opening.wav`:
+
+```bash
+npm run smoke:tutor
+```
+
+The smoke test's learner is a synthetic voice with no accent, so it says nothing about how real learners are understood. To measure that, put recordings in `apps/api/artifacts/eval/` named `<goal>.<said|missed>.<name>.<ext>`: the goal is `say-platform`, `say-top-up`, `say-tap-out` or `say-alight`, `said` means the recording really contains the English, and the file can be `.m4a`, `.wav`, `.mp3`, `.aac` or `.ogg`. Include near-misses as `missed`, so wrongly accepted answers show up too. The command uses `GEMINI_TUTOR_MODEL`, or each comma-separated model in `EVAL_MODELS`, and `EVAL_LANGUAGE=ta` switches to Tamil. Only use recordings from people who agreed to it; the folder is git-ignored.
+
+```bash
+npm run eval:tutor
+```
 
 ## Cloud projects
 

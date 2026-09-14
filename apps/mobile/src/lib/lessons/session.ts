@@ -228,6 +228,8 @@ export type SessionSummary = {
     reviewed: number;
     /** Vocabulary terms this run practised. */
     practisedTerms: string[];
+    /** Ids of the same vocabulary, for anything that has to look it up again. */
+    practisedVocabIds: string[];
     /**
      * Sentences the run actually taught.
      *
@@ -254,9 +256,7 @@ export function summarize(state: SessionState): SessionSummary {
     // exercises still ahead of them.
     const attempted = shown.filter((exercise) => state.records[exercise.id] !== undefined);
     const practisedIds = new Set(attempted.flatMap((exercise) => exercise.practises));
-    const practisedTerms = state.lesson.vocab
-        .filter((item) => practisedIds.has(item.id))
-        .map((item) => item.term);
+    const practised = state.lesson.vocab.filter((item) => practisedIds.has(item.id));
 
     const taughtPhraseIds = new Set(
         attempted.flatMap((exercise) =>
@@ -267,7 +267,14 @@ export function summarize(state: SessionState): SessionSummary {
     );
     const phrases = state.lesson.phrases.filter((phrase) => taughtPhraseIds.has(phrase.id));
 
-    return { total, firstTryCorrect, reviewed: state.requeued.length, practisedTerms, phrases };
+    return {
+        total,
+        firstTryCorrect,
+        reviewed: state.requeued.length,
+        practisedTerms: practised.map((item) => item.term),
+        practisedVocabIds: practised.map((item) => item.id),
+        phrases,
+    };
 }
 
 /** Session state plus the handlers a screen needs. */
