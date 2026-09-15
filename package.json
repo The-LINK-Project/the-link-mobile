@@ -6,7 +6,7 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=20.19.4"
+    "node": "24.x"
   },
   "scripts": {
     "dev:api": "npm run dev --workspace @link/api",
@@ -21,11 +21,9 @@
     "eval:tutor": "npm run eval:tutor --workspace @link/api",
     "build:api": "npm run build --workspace @link/api",
     "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
-    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
-    "postinstall": "patch-package"
+    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\""
   },
   "devDependencies": {
-    "patch-package": "^8.0.1",
     "prettier": "3.9.6"
   },
   "dependencies": {
