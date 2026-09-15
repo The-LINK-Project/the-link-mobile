@@ -10,7 +10,7 @@
  * Nothing else in the app should switch on exercise type.
  */
 
-import type { PictureKey } from "./icons";
+import type { LessonIcon, PictureKey } from "./icons";
 
 /**
  * A language lesson content can be written in. Hindi is wider than the app's
@@ -201,13 +201,81 @@ export type SelectPictureExercise = ExerciseBase & {
     grading: { mode: "choice" };
 };
 
+/**
+ * A picture, and English words to choose between: the reverse of
+ * `selectPicture`. Seeing the thing and finding its name is recall, which is
+ * what a learner needs at a real counter, where nobody shows them the word.
+ *
+ * Like the picture-choice exercise it is left out under a screen reader,
+ * because naming the picture would read the answer aloud.
+ */
+export type PictureToWordExercise = ExerciseBase & {
+    type: "pictureToWord";
+    /** The word being asked about. Must have a picture of its own. */
+    vocabId: string;
+    /** Every option, including the answer, by vocabulary id. */
+    choiceVocabIds: string[];
+    grading: { mode: "choice" };
+};
+
+/**
+ * Hear a sentence, then build it from tiles. Nothing is written on screen
+ * before the answer, so this is listening practice for the whole sentence
+ * rather than one word. Decoy tiles are allowed, as in translation.
+ */
+export type ListenArrangeWordsExercise = ExerciseBase & {
+    type: "listenArrangeWords";
+    /** The sentence being built, by id, from `Lesson.phrases`. It is what is spoken. */
+    phraseId: string;
+    /** Tiles offered, including any decoys. Presented shuffled. */
+    tokens: string[];
+    grading: SentenceGradingRule;
+};
+
+/**
+ * Somebody says something to the learner; they pick what to say back.
+ *
+ * The other person's line is English, spoken aloud and shown with its meaning,
+ * so the learner is never stuck on a line they cannot read. Each reply carries
+ * its meaning too. This is the exercise closest to a real exchange short of the
+ * spoken practice, and it teaches which sentence fits which moment.
+ */
+export type DialogueReply = { id: string } & (
+    | { phraseId: string; text?: never; meaning?: never }
+    | { text: string; meaning: Localized; phraseId?: never }
+);
+
+export type DialogueChoiceExercise = ExerciseBase & {
+    type: "dialogueChoice";
+    /** Where this is happening, in the learner's language. */
+    situation: Localized;
+    /** What the other person says, in English. Spoken aloud. */
+    line: string;
+    lineMeaning: Localized;
+    /**
+     * The right reply, by id from `Lesson.phrases`. It is the sentence this
+     * exercise teaches, and its id is the answer's choice id.
+     */
+    phraseId: string;
+    /**
+     * Wrong replies, shown shuffled together with the right one. A reply the
+     * lesson teaches elsewhere is referenced; one it does not carries its own
+     * text. Ids must differ from `phraseId`.
+     */
+    distractors: DialogueReply[];
+    grading: { mode: "choice" };
+};
+
 export type Exercise =
     | SelectPictureExercise
+    | PictureToWordExercise
     | MatchPairsExercise
     | ListenChooseMeaningExercise
     | ArrangeWordsExercise
+    | ListenArrangeWordsExercise
     | TranslateWordBankExercise
-    | FillBlankExercise;
+    | FillBlankExercise
+    | DialogueChoiceExercise;
 
 export type ExerciseType = Exercise["type"];
 
@@ -242,6 +310,8 @@ export type Lesson = {
     title: Localized;
     /** One line on what the learner will be able to do afterwards. */
     goal: Localized;
+    /** What the lesson is about, as a picture, for a learner who reads little. */
+    icon: LessonIcon;
     level: "beginner" | "intermediate";
     estimatedMinutes: number;
     notes: TopicNote[];
@@ -262,6 +332,7 @@ export type Lesson = {
 export type AnswerByExercise = {
     /** The chosen option's vocabulary id. */
     selectPicture: { kind: "choice"; choiceId: string };
+    pictureToWord: { kind: "choice"; choiceId: string };
     matchPairs: {
         kind: "pairs";
         /** Wrong pairings before finishing. Never fails the exercise. */
@@ -269,8 +340,10 @@ export type AnswerByExercise = {
     };
     listenChooseMeaning: { kind: "choice"; choiceId: string };
     fillBlank: { kind: "choice"; choiceId: string };
+    dialogueChoice: { kind: "choice"; choiceId: string };
     /** Ordered list of the tiles the learner placed. */
     arrangeWords: { kind: "tokens"; tokens: string[] };
+    listenArrangeWords: { kind: "tokens"; tokens: string[] };
     translateWordBank: { kind: "tokens"; tokens: string[] };
 };
 

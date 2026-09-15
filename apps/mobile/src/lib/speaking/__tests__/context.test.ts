@@ -43,7 +43,13 @@ describe("speaking practice context", () => {
     it("carries a run through route params, and treats a missing run as the whole lesson", () => {
         const run = { vocabIds: ["v-platform", "v-alight"], phraseIds: ["p-which-platform"] };
         expect(runFromParams(mrtBasics, runToParams(run))).toEqual(run);
-        expect(wholeLesson.phraseIds).toEqual(["p-top-up-ten", "p-which-platform"]);
+        // Every exercise that builds or picks a sentence counts as teaching it.
+        expect(wholeLesson.phraseIds).toEqual([
+            "p-top-up-ten",
+            "p-card-cannot-tap",
+            "p-which-platform",
+            "p-alight-here",
+        ]);
     });
 
     // The API refuses a goal whose wording uses English the lesson did not teach,

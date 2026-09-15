@@ -16,6 +16,12 @@ export type TileState = "default" | "selected" | "correct" | "incorrect" | "used
 
 type Props = {
     label: string;
+    /**
+     * A second, quieter line under the label: the meaning of an English option
+     * in the learner's own language, so choosing between English sentences
+     * never depends on being able to read them.
+     */
+    caption?: string;
     onPress?: () => void;
     state?: TileState;
     disabled?: boolean;
@@ -27,6 +33,7 @@ type Props = {
 
 export function Tile({
     label,
+    caption,
     onPress,
     state = "default",
     disabled,
@@ -40,7 +47,7 @@ export function Tile({
     return (
         <Pressable
             accessibilityRole="button"
-            accessibilityLabel={label}
+            accessibilityLabel={caption ? `${label}. ${caption}` : label}
             accessibilityHint={accessibilityHint}
             accessibilityState={{ disabled: !!inert, selected: state === "selected" }}
             disabled={inert}
@@ -63,6 +70,11 @@ export function Tile({
             >
                 {label}
             </Text>
+            {caption ? (
+                <Text variant="caption" style={styles.caption}>
+                    {caption}
+                </Text>
+            ) : null}
         </Pressable>
     );
 }
@@ -92,6 +104,7 @@ const styles = StyleSheet.create({
     },
     block: { width: "100%" },
     label: { textAlign: "center", fontSize: fontSize.md },
+    caption: { textAlign: "center" },
     usedLabel: { opacity: 0.55 },
 
     default: {},

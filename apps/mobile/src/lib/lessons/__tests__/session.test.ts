@@ -1,15 +1,15 @@
+import { correctAnswer } from "@/test/lessonAnswers";
+
 import { mrtBasics } from "../data/mrt-basics";
 import { buildQueue, initSession, sessionReducer, summarize } from "../session";
 import type { Answer, Exercise, Lesson } from "../types";
 
-const correctFor: Record<string, Answer> = {
-    "ex-0-picture": { kind: "choice", choiceId: "v-platform" },
-    "ex-1-pairs": { kind: "pairs", wrongAttempts: 0 },
-    "ex-2-listen": { kind: "choice", choiceId: "c-correct" },
-    "ex-3-arrange": { kind: "tokens", tokens: ["I", "want", "to", "top up", "ten", "dollars"] },
-    "ex-4-translate": { kind: "tokens", tokens: ["Which", "platform", "for", "Jurong East"] },
-    "ex-5-fill": { kind: "choice", choiceId: "f-out" },
-};
+/** The right answer for an exercise in the MRT lesson, by id. */
+function correctFor(id: string): Answer {
+    const exercise = mrtBasics.exercises.find((item) => item.id === id);
+    if (!exercise) throw new Error(`No exercise ${id}`);
+    return correctAnswer(mrtBasics, exercise);
+}
 
 const WRONG: Answer = { kind: "choice", choiceId: "definitely-wrong" };
 
@@ -25,7 +25,10 @@ function answerAndAdvance(state: State, answer: Answer): State {
 
 /** The right answer for whatever is currently on screen. */
 function correctAt(state: State): Answer {
-    return correctFor[state.queue[state.position]];
+    const id = state.queue[state.position];
+    const exercise = state.lesson.exercises.find((item) => item.id === id);
+    if (!exercise) throw new Error(`No exercise ${id}`);
+    return correctAnswer(state.lesson, exercise);
 }
 
 /** Answer whatever is on screen correctly. */
@@ -106,6 +109,8 @@ describe("buildQueue", () => {
         // than one that is not offered.
         const queue = buildQueue(mrtBasics.exercises, LEARNER, true);
         expect(queue).not.toContain("ex-0-picture");
+        // The reverse exercise shows a picture as the prompt, so the same applies.
+        expect(queue).not.toContain("ex-2b-picture-word");
         expect(buildQueue(mrtBasics.exercises, LEARNER, false)).toContain("ex-0-picture");
     });
 
@@ -180,7 +185,7 @@ describe("session flow", () => {
         let state = atFailableExercise();
         state = sessionReducer(state, {
             type: "draft",
-            answer: correctFor[state.queue[state.position]],
+            answer: correctFor(state.queue[state.position]),
         });
         state = sessionReducer(state, { type: "submit" });
 
@@ -193,7 +198,7 @@ describe("session flow", () => {
         // event as the answer, which graded every exercise as wrong no matter
         // what the learner had chosen.
         const start = atFailableExercise();
-        const intended = correctFor[start.queue[start.position]];
+        const intended = correctFor(start.queue[start.position]);
         let state = sessionReducer(start, { type: "draft", answer: intended });
 
         const pressEvent = { nativeEvent: { pageX: 1, pageY: 2 }, target: 7 };
@@ -266,7 +271,7 @@ describe("mistakes", () => {
             (s) => {
                 const next = answerAndAdvance(
                     s,
-                    s.position === missAt ? WRONG : correctFor[s.queue[s.position]],
+                    s.position === missAt ? WRONG : correctFor(s.queue[s.position]),
                 );
                 const progress = next.position / next.queue.length;
                 expect(progress).toBeGreaterThanOrEqual(previous);
@@ -332,6 +337,8 @@ describe("summarize", () => {
         expect(bengali.phrases.map((phrase) => phrase.id)).toEqual([
             "p-which-platform",
             "p-top-up-ten",
+            "p-card-cannot-tap",
+            "p-alight-here",
         ]);
 
         // English skips the translation exercise, so its sentence is not taught
@@ -341,7 +348,11 @@ describe("summarize", () => {
             (state) => state.phase === "finished",
             answerCorrectly,
         );
-        expect(summarize(english).phrases.map((phrase) => phrase.id)).toEqual(["p-top-up-ten"]);
+        expect(summarize(english).phrases.map((phrase) => phrase.id)).toEqual([
+            "p-top-up-ten",
+            "p-card-cannot-tap",
+            "p-alight-here",
+        ]);
     });
 });
 

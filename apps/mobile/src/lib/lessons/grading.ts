@@ -118,6 +118,7 @@ export function missingKeywords(answer: string, keywords: string[], ignore?: str
 function modelAnswerFor(lesson: Lesson, exercise: Exercise): string {
     switch (exercise.type) {
         case "arrangeWords":
+        case "listenArrangeWords":
         case "translateWordBank":
             return phraseById(lesson, exercise.phraseId)?.text ?? "";
         case "fillBlank":
@@ -125,9 +126,14 @@ function modelAnswerFor(lesson: Lesson, exercise: Exercise): string {
                 exercise.choices.find((choice) => choice.id === exercise.correctChoiceId)?.label ??
                 ""
             );
+        case "dialogueChoice":
+            // The reply stays marked on its tile; the sentence is repeated here
+            // so the footer can show it to a learner who chose wrongly.
+            return phraseById(lesson, exercise.phraseId)?.text ?? "";
         case "listenChooseMeaning":
             return exercise.audioText;
         case "selectPicture":
+        case "pictureToWord":
             // The word is already the prompt, on screen throughout. Repeating it
             // as a "correct solution" would tell the learner nothing; the tile
             // they should have picked is marked instead.
@@ -176,6 +182,7 @@ export function gradeAnswer(lesson: Lesson, exercise: Exercise, answer: Answer):
         }
 
         case "selectPicture":
+        case "pictureToWord":
             return {
                 correct: answer.kind === "choice" && answer.choiceId === exercise.vocabId,
                 modelAnswer,
@@ -196,12 +203,28 @@ export function gradeAnswer(lesson: Lesson, exercise: Exercise, answer: Answer):
                 modelAnswer,
             };
 
+        case "dialogueChoice":
+            return {
+                correct: answer.kind === "choice" && answer.choiceId === exercise.phraseId,
+                modelAnswer,
+            };
+
         case "arrangeWords":
         case "translateWordBank": {
             if (answer.kind !== "tokens") return { correct: false, modelAnswer };
             return {
                 ...gradeTokens(answer.tokens, modelAnswer, exercise.grading),
                 modelAnswer,
+            };
+        }
+
+        case "listenArrangeWords": {
+            if (answer.kind !== "tokens") return { correct: false, modelAnswer };
+            return {
+                ...gradeTokens(answer.tokens, modelAnswer, exercise.grading),
+                modelAnswer,
+                // The sentence was only ever heard, so the reveal is what was said.
+                modelAnswerKind: "audio",
             };
         }
     }

@@ -3,9 +3,9 @@ import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 
 import { LessonCard } from "@/components/lessons/LessonCard";
-import { ErrorState, LoadingState, Screen, Text } from "@/components/ui";
+import { ErrorState, Screen, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
-import { listLessons } from "@/lib/lessons/data";
+import { getDailyMix, listLessons } from "@/lib/lessons/data";
 import { useMe } from "@/lib/queries";
 import { colors, spacing } from "@/lib/theme";
 
@@ -13,9 +13,10 @@ import { colors, spacing } from "@/lib/theme";
 // the fallback for when the catalogue is empty, which is what a fresh install
 // will see until lessons are published from the API.
 //
-// A failed profile sync is reported above the lessons rather than instead of
-// them. Lesson content does not depend on the profile, so an API outage must
-// not take away the only thing on this screen a learner came here to do.
+// The profile sync runs alongside the list rather than in front of it. Lesson
+// content does not depend on the profile, so neither a slow network nor an API
+// outage may take away the only thing on this screen a learner came here to
+// do. A failed sync is reported above the lessons instead of replacing them.
 export default function HomeScreen() {
     const t = useTranslations("mobile.foundation");
     const me = useMe();
@@ -36,14 +37,25 @@ export default function HomeScreen() {
                 <ErrorState message={t("syncError")} onRetry={() => void me.refetch()} />
             ) : null}
 
-            {me.isPending ? (
-                <LoadingState />
-            ) : lessons.length > 0 ? (
-                <View style={styles.lessons}>
-                    {lessons.map((lesson) => (
-                        <LessonCard key={lesson.id} lesson={lesson} />
-                    ))}
-                </View>
+            {lessons.length > 0 ? (
+                <>
+                    <View style={styles.section}>
+                        <Text variant="heading">{t("lessonsTitle")}</Text>
+                        <Text variant="caption">{t("lessonsBody")}</Text>
+                    </View>
+                    <View style={styles.lessons}>
+                        {lessons.map((lesson) => (
+                            <LessonCard key={lesson.id} lesson={lesson} />
+                        ))}
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text variant="heading">{t("practiceTitle")}</Text>
+                    </View>
+                    <View style={styles.lessons}>
+                        <LessonCard lesson={getDailyMix()} />
+                    </View>
+                </>
             ) : (
                 <View style={styles.empty}>
                     <View style={styles.emptyIcon}>
@@ -62,9 +74,10 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    content: { paddingTop: spacing.xl },
+    content: { paddingTop: spacing.xl, gap: spacing.lg },
     header: { gap: spacing.lg },
-    lessons: { gap: spacing.md, paddingTop: spacing.xl },
+    section: { gap: spacing.xs, paddingTop: spacing.sm },
+    lessons: { gap: spacing.md },
     logo: { width: 56, height: 56, borderRadius: 14 },
     empty: {
         flex: 1,
