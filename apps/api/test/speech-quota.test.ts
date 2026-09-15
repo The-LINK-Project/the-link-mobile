@@ -1,10 +1,11 @@
+import { pcmToWav } from "../src/audio.js";
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { createVerify, generateKeyPairSync } from "node:crypto";
 
 import { parseServiceAccount } from "../src/cloud-speech.js";
 import { readConfig } from "../src/config.js";
-import { createGeminiTutor, pcmToWav, speechChunks } from "../src/gemini.js";
+import { createGeminiTutor, speechChunks } from "../src/gemini.js";
 import { QuotaError } from "../src/google.js";
 
 const BASE_ENV = {

@@ -1,6 +1,6 @@
+import { sampleRateOf, joinSpeech } from "./audio.js";
 import { createCloudSpeech, parseServiceAccount, type ServiceAccount } from "./cloud-speech.js";
 import {
-    DEFAULT_SAMPLE_RATE,
     GoogleError,
     QuotaError,
     QuotaTracker,
@@ -91,32 +91,6 @@ function jsonOutput(response: GenerateResponse): Record<string, unknown> {
         // Reported below.
     }
     throw new GoogleError("Gemini returned malformed JSON");
-}
-
-export function pcmToWav(pcm: Buffer, sampleRate = DEFAULT_SAMPLE_RATE): Buffer {
-    const channels = 1;
-    const bitsPerSample = 16;
-    const blockAlign = (channels * bitsPerSample) / 8;
-    const header = Buffer.alloc(44);
-    header.write("RIFF", 0, "ascii");
-    header.writeUInt32LE(36 + pcm.length, 4);
-    header.write("WAVE", 8, "ascii");
-    header.write("fmt ", 12, "ascii");
-    header.writeUInt32LE(16, 16);
-    header.writeUInt16LE(1, 20);
-    header.writeUInt16LE(channels, 22);
-    header.writeUInt32LE(sampleRate, 24);
-    header.writeUInt32LE(sampleRate * blockAlign, 28);
-    header.writeUInt16LE(blockAlign, 32);
-    header.writeUInt16LE(bitsPerSample, 34);
-    header.write("data", 36, "ascii");
-    header.writeUInt32LE(pcm.length, 40);
-    return Buffer.concat([header, pcm]);
-}
-
-function sampleRateOf(mimeType: string | undefined): number {
-    const rate = Number(/rate=(\d+)/.exec(mimeType ?? "")?.[1]);
-    return Number.isInteger(rate) && rate > 0 ? rate : DEFAULT_SAMPLE_RATE;
 }
 
 /**
@@ -271,10 +245,7 @@ export function createGeminiTutor(options: TutorOptions): TutorModel {
                     const pieces = await Promise.all(
                         chunks.map((chunk) => voice.say(chunk, language, deadline - Date.now())),
                     );
-                    return pcmToWav(
-                        Buffer.concat(pieces.map((piece) => piece.pcm)),
-                        pieces[0].rate,
-                    );
+                    return joinSpeech(pieces);
                 } catch (error) {
                     if (error instanceof QuotaError) quota.outOfQuota(voice.name, error);
                     console.warn("Tutor voice failed", {

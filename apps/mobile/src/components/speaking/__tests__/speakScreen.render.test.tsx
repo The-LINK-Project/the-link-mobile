@@ -8,7 +8,7 @@
  */
 
 import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, AppState } from "react-native";
 
 import SpeakScreen from "@/app/(app)/speak/[id]";
 import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
@@ -121,6 +121,7 @@ async function recordAndStop(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(async () => {
+    AppState.currentState = "active";
     jest.clearAllMocks();
     tutorTurn.mockReset();
     mockFiles.clear();
@@ -208,6 +209,37 @@ describe("speaking practice", () => {
         // The tutor could not make this one out, and the screen says so.
         await screen.findByText("Voice message (not clear)");
         expect(tutorTurn).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not save a tutor reply that arrives after leaving", async () => {
+        withScreenReader(false);
+        let resolve!: (response: typeof OPENING) => void;
+        tutorTurn.mockReturnValueOnce(
+            new Promise((done) => {
+                resolve = done;
+            }),
+        );
+        const user = userEvent.setup();
+        const view = render(<SpeakScreen />);
+        await user.press(await screen.findByText("Start"));
+        view.unmount();
+        await act(async () => {
+            resolve(OPENING);
+        });
+        expect(mockFiles.size).toBe(0);
+        expect(mockPlayer.play).not.toHaveBeenCalled();
+    });
+
+    it("disables tutor replay while the microphone is recording", async () => {
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        const user = await startConversation();
+        await user.press(screen.getByLabelText("Start recording"));
+        await screen.findByLabelText("Stop recording");
+        const count = mockPlayer.play.mock.calls.length;
+        await user.press(screen.getByLabelText("Listen"));
+        expect(mockPlayer.play).toHaveBeenCalledTimes(count);
+        await user.press(screen.getByLabelText("Cancel recording"));
     });
 
     it("leaves the tutor's voice to the learner under a screen reader", async () => {

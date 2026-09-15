@@ -1,3 +1,4 @@
+import { pcmToWav } from "../src/audio.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
@@ -5,7 +6,7 @@ import type { Db } from "mongodb";
 
 import { createApp } from "../src/app.js";
 import { readConfig } from "../src/config.js";
-import { pcmToWav, speechChunks } from "../src/gemini.js";
+import { speechChunks } from "../src/gemini.js";
 import {
     allowedWords,
     decideOutcome,

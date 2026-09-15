@@ -15,15 +15,17 @@ export function useSpeakingSession(context: SpeakingContext) {
     const [state, dispatch] = useReducer(conversationReducer, context, initConversation);
     const saved = useRef<string[]>([]);
     const pending = useRef(false);
+    const mounted = useRef(true);
 
     /** Resolves true when the tutor answered, so the caller can drop the recording. */
     const takeTurn = useCallback(
         async (audio?: Recording): Promise<boolean> => {
-            if (pending.current) return false;
+            if (!mounted.current || pending.current || state.phase === "finished") return false;
             pending.current = true;
             dispatch({ type: "send" });
             try {
                 const response = await api.tutorTurn(turnRequest(context, state, audio));
+                if (!mounted.current) return false;
                 const audioUri = response.audio
                     ? saveTutorAudio(response.audio.data, `${saved.current.length}-${Date.now()}`)
                     : undefined;
@@ -31,6 +33,7 @@ export function useSpeakingSession(context: SpeakingContext) {
                 dispatch({ type: "replied", response, audioUri });
                 return true;
             } catch (error) {
+                if (!mounted.current) return false;
                 if (__DEV__) {
                     console.warn(
                         "Tutor turn failed:",
@@ -57,8 +60,13 @@ export function useSpeakingSession(context: SpeakingContext) {
     }, [takeTurn]);
 
     useEffect(() => {
+        mounted.current = true;
         const files = saved.current;
-        return () => files.forEach((uri) => deleteFile(uri));
+        return () => {
+            mounted.current = false;
+            files.forEach((uri) => deleteFile(uri));
+            files.length = 0;
+        };
     }, []);
 
     return { state, takeTurn };

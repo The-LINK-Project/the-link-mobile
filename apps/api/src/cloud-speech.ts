@@ -1,3 +1,4 @@
+import { wavSamples } from "./audio.js";
 /**
  * Speech through Cloud Text-to-Speech.
  *
@@ -74,25 +75,6 @@ function tokenAssertion(account: ServiceAccount, nowMs: number): string {
         .update(unsigned)
         .sign(account.privateKey, "base64url");
     return `${unsigned}.${signature}`;
-}
-
-/** Raw samples from a WAV file, which is how Cloud returns LINEAR16. */
-export function wavSamples(wav: Buffer): Spoken {
-    if (wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
-        return { pcm: wav, rate: DEFAULT_SAMPLE_RATE };
-    }
-    let rate = DEFAULT_SAMPLE_RATE;
-    for (let offset = 12; offset + 8 <= wav.length;) {
-        const id = wav.toString("ascii", offset, offset + 4);
-        const size = wav.readUInt32LE(offset + 4);
-        const start = offset + 8;
-        if (id === "fmt ") rate = wav.readUInt32LE(start + 4);
-        // A streamed WAV can declare a larger data size than it has.
-        if (id === "data")
-            return { pcm: wav.subarray(start, Math.min(start + size, wav.length)), rate };
-        offset = start + size + (size % 2);
-    }
-    throw new GoogleError(`${SERVICE} returned audio without samples`);
 }
 
 export function createCloudSpeech(account: ServiceAccount, now: () => number = Date.now) {

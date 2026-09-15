@@ -158,6 +158,15 @@ function Conversation({
     const review = usePlayback();
     const [notice, setNotice] = useState<string | null>(null);
     const [preparing, setPreparing] = useState(false);
+    const [reading, setReading] = useState(false);
+    const operation = useRef(false);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
     const [showSummary, setShowSummary] = useState(false);
     const scroll = useRef<ScrollView>(null);
     const autoplayed = useRef<string | null>(null);
@@ -182,24 +191,44 @@ function Conversation({
     }, [t, router]);
 
     const record = async () => {
+        if (operation.current) return;
+        operation.current = true;
+        setPreparing(true);
         voice.stop();
         review.stop();
         setNotice(null);
-        const settle = micSettleMs(Math.min(voice.quietForMs(), review.quietForMs()));
-        if (settle > 0) {
-            setPreparing(true);
-            await new Promise((resolve) => setTimeout(resolve, settle));
-            setPreparing(false);
+        try {
+            const settle = micSettleMs(Math.min(voice.quietForMs(), review.quietForMs()));
+            if (settle > 0) await new Promise((resolve) => setTimeout(resolve, settle));
+            if (!mounted.current) return;
+            const result = await recorder.start();
+            if (!mounted.current) return;
+            if (result === "denied") setNotice(t("micBlocked"));
+            if (result === "failed") setNotice(t("recordFailed"));
+        } finally {
+            operation.current = false;
+            if (mounted.current) setPreparing(false);
         }
-        const result = await recorder.start();
-        if (result === "denied") setNotice(t("micBlocked"));
-        if (result === "failed") setNotice(t("recordFailed"));
     };
 
     const send = async () => {
+        if (operation.current) return;
+        operation.current = true;
+        setReading(true);
+        voice.stop();
         review.stop();
-        const audio = await recorder.read().catch(() => null);
-        if (audio && (await takeTurn(audio))) recorder.discard();
+        setNotice(null);
+        try {
+            const audio = await recorder.read();
+            if (!mounted.current) return;
+            if (!audio) throw new Error("Recording is unavailable");
+            if (await takeTurn(audio)) recorder.discard();
+        } catch {
+            if (mounted.current) setNotice(t("sendFailed"));
+        } finally {
+            operation.current = false;
+            if (mounted.current) setReading(false);
+        }
     };
 
     if (showSummary) {
@@ -224,7 +253,7 @@ function Conversation({
         ? t("micStarting")
         : opening && !state.error
           ? t("starting")
-          : state.phase === "sending"
+          : reading || state.phase === "sending"
             ? t("thinking")
             : null;
 
@@ -246,9 +275,15 @@ function Conversation({
                     <ChatBubble
                         key={message.id}
                         message={message}
+                        disabled={preparing || recorder.status === "recording"}
                         playing={!!message.audioUri && voice.playingUri === message.audioUri}
                         onPlay={(speed) => {
-                            if (!message.audioUri) return;
+                            if (
+                                !message.audioUri ||
+                                operation.current ||
+                                recorder.status === "recording"
+                            )
+                                return;
                             review.stop();
                             voice.play(message.audioUri, speed);
                         }}
@@ -290,7 +325,13 @@ function Conversation({
                         durationMs={recorder.durationMs}
                         level={recorder.level}
                         busyLabel={busyLabel}
-                        notice={recorder.tooShort ? t("tooShort") : notice}
+                        notice={
+                            recorder.failed
+                                ? t("recordFailed")
+                                : recorder.tooShort
+                                  ? t("tooShort")
+                                  : notice
+                        }
                         reviewPlaying={!!recorder.uri && review.playingUri === recorder.uri}
                         onRecord={record}
                         onStop={recorder.stop}
@@ -300,6 +341,7 @@ function Conversation({
                             recorder.discard();
                         }}
                         onPlayRecording={() => {
+                            voice.stop();
                             if (recorder.uri) review.play(recorder.uri);
                         }}
                         onStopPlayback={review.stop}

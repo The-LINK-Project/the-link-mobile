@@ -13,11 +13,12 @@ const ENGLISH_RUN = /([A-Za-z][A-Za-z'’ ]*[A-Za-z]|[A-Za-z])/;
 type Props = {
     message: ChatMessage;
     playing: boolean;
+    disabled?: boolean;
     onPlay: (speed: PlaybackSpeed) => void;
     onStop: () => void;
 };
 
-export function ChatBubble({ message, playing, onPlay, onStop }: Props) {
+export function ChatBubble({ message, playing, disabled, onPlay, onStop }: Props) {
     const t = useTranslations("mobile.speaking");
     const tutor = message.role === "tutor";
 
@@ -37,6 +38,7 @@ export function ChatBubble({ message, playing, onPlay, onStop }: Props) {
                 {tutor && message.audioUri ? (
                     <View style={styles.controls}>
                         <Button
+                            disabled={disabled}
                             size="sm"
                             variant="secondary"
                             title={playing ? t("stopPlayback") : t("play")}
@@ -50,6 +52,7 @@ export function ChatBubble({ message, playing, onPlay, onStop }: Props) {
                             onPress={playing ? onStop : () => onPlay("normal")}
                         />
                         <Button
+                            disabled={disabled}
                             size="sm"
                             variant="secondary"
                             title={t("playSlow")}
