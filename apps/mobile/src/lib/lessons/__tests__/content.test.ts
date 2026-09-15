@@ -217,7 +217,7 @@ describe.each(lessons.map((lesson) => [lesson.id, lesson] as const))("lesson %s"
         }
     });
 
-    it("never opens on production, and never repeats a type back to back", () => {
+    it("opens on recognition, not production", () => {
         const [first] = lesson.exercises;
         expect(["selectPicture", "matchPairs", "listenChooseMeaning"]).toContain(first.type);
     });
