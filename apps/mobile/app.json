@@ -54,7 +54,9 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone so you can practise speaking English.",
           "enableBackgroundPlayback": false
         }
-      ]
+      ],
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
