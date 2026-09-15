@@ -8,21 +8,24 @@ import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
 /**
  * Play button for listening exercises, with an optional slow replay.
  *
- * The slow button only appears once the phrase has played at normal speed, so
- * the learner's first exposure is natural pace. Playback is always started by
- * the learner: nothing autoplays, and a second tap restarts rather than queues.
+ * The slow button only becomes usable once the phrase has played at normal
+ * speed, so the learner's first exposure is natural pace. Its space is
+ * reserved from the start: appearing later would push every tile below it
+ * down under a finger that is about to tap. Playback is always started by the
+ * learner: nothing autoplays, and a second tap restarts rather than queues.
  */
 type Props = {
     onPlay: () => void;
     onPlaySlow: () => void;
     speaking: boolean;
-    /** True once a normal-speed playback has finished. Reveals the slow button. */
+    /** True once a normal-speed playback has finished. Enables the slow button. */
     hasPlayed: boolean;
     disabled?: boolean;
 };
 
 export function SpeakerButton({ onPlay, onPlaySlow, speaking, hasPlayed, disabled }: Props) {
     const t = useTranslations("mobile.lessons");
+    const slowDisabled = disabled || !hasPlayed;
 
     return (
         <View style={styles.row}>
@@ -45,25 +48,27 @@ export function SpeakerButton({ onPlay, onPlaySlow, speaking, hasPlayed, disable
                 )}
             </Pressable>
 
-            {hasPlayed ? (
-                <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("playSlow")}
-                    accessibilityState={{ disabled: !!disabled }}
-                    disabled={disabled}
-                    onPress={onPlaySlow}
-                    style={({ pressed }) => [
-                        styles.secondary,
-                        pressed && !disabled ? styles.pressed : null,
-                        disabled ? styles.disabledButton : null,
-                    ]}
-                >
-                    <Ionicons name="play-outline" size={20} color={colors.accent} />
-                    <Text variant="caption" color={colors.accent}>
-                        {t("playSlow")}
-                    </Text>
-                </Pressable>
-            ) : null}
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("playSlow")}
+                accessibilityState={{ disabled: slowDisabled }}
+                // Hidden from assistive tech until it can do something.
+                accessibilityElementsHidden={!hasPlayed}
+                importantForAccessibility={hasPlayed ? "auto" : "no-hide-descendants"}
+                disabled={slowDisabled}
+                onPress={onPlaySlow}
+                style={({ pressed }) => [
+                    styles.secondary,
+                    !hasPlayed ? styles.hidden : null,
+                    pressed && !slowDisabled ? styles.pressed : null,
+                    disabled ? styles.disabledButton : null,
+                ]}
+            >
+                <Ionicons name="play-outline" size={20} color={colors.accent} />
+                <Text variant="caption" color={colors.accent}>
+                    {t("playSlow")}
+                </Text>
+            </Pressable>
         </View>
     );
 }
@@ -94,6 +99,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accentSoft,
         backgroundColor: colors.surface,
     },
+    hidden: { opacity: 0 },
     pressed: { transform: [{ translateY: EDGE }], borderBottomWidth: 0, marginBottom: EDGE },
     disabledButton: { opacity: 0.5 },
 });

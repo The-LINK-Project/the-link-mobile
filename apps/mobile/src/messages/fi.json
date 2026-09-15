@@ -165,6 +165,7 @@
       "stopPlayback": "Itigil",
       "send": "Ipadala",
       "tooShort": "Masyadong maikli. Magsalita nang mas matagal nang kaunti.",
+      "tooQuiet": "Hindi ka namin narinig. Ilapit ang telepono at subukan ulit.",
       "recordFailed": "Hindi mabuksan ang mikropono. Pakisubukan ulit.",
       "play": "Pakinggan",
       "playSlow": "Mas mabagal",

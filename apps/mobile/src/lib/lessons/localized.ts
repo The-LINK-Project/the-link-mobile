@@ -1,4 +1,4 @@
-import { getLocale, useLocale, type Locale } from "@/lib/i18n";
+import { useLocale, type Locale } from "@/lib/i18n";
 
 import type { LearnerLanguage, Localized } from "./types";
 
@@ -58,9 +58,4 @@ export function useLocalized() {
 export function hasTranslation(value: Localized, language: Locale | LearnerLanguage): boolean {
     // English is the fallback, so it is never a translation of itself.
     return isTranslated(language) && Boolean(value[language]);
-}
-
-/** The current locale, for the rare non-React caller that needs it. */
-export function currentLocale(): Locale {
-    return getLocale();
 }

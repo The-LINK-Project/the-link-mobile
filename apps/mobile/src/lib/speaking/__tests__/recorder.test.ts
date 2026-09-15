@@ -22,8 +22,10 @@ jest.mock("expo-audio", () => ({
         mockStatusListener = listener;
         return mockRecorder;
     },
-    useAudioRecorderState: () => ({ durationMillis: 0 }),
+    useAudioRecorderState: () => mockLive,
 }));
+/** What the native recorder reports while recording; tests set the level. */
+let mockLive: { durationMillis: number; metering?: number } = { durationMillis: 0 };
 jest.mock("../files", () => ({ deleteFile: (uri: unknown) => mockDelete(uri) }));
 jest.mock("expo-file-system", () => ({
     File: class {
@@ -33,6 +35,7 @@ jest.mock("expo-file-system", () => ({
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockLive = { durationMillis: 0 };
     AppState.currentState = "active";
     mockPermission.mockResolvedValue({ granted: true });
     mockMode.mockResolvedValue(undefined);
@@ -156,4 +159,45 @@ test("a native stop error cannot expose a broken recording for upload", async ()
     expect(result.current.status).toBe("idle");
     expect(result.current.failed).toBe(true);
     expect(await result.current.read()).toBeNull();
+});
+
+test("a recording that never rose above silence is thrown away, not sent", async () => {
+    // Regression: a silent clip sent to the tutor came back as invented words.
+    mockLive = { durationMillis: 0, metering: -70 };
+    const hook = renderHook(useRecorder);
+    await act(async () => {
+        await hook.result.current.start();
+    });
+    hook.rerender(undefined);
+    await act(async () => {
+        await hook.result.current.stop();
+    });
+    expect(hook.result.current.status).toBe("idle");
+    expect(hook.result.current.tooQuiet).toBe(true);
+    expect(mockDelete).toHaveBeenCalledWith("file:///recording.wav");
+});
+
+test("a recording with speech in it is kept, and one with no level reading is trusted", async () => {
+    mockLive = { durationMillis: 0, metering: -20 };
+    const spoken = renderHook(useRecorder);
+    await act(async () => {
+        await spoken.result.current.start();
+    });
+    spoken.rerender(undefined);
+    await act(async () => {
+        await spoken.result.current.stop();
+    });
+    expect(spoken.result.current.status).toBe("recorded");
+    expect(spoken.result.current.tooQuiet).toBe(false);
+
+    // A platform that reports no level at all must not block every recording.
+    mockLive = { durationMillis: 0 };
+    const unmetered = renderHook(useRecorder);
+    await act(async () => {
+        await unmetered.result.current.start();
+    });
+    await act(async () => {
+        await unmetered.result.current.stop();
+    });
+    expect(unmetered.result.current.status).toBe("recorded");
 });

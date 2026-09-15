@@ -210,7 +210,15 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             if (error instanceof HttpError) throw error;
             const status = statusOf(error);
             if (status && status >= 500) throw new HttpError(503, "Sign-in service unavailable");
-            throw new HttpError(401, "Authentication required");
+            // A rejected token carries a Clerk verification `reason`, and a
+            // rejected session a 4xx status. Anything else is the server failing
+            // to reach Clerk at all (network, DNS, TLS), which is not the
+            // learner's fault: a 401 here would sign them out of the app.
+            const rejected =
+                status !== undefined ||
+                (typeof error === "object" && error !== null && "reason" in error);
+            if (rejected) throw new HttpError(401, "Authentication required");
+            throw new HttpError(503, "Sign-in service unavailable");
         }
         res.locals.userId = auth.userId;
 

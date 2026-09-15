@@ -272,7 +272,7 @@ export const clinicVisit: Lesson = {
                 {
                     id: "c-wrong-2",
                     label: {
-                        en: "A day off from work",
+                        en: "a day off from work",
                         bn: "কাজ থেকে এক দিনের ছুটি",
                         ta: "வேலையிலிருந்து ஒரு நாள் விடுப்பு",
                         hi: "काम से एक दिन की छुट्टी",

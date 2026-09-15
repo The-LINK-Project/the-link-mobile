@@ -21,7 +21,7 @@ function daySeed(now: Date): string {
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-export function buildDailyMix(lessons: Lesson[], now: Date = new Date()): Lesson {
+function buildDailyMix(lessons: Lesson[], now: Date): Lesson {
     const seed = daySeed(now);
     const pool = lessons.flatMap((lesson) => lesson.exercises);
     return {

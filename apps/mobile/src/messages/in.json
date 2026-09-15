@@ -165,6 +165,7 @@
       "stopPlayback": "Berhenti",
       "send": "Kirim",
       "tooShort": "Itu terlalu pendek. Bicaralah sedikit lebih lama.",
+      "tooQuiet": "Kami tidak mendengar suara Anda. Dekatkan ponsel dan coba lagi.",
       "recordFailed": "Mikrofon tidak bisa dinyalakan. Silakan coba lagi.",
       "play": "Dengarkan",
       "playSlow": "Lebih pelan",
