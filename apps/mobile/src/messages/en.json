@@ -165,6 +165,7 @@
       "stopPlayback": "Stop",
       "send": "Send",
       "tooShort": "That was too short. Speak a little longer.",
+      "tooQuiet": "We could not hear you. Hold the phone closer and try again.",
       "recordFailed": "The microphone could not start. Please try again.",
       "play": "Listen",
       "playSlow": "Slower",

@@ -282,7 +282,7 @@ export const hawkerFood: Lesson = {
                 {
                     id: "c-wrong-1",
                     label: {
-                        en: "Eat here, at a table",
+                        en: "eat here, at a table",
                         bn: "এখানে টেবিলে বসে খাওয়া",
                         ta: "இங்கே மேசையில் சாப்பிடுவது",
                         hi: "यहीं टेबल पर खाना",

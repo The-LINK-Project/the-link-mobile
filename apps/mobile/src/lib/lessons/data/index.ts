@@ -31,5 +31,3 @@ export function getLesson(id: string): Lesson | undefined {
     if (id === DAILY_MIX_ID) return getDailyMix();
     return LESSONS.find((lesson) => lesson.id === id);
 }
-
-export { DAILY_MIX_ID, clinicVisit, hawkerFood, mrtBasics, workSafety };

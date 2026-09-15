@@ -54,6 +54,19 @@ The user profile stores only:
 
 Passwords and session tokens are never stored in MongoDB.
 
+## Lessons
+
+Lesson content ships inside the app as typed TypeScript (`apps/mobile/src/lib/lessons`), written as if it had come back from `GET /v1/lessons/:id`, so moving it to the API later changes the data source and nothing else. Nothing about a learner's lesson results is stored yet, on the phone or the server.
+
+Rules the content and the engine keep:
+
+- Every answer is a tap. A keyboard is the biggest friction point for a learner with low digital literacy, so no exercise uses one.
+- A wrong answer never blocks progress. The exercise is put back at the end of the queue once, and the progress bar never moves backwards.
+- An exercise that cannot teach a given learner is left out of the run: translation for a learner already reading English, and picture exercises under a screen reader (naming the picture would read the answer aloud).
+- Grading is lenient on sentences: the required words must be there, in any order, with articles, Singapore particles and small spelling slips forgiven. Being understood is the goal.
+- Every string a learner meets is in their language. Lesson content is authored in English, Bengali, Tamil and Hindi; the app's chrome in those plus Burmese, Filipino and Indonesian, and a test fails on any untranslated key.
+- Layout never shifts under a finger: a placed tile keeps its slot, and the slow-replay button's space is reserved before it is usable.
+
 ## Speaking practice
 
 After a lesson, a learner can practise saying its sentences aloud with an AI tutor. The tutor speaks the learner's language (Bengali, Tamil or Hindi) and uses only the English that run taught.
@@ -101,8 +114,9 @@ Clerk events for people who have only used the website do not create records in 
 ## Failure behavior
 
 - If Clerk cannot finish loading in the app (offline, or a Clerk instance with Native API disabled), the app shows a "Sign-in service unavailable" screen with a retry button instead of staying on the splash screen.
-- Missing, invalid, expired, revoked, or deleted sessions receive HTTP 401.
-- A temporary Clerk backend failure receives HTTP 503.
+- Missing, invalid, expired, revoked, or deleted sessions receive HTTP 401. The app treats a 401 as a dead session and signs out.
+- A temporary Clerk backend failure, or the API failing to reach Clerk at all, receives HTTP 503. This distinction matters: reporting an unreachable Clerk as 401 signed learners out for a server-side fault.
+- A recording whose level never rose above silence is not sent. Sent to the model, a silent clip comes back as invented words.
 - Requests over the per-user limit receive HTTP 429 with `Retry-After`.
 - If Clerk account deletion succeeds but immediate Mongo cleanup fails, the API returns HTTP 202 and relies on the signed Clerk webhook retry.
 - Webhooks without a valid Svix signature are rejected.

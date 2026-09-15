@@ -330,7 +330,9 @@ function Conversation({
                                 ? t("recordFailed")
                                 : recorder.tooShort
                                   ? t("tooShort")
-                                  : notice
+                                  : recorder.tooQuiet
+                                    ? t("tooQuiet")
+                                    : notice
                         }
                         reviewPlaying={!!recorder.uri && review.playingUri === recorder.uri}
                         onRecord={record}

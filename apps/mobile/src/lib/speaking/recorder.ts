@@ -20,6 +20,12 @@ export type RecorderStatus = "idle" | "recording" | "recorded";
 const MAX_RECORDING_MS = 30_000;
 /** Anything shorter is an accidental tap rather than an attempt. */
 const MIN_RECORDING_MS = 700;
+/**
+ * Loudest level, in dBFS, a recording may peak at and still count as silent.
+ * Speech near a phone peaks around -20; a quiet room sits near -60. A silent
+ * clip sent to the tutor comes back as invented words, so it is not sent.
+ */
+const SILENCE_DB = -45;
 
 const isBackground = () => AppState.currentState === "background";
 
@@ -28,7 +34,10 @@ export function useRecorder() {
     const [uri, setUri] = useState<string | null>(null);
     const [durationMs, setDurationMs] = useState(0);
     const [tooShort, setTooShort] = useState(false);
+    const [tooQuiet, setTooQuiet] = useState(false);
     const [failed, setFailed] = useState(false);
+    /** Loudest level seen while recording, or null when the platform reports none. */
+    const peak = useRef<number | null>(null);
     const file = useRef<string | null>(null);
     const busy = useRef(false);
     const permissionPending = useRef(false);
@@ -99,7 +108,9 @@ export function useRecorder() {
             recorder.record();
             started = true;
             phase.current = "recording";
+            peak.current = null;
             setTooShort(false);
+            setTooQuiet(false);
             setStatus("recording");
             return "started";
         } catch (error) {
@@ -130,12 +141,14 @@ export function useRecorder() {
                 const duration = recorder.getStatus().durationMillis;
                 await recorder.stop();
                 const recorded = recorder.uri ?? file.current;
+                const silent = peak.current !== null && peak.current < SILENCE_DB;
                 if (
                     keep &&
                     !nativeFailure.current &&
                     mounted.current &&
                     recorded &&
-                    duration >= MIN_RECORDING_MS
+                    duration >= MIN_RECORDING_MS &&
+                    !silent
                 ) {
                     file.current = recorded;
                     phase.current = "recorded";
@@ -145,7 +158,10 @@ export function useRecorder() {
                 } else {
                     deleteFile(recorded);
                     reset();
-                    if (mounted.current) setTooShort(keep && duration < MIN_RECORDING_MS);
+                    if (mounted.current) {
+                        setTooShort(keep && duration < MIN_RECORDING_MS);
+                        setTooQuiet(keep && duration >= MIN_RECORDING_MS && silent);
+                    }
                 }
             } catch (error) {
                 if (__DEV__) console.warn("Could not finish recording", error);
@@ -166,6 +182,7 @@ export function useRecorder() {
         if (phase.current !== "recorded" || busy.current) return;
         reset();
         setTooShort(false);
+        setTooQuiet(false);
     }, [reset]);
 
     const read = useCallback(async (): Promise<Recording | null> => {
@@ -176,6 +193,11 @@ export function useRecorder() {
     useEffect(() => {
         if (status === "recording" && live.durationMillis >= MAX_RECORDING_MS) void finish(true);
     }, [status, live.durationMillis, finish]);
+
+    useEffect(() => {
+        if (status !== "recording" || live.metering === undefined) return;
+        peak.current = Math.max(peak.current ?? -Infinity, live.metering);
+    }, [status, live.metering]);
 
     useEffect(() => {
         mounted.current = true;
@@ -209,6 +231,7 @@ export function useRecorder() {
         durationMs: status === "recording" ? live.durationMillis : durationMs,
         level,
         tooShort,
+        tooQuiet,
         failed,
         uri,
         start,

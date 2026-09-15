@@ -104,7 +104,8 @@ test("protected routes reject missing/invalid tokens before touching MongoDB", a
             throw new Error("must not connect");
         },
         authenticate: async () => {
-            throw new Error("invalid token");
+            // Shaped like Clerk's TokenVerificationError, which carries a reason.
+            throw Object.assign(new Error("invalid token"), { reason: "token-invalid" });
         },
     });
     const { url, close } = await listen(app);
@@ -121,6 +122,42 @@ test("protected routes reject missing/invalid tokens before touching MongoDB", a
         assert.equal((await fetch(url + "/health")).status, 200);
     } finally {
         await close();
+    }
+});
+
+test("a server that cannot reach Clerk answers 503, so the app does not sign the learner out", async () => {
+    // Regression: a TLS failure between the API and Clerk was reported as 401,
+    // and the app treats 401 as a dead session and signs out.
+    const { db } = fakeDb();
+    const unreachable = createApp({
+        db: async () => db,
+        authenticate: async () => {
+            throw new TypeError("fetch failed");
+        },
+    });
+    const { url, close } = await listen(unreachable);
+    try {
+        const res = await fetch(url + "/v1/me", { headers: { Authorization: "Bearer token" } });
+        assert.equal(res.status, 503);
+    } finally {
+        await close();
+    }
+
+    // A token Clerk actually rejects is still a 401.
+    const expired = createApp({
+        db: async () => db,
+        authenticate: async () => {
+            throw Object.assign(new Error("JWT is expired"), { reason: "token-expired" });
+        },
+    });
+    const server = await listen(expired);
+    try {
+        const res = await fetch(server.url + "/v1/me", {
+            headers: { Authorization: "Bearer token" },
+        });
+        assert.equal(res.status, 401);
+    } finally {
+        await server.close();
     }
 });
 

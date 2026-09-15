@@ -305,7 +305,7 @@ export const mrtBasics: Lesson = {
                 {
                     id: "c-wrong-1",
                     label: {
-                        en: "Change to another train line",
+                        en: "change to another train line",
                         bn: "অন্য ট্রেন লাইনে বদল করা",
                         ta: "வேறு ரயில் வழித்தடத்திற்கு மாறுவது",
                         hi: "दूसरी ट्रेन लाइन बदलना",
@@ -314,7 +314,7 @@ export const mrtBasics: Lesson = {
                 {
                     id: "c-wrong-2",
                     label: {
-                        en: "Wait for the next train",
+                        en: "wait for the next train",
                         bn: "পরের ট্রেনের জন্য অপেক্ষা করা",
                         ta: "அடுத்த ரயிலுக்குக் காத்திருப்பது",
                         hi: "अगली ट्रेन का इंतज़ार करना",

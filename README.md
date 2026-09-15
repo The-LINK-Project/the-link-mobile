@@ -4,18 +4,20 @@ The standalone mobile foundation for The LINK Project.
 
 This repository is intentionally separate from the LINK website. It shares the same Clerk user accounts, branding, About page, and Contact page, but it owns its mobile code, API, MongoDB data, and future learning experiences.
 
-The current Home screen is deliberately empty. Lessons, games, activities, progress models, surveys, and chatbot features have not been copied from the website. The mobile team can design those features without inheriting the website's schemas or assumptions.
+Lessons, exercises and speaking practice are built here from scratch for migrant workers in Singapore. Nothing is copied from the website's lesson models.
 
 ## What is included
 
 - Expo 57 / React Native application for Android, iOS, and local web preview
 - Clerk sign-in, sign-up, Google sign-in, password recovery, and encrypted session storage
 - Shared LINK identity: deleting an account from mobile deletes the Clerk user used by both products
+- Four lessons (the MRT, buying food, seeing a doctor, at work) built from nine tap-only exercise types, plus a daily mix drawn from all of them
+- Spoken practice after each lesson with an AI tutor that speaks Bengali, Tamil or Hindi and uses only the English the lesson taught
+- The app in English, Bengali, Tamil, Hindi, Burmese, Filipino and Indonesian
 - Mobile-owned Express API deployed separately from the website
 - Mobile-owned MongoDB database named `link_mobile`
 - Profile, password, language, About, Contact, Privacy, and account-deletion screens
-- Reusable theme and UI primitives
-- Automated unit, boundary, and live integration smoke tests
+- Automated unit, render, content, API and live smoke tests
 
 ## Repository layout
 
@@ -25,8 +27,9 @@ the-link-mobile/
 │   ├── mobile/    Expo application; never receives server secrets
 │   └── api/       Express API; owns MongoDB and Clerk secret access
 ├── docs/
-│   ├── ARCHITECTURE.md
-│   └── SETUP-HISTORY.md
+│   ├── ARCHITECTURE.md   ownership, request path, lessons, speaking practice
+│   ├── AUDIO-AUDIT.md    what was tested on a real emulator, and how
+│   └── SETUP-HISTORY.md  the accounts and dashboards behind the app
 └── package.json
 ```
 
@@ -137,6 +140,28 @@ The API fixes the Mongo database name to `link_mobile` in code. It does not trus
 
 Never put `MOBILE_MONGODB_URI`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `GEMINI_API_KEY`, or `GOOGLE_TTS_CREDENTIALS` in an `EXPO_PUBLIC_*` variable.
 
+## Lessons
+
+Lesson content lives in `apps/mobile/src/lib/lessons/data`, one file per lesson, typed by `types.ts`. A lesson lists its vocabulary and sentences once, in English, Bengali, Tamil and Hindi; exercises reference them by id, so a translation is corrected in one place. The content test (`lib/lessons/__tests__/content.test.ts`) checks every lesson: references resolve, tiles can build every sentence, keywords are in their sentence, every phrase is taught by an exercise, and speaking goals stay inside the English the lesson teaches.
+
+Every exercise is answered by tapping. The types, and what each is for:
+
+| Type                 | The learner…                                            |
+| -------------------- | ------------------------------------------------------- |
+| `selectPicture`      | hears a word and picks its picture (recognition)        |
+| `pictureToWord`      | sees a picture and picks its word (recall)              |
+| `matchPairs`         | pairs English words with meanings in their language     |
+| `listenChooseMeaning`| hears a word and picks what it means                    |
+| `arrangeWords`       | puts a sentence's words in order (no decoys)            |
+| `listenArrangeWords` | hears a sentence and builds it from tiles               |
+| `translateWordBank`  | builds the English for a prompt in their language       |
+| `dialogueChoice`     | hears someone speak and picks the right reply           |
+| `fillBlank`          | fills the one missing word in a sentence                |
+
+To add a lesson: copy the shape of `hawker-food.ts`, give every id a unique prefix, add it to `data/index.ts`, and run `npm test`. To add an exercise type: add a variant to `Exercise`, a grading branch, a component, a renderer branch and an answer in `src/test/lessonAnswers.ts`; TypeScript refuses a half-wired type.
+
+The daily mix (`data/review.ts`) picks eight exercises across all lessons, seeded by the date, so ids must be unique across lessons.
+
 ## Validation
 
 Run the normal checks before every pull request:
@@ -187,7 +212,7 @@ The website's Vercel project is not needed to develop or deploy this repository.
 - Key mobile records by Clerk user ID, not by a website MongoDB `_id`.
 - Do not import source files from the sibling `the-link-project` checkout.
 - Add focused tests for each new API authorization rule and destructive flow.
-- Preserve the empty Home state until a feature has a real product design and data model.
+- Every non-English string is written without a native speaker until marked `reviewed: true`. Get lesson content and the message catalogues checked before a store release.
 
 ## Deployment
 

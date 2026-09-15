@@ -145,7 +145,7 @@ describe("ListenChooseMeaning", () => {
         const props = baseProps();
         render(<ListenChooseMeaning exercise={listenExercise} {...props} />);
 
-        await user.press(screen.getByText("Wait for the next train"));
+        await user.press(screen.getByText("wait for the next train"));
 
         expect(props.onDraftChange).toHaveBeenCalledWith({
             kind: "choice",
