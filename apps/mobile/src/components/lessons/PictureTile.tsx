@@ -24,6 +24,23 @@ const ICONS: Record<PictureKey, React.ComponentProps<typeof Ionicons>["name"]> =
     seat: "accessibility-outline",
     transfer: "swap-horizontal-outline",
     clock: "time-outline",
+    thermometer: "thermometer-outline",
+    medicine: "medkit-outline",
+    clinic: "medical-outline",
+    calendar: "calendar-outline",
+    bed: "bed-outline",
+    document: "document-text-outline",
+    food: "restaurant-outline",
+    bag: "bag-handle-outline",
+    flame: "flame-outline",
+    drink: "cafe-outline",
+    price: "pricetag-outline",
+    stall: "storefront-outline",
+    helmet: "construct-outline",
+    boots: "footsteps-outline",
+    warning: "warning-outline",
+    firstAid: "bandage-outline",
+    person: "person-outline",
 };
 
 type Props = {
@@ -64,6 +81,22 @@ export function PictureTile({ picture, onPress, state = "default", disabled, pos
     );
 }
 
+/**
+ * A picture shown as a prompt rather than an option. Deliberately unlabelled
+ * for the same reason the tiles are: it is the thing being asked about.
+ */
+export function PictureArt({ picture }: { picture: PictureKey }) {
+    return (
+        <View
+            style={styles.prompt}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+        >
+            <Ionicons name={ICONS[picture]} size={72} color={colors.primaryDark} />
+        </View>
+    );
+}
+
 const ICON_COLOR: Record<TileState, string> = {
     default: colors.foreground,
     selected: colors.primaryDark,
@@ -88,6 +121,14 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
     },
     art: { alignItems: "center", justifyContent: "center" },
+    prompt: {
+        width: 140,
+        height: 140,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: radius.xl,
+        backgroundColor: colors.primarySoft,
+    },
     default: {},
     selected: { backgroundColor: colors.primarySoft, borderColor: colors.primaryDark },
     correct: { backgroundColor: colors.successSoft, borderColor: colors.success },

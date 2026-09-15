@@ -2,10 +2,13 @@ import { gradeAnswer, meaningfulWords, missingKeywords, normalize } from "../gra
 import { mrtBasics } from "../data/mrt-basics";
 import type {
     ArrangeWordsExercise,
-    SelectPictureExercise,
+    DialogueChoiceExercise,
     FillBlankExercise,
+    ListenArrangeWordsExercise,
     ListenChooseMeaningExercise,
     MatchPairsExercise,
+    PictureToWordExercise,
+    SelectPictureExercise,
 } from "../types";
 
 const arrange = mrtBasics.exercises.find(
@@ -201,5 +204,47 @@ describe("gradeAnswer", () => {
         expect(gradeAnswer(mrtBasics, arrange, { kind: "choice", choiceId: "nope" }).correct).toBe(
             false,
         );
+    });
+});
+
+describe("newer exercise types", () => {
+    const byType = <T extends { type: string }>(type: string) =>
+        mrtBasics.exercises.find((exercise) => exercise.type === type) as unknown as T;
+
+    it("grades a picture-to-word choice against the word being asked about", () => {
+        const exercise = byType<PictureToWordExercise>("pictureToWord");
+        expect(
+            gradeAnswer(mrtBasics, exercise, { kind: "choice", choiceId: exercise.vocabId })
+                .correct,
+        ).toBe(true);
+        expect(
+            gradeAnswer(mrtBasics, exercise, { kind: "choice", choiceId: "v-platform" }).correct,
+        ).toBe(false);
+        // The picture stays on screen, so there is no written solution to add.
+        expect(
+            gradeAnswer(mrtBasics, exercise, { kind: "choice", choiceId: "x" }).modelAnswer,
+        ).toBe("");
+    });
+
+    it("labels the listen-and-build reveal as what was heard", () => {
+        const exercise = byType<ListenArrangeWordsExercise>("listenArrangeWords");
+        const result = gradeAnswer(mrtBasics, exercise, { kind: "tokens", tokens: ["I", "want"] });
+        expect(result.correct).toBe(false);
+        expect(result.modelAnswerKind).toBe("audio");
+        expect(result.modelAnswer).toBe("Excuse me, I want to alight here.");
+    });
+
+    it("grades a dialogue reply against the taught phrase", () => {
+        const exercise = byType<DialogueChoiceExercise>("dialogueChoice");
+        expect(
+            gradeAnswer(mrtBasics, exercise, { kind: "choice", choiceId: exercise.phraseId })
+                .correct,
+        ).toBe(true);
+        const wrong = gradeAnswer(mrtBasics, exercise, {
+            kind: "choice",
+            choiceId: exercise.distractors[0].id,
+        });
+        expect(wrong.correct).toBe(false);
+        expect(wrong.modelAnswer).toBe("My card cannot tap. Can you help me?");
     });
 });

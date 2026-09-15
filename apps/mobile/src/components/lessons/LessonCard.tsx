@@ -4,9 +4,19 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
+import type { LessonIcon } from "@/lib/lessons/icons";
 import { useLocalized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
 import { colors, radius, shadow, spacing } from "@/lib/theme";
+
+/** One picture per lesson, so a learner can find the lesson without reading. */
+const ICONS: Record<LessonIcon, React.ComponentProps<typeof Ionicons>["name"]> = {
+    train: "train-outline",
+    clinic: "medkit-outline",
+    food: "restaurant-outline",
+    work: "construct-outline",
+    mix: "shuffle-outline",
+};
 
 /**
  * Entry point for a lesson on the Home tab.
@@ -29,7 +39,7 @@ export function LessonCard({ lesson }: { lesson: Lesson }) {
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         >
             <View style={styles.icon}>
-                <Ionicons name="train-outline" size={26} color={colors.primaryDark} />
+                <Ionicons name={ICONS[lesson.icon]} size={26} color={colors.primaryDark} />
             </View>
 
             <View style={styles.body}>

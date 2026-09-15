@@ -19,6 +19,31 @@ export const PICTURE_KEYS = [
     "seat",
     "transfer",
     "clock",
+    // Seeing a doctor
+    "thermometer",
+    "medicine",
+    "clinic",
+    "calendar",
+    "bed",
+    "document",
+    // Buying food
+    "food",
+    "bag",
+    "flame",
+    "drink",
+    "price",
+    "stall",
+    // At work
+    "helmet",
+    "boots",
+    "warning",
+    "firstAid",
+    "person",
 ] as const;
 
 export type PictureKey = (typeof PICTURE_KEYS)[number];
+
+/** What a whole lesson is about, drawn on its card on Home. */
+export const LESSON_ICONS = ["train", "clinic", "food", "work", "mix"] as const;
+
+export type LessonIcon = (typeof LESSON_ICONS)[number];

@@ -12,7 +12,10 @@ import { AccessibilityInfo, AppState } from "react-native";
 
 import SpeakScreen from "@/app/(app)/speak/[id]";
 import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
-import { setLocale } from "@/lib/i18n";
+import i18n, { setLocale } from "@/lib/i18n";
+
+/** A speaking-practice string in whatever language the screen is showing. */
+const label = (key: string) => i18n.t(`mobile.speaking.${key}`);
 
 const RECORDING = "file:///cache/recording.wav";
 const mockFiles = new Set<string>();
@@ -110,14 +113,14 @@ function withScreenReader(enabled: boolean) {
 async function startConversation() {
     const user = userEvent.setup();
     render(<SpeakScreen />);
-    await user.press(await screen.findByText("Start"));
+    await user.press(await screen.findByText(label("start")));
     await screen.findByText(OPENING.reply);
     return user;
 }
 
 async function recordAndStop(user: ReturnType<typeof userEvent.setup>) {
-    await user.press(screen.getByLabelText("Start recording"));
-    await user.press(await screen.findByLabelText("Stop recording"));
+    await user.press(screen.getByLabelText(label("record")));
+    await user.press(await screen.findByLabelText(label("stop")));
 }
 
 beforeEach(async () => {
@@ -163,13 +166,13 @@ describe("speaking practice", () => {
         const user = await startConversation();
 
         await recordAndStop(user);
-        await user.press(await screen.findByLabelText("Delete recording"));
+        await user.press(await screen.findByLabelText(label("delete")));
         expect(mockDeleted).toEqual([RECORDING]);
-        expect(await screen.findByLabelText("Start recording")).toBeTruthy();
+        expect(await screen.findByLabelText(label("record"))).toBeTruthy();
         expect(tutorTurn).toHaveBeenCalledTimes(1);
 
         await recordAndStop(user);
-        await user.press(await screen.findByLabelText("Send"));
+        await user.press(await screen.findByLabelText(label("send")));
 
         await screen.findByText("Which platform for Jurong East?");
         const turn = tutorTurn.mock.calls[1][0] as TutorTurnRequest;
@@ -184,10 +187,10 @@ describe("speaking practice", () => {
         tutorTurn.mockResolvedValueOnce(OPENING);
         const user = await startConversation();
 
-        await user.press(screen.getByLabelText("Start recording"));
-        await user.press(await screen.findByLabelText("Cancel recording"));
+        await user.press(screen.getByLabelText(label("record")));
+        await user.press(await screen.findByLabelText(label("cancel")));
 
-        expect(await screen.findByLabelText("Start recording")).toBeTruthy();
+        expect(await screen.findByLabelText(label("record"))).toBeTruthy();
         expect(mockDeleted).toEqual([RECORDING]);
         expect(tutorTurn).toHaveBeenCalledTimes(1);
     });
@@ -201,13 +204,13 @@ describe("speaking practice", () => {
         const user = await startConversation();
 
         await recordAndStop(user);
-        await user.press(await screen.findByLabelText("Send"));
-        await screen.findByText("The tutor could not answer. Check your connection and try again.");
+        await user.press(await screen.findByLabelText(label("send")));
+        await screen.findByText(label("sendFailed"));
         expect(mockDeleted).toEqual([]);
 
-        await user.press(screen.getByLabelText("Send"));
+        await user.press(screen.getByLabelText(label("send")));
         // The tutor could not make this one out, and the screen says so.
-        await screen.findByText("Voice message (not clear)");
+        await screen.findByText(label("notHeard"));
         expect(tutorTurn).toHaveBeenCalledTimes(3);
     });
 
@@ -221,7 +224,7 @@ describe("speaking practice", () => {
         );
         const user = userEvent.setup();
         const view = render(<SpeakScreen />);
-        await user.press(await screen.findByText("Start"));
+        await user.press(await screen.findByText(label("start")));
         view.unmount();
         await act(async () => {
             resolve(OPENING);
@@ -234,12 +237,12 @@ describe("speaking practice", () => {
         withScreenReader(false);
         tutorTurn.mockResolvedValueOnce(OPENING);
         const user = await startConversation();
-        await user.press(screen.getByLabelText("Start recording"));
-        await screen.findByLabelText("Stop recording");
+        await user.press(screen.getByLabelText(label("record")));
+        await screen.findByLabelText(label("stop"));
         const count = mockPlayer.play.mock.calls.length;
-        await user.press(screen.getByLabelText("Listen"));
+        await user.press(screen.getByLabelText(label("play")));
         expect(mockPlayer.play).toHaveBeenCalledTimes(count);
-        await user.press(screen.getByLabelText("Cancel recording"));
+        await user.press(screen.getByLabelText(label("cancel")));
     });
 
     it("leaves the tutor's voice to the learner under a screen reader", async () => {
@@ -248,6 +251,6 @@ describe("speaking practice", () => {
         await startConversation();
 
         expect(mockPlayer.play).not.toHaveBeenCalled();
-        expect(screen.getByLabelText("Listen")).toBeTruthy();
+        expect(screen.getByLabelText(label("play"))).toBeTruthy();
     });
 });

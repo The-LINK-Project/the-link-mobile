@@ -1,12 +1,15 @@
 import type {
     Answer,
     ArrangeWordsExercise,
+    DialogueChoiceExercise,
     Exercise,
     FillBlankExercise,
     GradeResult,
     Lesson,
+    ListenArrangeWordsExercise,
     ListenChooseMeaningExercise,
     MatchPairsExercise,
+    PictureToWordExercise,
     SelectPictureExercise,
     TranslateWordBankExercise,
 } from "@/lib/lessons/types";
@@ -14,9 +17,12 @@ import type {
 import type { ExerciseProps } from "./exercises/shared";
 
 import { ArrangeWords } from "./exercises/ArrangeWords";
+import { DialogueChoice } from "./exercises/DialogueChoice";
 import { SelectPicture } from "./exercises/SelectPicture";
 import { FillBlank } from "./exercises/FillBlank";
+import { ListenArrangeWords } from "./exercises/ListenArrangeWords";
 import { ListenChooseMeaning } from "./exercises/ListenChooseMeaning";
+import { PictureToWord } from "./exercises/PictureToWord";
 import { TapThePairs } from "./exercises/TapThePairs";
 import { TranslateWordBank } from "./exercises/TranslateWordBank";
 
@@ -81,5 +87,23 @@ export function ExerciseRenderer({ exercise, ...rest }: Props) {
             );
         case "fillBlank":
             return <FillBlank exercise={exercise} {...forExercise<FillBlankExercise>(rest)} />;
+        case "pictureToWord":
+            return (
+                <PictureToWord exercise={exercise} {...forExercise<PictureToWordExercise>(rest)} />
+            );
+        case "listenArrangeWords":
+            return (
+                <ListenArrangeWords
+                    exercise={exercise}
+                    {...forExercise<ListenArrangeWordsExercise>(rest)}
+                />
+            );
+        case "dialogueChoice":
+            return (
+                <DialogueChoice
+                    exercise={exercise}
+                    {...forExercise<DialogueChoiceExercise>(rest)}
+                />
+            );
     }
 }

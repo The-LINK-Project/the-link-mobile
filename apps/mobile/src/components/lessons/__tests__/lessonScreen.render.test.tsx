@@ -104,7 +104,7 @@ describe("a lesson run", () => {
         await user.press(screen.getByLabelText(answerTileLabel()));
         await user.press(screen.getByText("Check"));
 
-        expect(screen.getByText("Correct")).toBeTruthy();
+        expect(screen.getByText("Correct!")).toBeTruthy();
         expect(screen.queryByText("Not quite")).toBeNull();
     });
 
@@ -122,7 +122,7 @@ describe("a lesson run", () => {
 
         expect(screen.getByText("Not quite")).toBeTruthy();
         // The word is the prompt and stays on screen, so no written solution.
-        expect(screen.queryByText("Another way to say it:")).toBeNull();
+        expect(screen.queryByText("You can also say:")).toBeNull();
     });
 
     it("does not offer Check before anything is chosen", async () => {

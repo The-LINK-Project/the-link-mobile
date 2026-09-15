@@ -6,7 +6,14 @@
  * reference back into content when a component needs to draw it.
  */
 
-import type { Lesson, MeaningChoice, Phrase, VocabItem } from "./types";
+import type {
+    DialogueChoiceExercise,
+    Lesson,
+    Localized,
+    MeaningChoice,
+    Phrase,
+    VocabItem,
+} from "./types";
 
 /**
  * Vocabulary items for the given ids, in the order asked for.
@@ -80,4 +87,31 @@ export function choiceText(lesson: Lesson, choice: MeaningChoice) {
     // Falls back to the id only if the reference is dangling, which already
     // threw in development.
     return item?.meaning ?? { en: choice.vocabId };
+}
+
+/** One reply the learner can pick in a dialogue exercise, with its text resolved. */
+export type ResolvedReply = { id: string; text: string; meaning: Localized };
+
+/**
+ * Every reply in a dialogue exercise, the right one first, unshuffled.
+ *
+ * The right reply is the taught phrase and is keyed by its phrase id, which is
+ * what makes the answer gradable without a separate correct-choice field. A
+ * distractor that references a phrase resolves the same way; one that carries
+ * its own text is used as written. A dangling reference fails in development.
+ */
+export function dialogueReplies(lesson: Lesson, exercise: DialogueChoiceExercise): ResolvedReply[] {
+    const correct = phraseById(lesson, exercise.phraseId);
+    const replies: ResolvedReply[] = correct
+        ? [{ id: exercise.phraseId, text: correct.text, meaning: correct.meaning }]
+        : [];
+    for (const reply of exercise.distractors) {
+        if (reply.phraseId !== undefined) {
+            const phrase = phraseById(lesson, reply.phraseId);
+            if (phrase) replies.push({ id: reply.id, text: phrase.text, meaning: phrase.meaning });
+        } else {
+            replies.push({ id: reply.id, text: reply.text, meaning: reply.meaning });
+        }
+    }
+    return replies;
 }

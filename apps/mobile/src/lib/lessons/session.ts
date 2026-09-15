@@ -98,7 +98,9 @@ export function appliesToLearner(
     // tiles deliberately do not name themselves — a label would read the answer
     // aloud. Rather than present an exercise that can only be guessed at, it is
     // left out, the same way an inapplicable translation is.
-    if (exercise.type === "selectPicture") return !screenReader;
+    if (exercise.type === "selectPicture" || exercise.type === "pictureToWord") {
+        return !screenReader;
+    }
     if (exercise.type !== "translateWordBank") return true;
     return hasTranslation(exercise.prompt, locale);
 }
@@ -259,11 +261,7 @@ export function summarize(state: SessionState): SessionSummary {
     const practised = state.lesson.vocab.filter((item) => practisedIds.has(item.id));
 
     const taughtPhraseIds = new Set(
-        attempted.flatMap((exercise) =>
-            exercise.type === "arrangeWords" || exercise.type === "translateWordBank"
-                ? [exercise.phraseId]
-                : [],
-        ),
+        attempted.flatMap((exercise) => ("phraseId" in exercise ? [exercise.phraseId] : [])),
     );
     const phrases = state.lesson.phrases.filter((phrase) => taughtPhraseIds.has(phrase.id));
 

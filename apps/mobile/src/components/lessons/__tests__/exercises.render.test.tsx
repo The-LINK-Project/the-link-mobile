@@ -293,7 +293,7 @@ describe("LessonFooter", () => {
         // colour blindness, so correctness has to be readable.
         expect(screen.getByText("Not quite")).toBeTruthy();
         expect(screen.getByText("out")).toBeTruthy();
-        expect(screen.getByText("Got it")).toBeTruthy();
+        expect(screen.getByText("OK")).toBeTruthy();
     });
 
     it("acknowledges an accepted answer without calling it wrong", () => {
@@ -309,7 +309,7 @@ describe("LessonFooter", () => {
             />,
         );
 
-        expect(screen.getByText("Understood")).toBeTruthy();
+        expect(screen.getByText("Good, we understand you")).toBeTruthy();
         expect(screen.getByText("I want to top up ten dollars")).toBeTruthy();
     });
 
@@ -323,7 +323,7 @@ describe("LessonFooter", () => {
             />,
         );
 
-        expect(screen.queryByText("Another way to say it:")).toBeNull();
+        expect(screen.queryByText("You can also say:")).toBeNull();
     });
 
     it("hides the Check button for a self-grading exercise", () => {
