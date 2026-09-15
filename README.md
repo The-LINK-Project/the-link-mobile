@@ -48,7 +48,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the ownership and deletion 
 
 Requirements:
 
-- Node.js 20.19.4 or newer
+- Node.js 24.x (`.nvmrc` pins the development and CI version)
 - npm
 - Android Studio for Android development, or Xcode for iOS development
 - Access to the existing LINK Clerk application
