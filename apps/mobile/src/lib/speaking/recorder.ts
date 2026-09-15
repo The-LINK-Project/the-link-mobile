@@ -1,27 +1,17 @@
-/**
- * Voice recording for speaking practice.
- *
- * Record, then review, then send. A recording can be cancelled while it runs,
- * or listened to and deleted afterwards, and nothing leaves the phone without a
- * tap on Send. The file lives in the cache only until it is sent or deleted.
- */
-
 import {
-    AudioQuality,
-    IOSOutputFormat,
     requestRecordingPermissionsAsync,
     setAudioModeAsync,
     useAudioRecorder,
     useAudioRecorderState,
-    type RecordingOptions,
 } from "expo-audio";
 import { File } from "expo-file-system";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { AppState } from "react-native";
 
 import type { TutorTurnRequest } from "@/lib/api";
 
 import { deleteFile } from "./files";
+import { RECORDING_OPTIONS, RECORDING_MIME_TYPE } from "./recordingOptions";
 
 export type Recording = NonNullable<TutorTurnRequest["audio"]>;
 export type RecorderStatus = "idle" | "recording" | "recorded";
@@ -31,118 +21,184 @@ const MAX_RECORDING_MS = 30_000;
 /** Anything shorter is an accidental tap rather than an attempt. */
 const MIN_RECORDING_MS = 700;
 
-/**
- * Android's recorder cannot write WAV, so it records AAC; iOS records plain
- * WAV. Gemini accepts both. Speech needs neither stereo nor more than 16 kHz.
- */
-const OPTIONS: RecordingOptions = {
-    extension: ".wav",
-    sampleRate: 16_000,
-    numberOfChannels: 1,
-    bitRate: 32_000,
-    isMeteringEnabled: true,
-    ios: {
-        extension: ".wav",
-        outputFormat: IOSOutputFormat.LINEARPCM,
-        audioQuality: AudioQuality.HIGH,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-    },
-    android: { extension: ".aac", outputFormat: "aac_adts", audioEncoder: "aac" },
-    web: {},
-};
-
-const MIME_TYPE: Recording["mimeType"] = Platform.OS === "android" ? "audio/aac" : "audio/wav";
+const isBackground = () => AppState.currentState === "background";
 
 export function useRecorder() {
-    const recorder = useAudioRecorder(OPTIONS);
-    const live = useAudioRecorderState(recorder, 100);
     const [status, setStatus] = useState<RecorderStatus>("idle");
     const [uri, setUri] = useState<string | null>(null);
     const [durationMs, setDurationMs] = useState(0);
     const [tooShort, setTooShort] = useState(false);
-    /** The file on disk right now, recording or recorded, so it can always be removed. */
+    const [failed, setFailed] = useState(false);
     const file = useRef<string | null>(null);
     const busy = useRef(false);
+    const permissionPending = useRef(false);
+    const nativeFailure = useRef(false);
+    const mounted = useRef(true);
+    const phase = useRef<RecorderStatus>("idle");
+    const generation = useRef(0);
+
+    const reset = useCallback(() => {
+        deleteFile(file.current);
+        file.current = null;
+        phase.current = "idle";
+        if (mounted.current) {
+            setUri(null);
+            setStatus("idle");
+            setDurationMs(0);
+        }
+    }, []);
+
+    const playbackMode = useCallback(async () => {
+        try {
+            await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        } catch (error) {
+            if (__DEV__) console.warn("Could not restore playback mode", error);
+        }
+    }, []);
+
+    const recorder = useAudioRecorder(RECORDING_OPTIONS, (event) => {
+        if (event.hasError && mounted.current) {
+            nativeFailure.current = true;
+            reset();
+            setFailed(true);
+            void playbackMode();
+        }
+    });
+    const live = useAudioRecorderState(recorder, 100);
 
     const start = useCallback(async (): Promise<"started" | "denied" | "failed"> => {
-        if (busy.current) return "failed";
+        if (
+            !mounted.current ||
+            busy.current ||
+            phase.current !== "idle" ||
+            (AppState.currentState && AppState.currentState !== "active")
+        )
+            return "failed";
         busy.current = true;
+        setFailed(false);
+        nativeFailure.current = false;
+        const request = ++generation.current;
+        const cancelled = () => !mounted.current || request !== generation.current;
+        let prepared = false;
+        let started = false;
+        let changedMode = false;
         try {
+            permissionPending.current = true;
             const permission = await requestRecordingPermissionsAsync();
+            permissionPending.current = false;
             if (!permission.granted) return "denied";
+            if (isBackground()) return "failed";
+            if (cancelled()) return "failed";
+            changedMode = true;
             await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+            if (cancelled()) return "failed";
             await recorder.prepareToRecordAsync();
-            recorder.record();
+            prepared = true;
             file.current = recorder.uri;
+            if (cancelled()) return "failed";
+            recorder.record();
+            started = true;
+            phase.current = "recording";
             setTooShort(false);
             setStatus("recording");
             return "started";
-        } catch {
+        } catch (error) {
+            if (__DEV__) console.warn("Could not start recording", error);
             return "failed";
         } finally {
+            permissionPending.current = false;
+            if (!started) {
+                if (prepared) {
+                    try {
+                        await recorder.stop();
+                    } catch {
+                        /* Released during navigation. */
+                    }
+                }
+                reset();
+                if (changedMode) await playbackMode();
+            }
             busy.current = false;
         }
-    }, [recorder]);
+    }, [recorder, playbackMode, reset]);
 
     const finish = useCallback(
         async (keep: boolean) => {
-            if (busy.current) return;
+            if (busy.current || phase.current !== "recording") return;
             busy.current = true;
             try {
                 const duration = recorder.getStatus().durationMillis;
                 await recorder.stop();
-                // Leaving record mode puts playback back on the loudspeaker on iOS.
-                await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
                 const recorded = recorder.uri ?? file.current;
-                if (keep && recorded && duration >= MIN_RECORDING_MS) {
+                if (
+                    keep &&
+                    !nativeFailure.current &&
+                    mounted.current &&
+                    recorded &&
+                    duration >= MIN_RECORDING_MS
+                ) {
                     file.current = recorded;
+                    phase.current = "recorded";
                     setUri(recorded);
                     setDurationMs(duration);
                     setStatus("recorded");
-                    return;
+                } else {
+                    deleteFile(recorded);
+                    reset();
+                    if (mounted.current) setTooShort(keep && duration < MIN_RECORDING_MS);
                 }
-                deleteFile(recorded);
-                setTooShort(keep);
-            } catch {
-                deleteFile(file.current);
+            } catch (error) {
+                if (__DEV__) console.warn("Could not finish recording", error);
+                if (mounted.current) setFailed(true);
+                reset();
             } finally {
+                await playbackMode();
+                if (!mounted.current) reset();
                 busy.current = false;
             }
-            file.current = null;
-            setUri(null);
-            setStatus("idle");
         },
-        [recorder],
+        [recorder, playbackMode, reset],
     );
 
     const stop = useCallback(() => finish(true), [finish]);
     const cancel = useCallback(() => finish(false), [finish]);
-
-    /** Removes the recording: after it was sent, or when the learner throws it away. */
     const discard = useCallback(() => {
-        deleteFile(file.current);
-        file.current = null;
-        setUri(null);
-        setStatus("idle");
-    }, []);
+        if (phase.current !== "recorded" || busy.current) return;
+        reset();
+        setTooShort(false);
+    }, [reset]);
 
-    /** The recording, for upload. It stays on disk until `discard`, so a failed send can be retried. */
     const read = useCallback(async (): Promise<Recording | null> => {
-        if (!uri) return null;
-        return { mimeType: MIME_TYPE, data: await new File(uri).base64() };
-    }, [uri]);
+        if (phase.current !== "recorded" || !file.current) return null;
+        return { mimeType: RECORDING_MIME_TYPE, data: await new File(file.current).base64() };
+    }, []);
 
     useEffect(() => {
         if (status === "recording" && live.durationMillis >= MAX_RECORDING_MS) void finish(true);
     }, [status, live.durationMillis, finish]);
 
-    // A recording never outlives the screen that made it.
     useEffect(() => {
-        const held = file;
-        return () => deleteFile(held.current);
-    }, []);
+        mounted.current = true;
+        const requests = generation;
+        const subscription = AppState.addEventListener("change", (next) => {
+            // Permission prompts temporarily background Android, even when already granted.
+            if (next === "active" || permissionPending.current) return;
+            ++generation.current;
+            void finish(true);
+        });
+        return () => {
+            mounted.current = false;
+            ++requests.current;
+            subscription.remove();
+            // Pending setup/stop owns cleanup until it settles.
+            if (!busy.current) {
+                // useAudioRecorder has already released the native recorder.
+                const wasRecording = phase.current === "recording";
+                reset();
+                if (wasRecording) void playbackMode();
+            }
+        };
+    }, [finish, reset, playbackMode]);
 
     // Metering is in decibels, roughly -60 for a quiet room up to 0 at full scale.
     const level =
@@ -153,6 +209,7 @@ export function useRecorder() {
         durationMs: status === "recording" ? live.durationMillis : durationMs,
         level,
         tooShort,
+        failed,
         uri,
         start,
         stop,

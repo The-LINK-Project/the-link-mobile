@@ -27,7 +27,7 @@ import type {
 
 jest.mock("expo-speech", () => ({
     speak: jest.fn(),
-    stop: jest.fn(),
+    stop: jest.fn().mockResolvedValue(undefined),
     getAvailableVoicesAsync: jest.fn().mockResolvedValue([]),
     VoiceQuality: { Default: "Default", Enhanced: "Enhanced" },
 }));
