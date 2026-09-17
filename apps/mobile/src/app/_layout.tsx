@@ -14,6 +14,8 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { Button, LoadingState, Text } from "@/components/ui";
 import { API_BASE_URL, useApiAuth } from "@/lib/api";
 import i18n, { useLocaleReady } from "@/lib/i18n";
+import { useProgressReady } from "@/lib/progress/store";
+import { useProgressSync } from "@/lib/progress/sync";
 import { colors, spacing } from "@/lib/theme";
 
 void SplashScreen.preventAutoHideAsync();
@@ -25,12 +27,17 @@ const LOAD_TIMEOUT_MS = 15_000;
 function AppShell() {
     const ready = useApiAuth();
     const localeReady = useLocaleReady();
+    const { userId } = useAuth();
+    // Read before the first screen, so Home never flashes every lesson as new
+    // and then corrects itself.
+    const progressReady = useProgressReady(userId);
+    useProgressSync(ready && progressReady ? userId : null);
 
     useEffect(() => {
-        if (localeReady) void SplashScreen.hideAsync();
-    }, [localeReady]);
+        if (localeReady && progressReady) void SplashScreen.hideAsync();
+    }, [localeReady, progressReady]);
 
-    if (!ready || !localeReady) return null;
+    if (!ready || !localeReady || !progressReady) return null;
     return (
         <>
             <StatusBar style="dark" />

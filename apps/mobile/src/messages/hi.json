@@ -94,10 +94,6 @@
       },
       "progress": "पाठ की प्रगति",
       "quit": "पाठ बंद करें",
-      "quitTitle": "पाठ छोड़ें?",
-      "quitBody": "आपकी प्रगति सेव नहीं होगी।",
-      "quitStay": "जारी रखें",
-      "quitLeave": "छोड़ें",
       "play": "सुनें",
       "playSlow": "धीरे",
       "tapToListen": "सुनने के लिए टैप करें",
@@ -130,14 +126,21 @@
       "summaryDone": "हो गया",
       "summaryRetry": "फिर से अभ्यास करें",
       "summarySpeak": "बोलने का अभ्यास करें",
-      "summarySkipSpeaking": "अभी नहीं"
+      "summarySkipSpeaking": "अभी नहीं",
+      "introTitle": "इस पाठ के शब्द",
+      "introBody": "शब्द पर टैप करें और सुनें। तैयार हों तो शुरू करें।",
+      "introStart": "शुरू करें",
+      "statusStarted": "{total} में से {done} हो गए",
+      "statusLearned": "हो गया",
+      "statusSpoken": "हो गया, बोलकर भी",
+      "statusNext": "यहाँ से शुरू करें",
+      "continueTitle": "जारी रखें",
+      "continueTalk": "बोलने का अभ्यास: {total} में से {done} हो गए",
+      "doneCount": "पूरे हुए पाठ: {total} में से {done}",
+      "mixDoneToday": "आज हो गया"
     },
     "speaking": {
       "close": "बोलने का अभ्यास बंद करें",
-      "quitTitle": "अभ्यास रोकें?",
-      "quitBody": "यह बातचीत सेव नहीं होगी।",
-      "quitStay": "जारी रखें",
-      "quitLeave": "रोकें",
       "title": "बोलने का अभ्यास",
       "intro": "एक ट्यूटर आपकी भाषा में आपसे बात करेगा। जब ट्यूटर पूछे, तो अंग्रेज़ी ज़ोर से बोलें।",
       "language": "आप कौन-सी भाषा बोलते हैं?",
@@ -177,7 +180,10 @@
       "summaryTitle": "बोलने का अभ्यास पूरा!",
       "summarySaid": "आपने कह दिया",
       "summaryHelped": "मदद के साथ अभ्यास किया",
-      "done": "हो गया"
+      "done": "हो गया",
+      "goalCount": "वाक्य {current}, कुल {total}",
+      "summaryCount": "{total} में से {said} आपने खुद कहे।",
+      "again": "फिर से अभ्यास करें"
     }
   },
   "aboutUs": {

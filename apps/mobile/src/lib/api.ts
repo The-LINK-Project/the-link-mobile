@@ -1,6 +1,8 @@
 import { isClerkAPIResponseError, useAuth } from "@clerk/expo";
 import { useLayoutEffect, useState } from "react";
 
+import type { Progress } from "@/lib/progress/model";
+
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 
 type TokenGetter = () => Promise<string | null>;
@@ -64,7 +66,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-    method?: "GET" | "POST" | "DELETE";
+    method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: unknown;
     /** Request deadline in milliseconds. */
     timeoutMs?: number;
@@ -177,6 +179,11 @@ export type TutorTurnResponse = {
 
 export const api = {
     me: () => request<{ user: ApiUser }>("/v1/me"),
+    /** Finished lessons, as the server has them. Shape is checked by the caller. */
+    progress: () => request<{ progress: unknown }>("/v1/progress"),
+    /** Sends the phone's copy; the server merges and answers with the result. */
+    saveProgress: (progress: Progress) =>
+        request<{ progress: unknown }>("/v1/progress", { method: "PUT", body: { progress } }),
     deleteAccount: () =>
         request<{ success: true; cleanupPending: boolean }>("/v1/me", { method: "DELETE" }),
     // Transcribing, replying, checking the reply and speaking it happen in one

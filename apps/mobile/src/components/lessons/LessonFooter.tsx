@@ -91,9 +91,12 @@ export function LessonFooter({
                 </Text>
             </View>
 
-            {/* The model answer is always shown, including when the learner was
-          right but phrased it differently. */}
-            {!result.modelAnswer || (result.correct && !result.accepted) ? null : (
+            {/* The model answer is shown after a miss, and when the learner was
+          right but phrased it differently. What was spoken in a listening
+          exercise is shown every time: a learner who understood the sound has
+          still never seen the word, and this is where the two are joined. */}
+            {!result.modelAnswer ||
+            (result.correct && !result.accepted && result.modelAnswerKind !== "audio") ? null : (
                 <Text variant="caption">
                     {t(result.modelAnswerKind === "audio" ? "audioWas" : "modelAnswer")}
                     {"  "}

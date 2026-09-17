@@ -13,7 +13,6 @@ type Props = {
     language: TutorLanguage | null;
     onLanguageChange: (language: TutorLanguage) => void;
     micBlocked: boolean;
-    onStart: () => void;
 };
 
 /**
@@ -28,7 +27,6 @@ export function SpeakingIntro({
     language,
     onLanguageChange,
     micBlocked,
-    onStart,
 }: Props) {
     const t = useTranslations("mobile.speaking");
 
@@ -83,14 +81,6 @@ export function SpeakingIntro({
                     />
                 </Card>
             ) : null}
-
-            <Button
-                title={t("start")}
-                size="lg"
-                disabled={!language}
-                accessibilityHint={language ? undefined : t("chooseLanguage")}
-                onPress={onStart}
-            />
         </View>
     );
 }

@@ -5,6 +5,7 @@ import { StyleSheet } from "react-native";
 
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { api } from "@/lib/api";
+import { eraseProgress } from "@/lib/progress/store";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
 
@@ -16,7 +17,7 @@ export default function DeleteAccountScreen() {
     const t = useTranslations("mobile.account");
     const f = useTranslations("mobile.foundation");
     const router = useRouter();
-    const { signOut } = useClerk();
+    const { signOut, user } = useClerk();
     const [confirmation, setConfirmation] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,11 @@ export default function DeleteAccountScreen() {
         setBusy(true);
         setError(null);
         try {
+            const userId = user?.id;
             await api.deleteAccount();
+            // "All your data will be removed" includes what is on this phone.
+            // Captured before the call: afterwards there is no user to ask.
+            if (userId) await eraseProgress(userId);
             // Signing out remounts the app on the sign-in screen. If Clerk has
             // already dropped the session, the next API 401 signs out instead.
             await signOut().catch(() => undefined);

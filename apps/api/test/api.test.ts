@@ -1,63 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { AddressInfo } from "node:net";
 import type { Db } from "mongodb";
 import { createApp } from "../src/app.js";
 import { readConfig } from "../src/config.js";
 import { profile } from "../src/users.js";
+import { fakeDb, listen } from "./helpers.js";
 
 const BASE_ENV = {
     MOBILE_MONGODB_URI: "mongodb://localhost",
     CLERK_PUBLISHABLE_KEY: "pk_test_example",
     CLERK_SECRET_KEY: "sk_test_example",
 };
-
-async function listen(app: ReturnType<typeof createApp>) {
-    const server = app.listen(0, "127.0.0.1");
-    await new Promise<void>((resolve) => server.once("listening", resolve));
-    const url = "http://127.0.0.1:" + (server.address() as AddressInfo).port;
-    const close = async () => {
-        server.closeAllConnections();
-        await new Promise<void>((resolve) => server.close(() => resolve()));
-    };
-    return { url, close };
-}
-
-/** Minimal in-memory stand-in for the two collections the API touches. */
-function fakeDb() {
-    const users = new Map<string, Record<string, unknown>>();
-    const counters = new Map<string, number>();
-    const db = {
-        collection(name: string) {
-            if (name === "rate_limits") {
-                return {
-                    async findOneAndUpdate(filter: { _id: string }) {
-                        const count = (counters.get(filter._id) ?? 0) + 1;
-                        counters.set(filter._id, count);
-                        return { _id: filter._id, count };
-                    },
-                };
-            }
-            return {
-                async findOne(filter: { clerkId: string }) {
-                    return users.get(filter.clerkId) ?? null;
-                },
-                async findOneAndUpdate(
-                    filter: { clerkId: string },
-                    update: { $set: Record<string, unknown> },
-                ) {
-                    const record = { _id: "oid", ...users.get(filter.clerkId), ...update.$set };
-                    users.set(filter.clerkId, record);
-                    return record;
-                },
-                async updateOne(filter: { clerkId: string }) {
-                    users.set(filter.clerkId, { clerkId: filter.clerkId, deletedAt: new Date() });
-                },
-            };
-        },
-    };
-    return { db: db as unknown as Db, users, counters };
-}
 
 const identity = (id: string) => ({
     id,
@@ -205,6 +158,7 @@ test("DELETE /v1/me removes the identity and tombstones locally, or reports pend
             deleted.push(id);
         },
     };
+    fake.progress.set("user_a", { clerkId: "user_a", lessons: {} });
     const ok = await listen(createApp({ ...base, db: async () => fake.db }));
     try {
         const res = await fetch(ok.url + "/v1/me", {
@@ -215,6 +169,7 @@ test("DELETE /v1/me removes the identity and tombstones locally, or reports pend
         assert.deepEqual(await res.json(), { success: true, cleanupPending: false });
         assert.deepEqual(deleted, ["user_a"]);
         assert.ok(fake.users.get("user_a")?.deletedAt instanceof Date);
+        assert.equal(fake.progress.has("user_a"), false, "progress goes with the account");
     } finally {
         await ok.close();
     }
@@ -264,6 +219,8 @@ test("webhook rejects unsigned input and does not create mobile profiles for web
             updateOne: async () => {
                 writes++;
             },
+            // Removing progress that does not exist creates nothing.
+            deleteOne: async () => undefined,
         }),
     } as unknown as Db;
     const app = createApp({

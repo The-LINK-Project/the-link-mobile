@@ -5,6 +5,8 @@ import { buildSpeakingContext, runFromParams } from "../context";
 import {
     conversationReducer,
     initConversation,
+    restoreConversation,
+    saidCount,
     turnRequest,
     type ConversationState,
 } from "../conversation";
@@ -99,5 +101,42 @@ describe("speaking practice conversation", () => {
         // A recording the tutor could not make out still needs a line; the API
         // rejects empty history entries.
         expect(turn.history[1].text).not.toBe("");
+    });
+});
+
+describe("carrying a talk on after the app went away", () => {
+    it("comes back ready on the same goal, with the words but not the voice files", () => {
+        const live = conversationReducer(after(OPENING, reply("retry")), { type: "send" });
+        const withAudio: ConversationState = {
+            ...live,
+            messages: live.messages.map((message) => ({
+                ...message,
+                audioUri: "file:///gone.wav",
+            })),
+        };
+        // Saved while a turn was on its way: that turn is treated as never sent.
+        expect(withAudio.phase).toBe("sending");
+
+        const restored = restoreConversation(context, withAudio)!;
+        expect(restored.phase).toBe("ready");
+        expect(restored.attempt).toBe(2);
+        expect(restored.messages.map((message) => message.text)).toEqual(
+            live.messages.map((message) => message.text),
+        );
+        expect(restored.messages.every((message) => message.audioUri === undefined)).toBe(true);
+    });
+
+    it("has nothing to carry on before the tutor has spoken, or for other goals", () => {
+        expect(restoreConversation(context, initConversation(context))).toBeNull();
+        const other = { ...context, goals: context.goals.slice(1) };
+        expect(restoreConversation(other, after(OPENING))).toBeNull();
+    });
+
+    it("counts only what the learner said themselves", () => {
+        expect(
+            saidCount(
+                after(OPENING, reply("met"), reply("retry"), reply("retry"), reply("moveOn")),
+            ),
+        ).toBe(1);
     });
 });

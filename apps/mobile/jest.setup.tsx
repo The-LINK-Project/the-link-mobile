@@ -45,3 +45,18 @@ jest.mock("react-native-safe-area-context", () => {
         initialWindowMetrics: { insets, frame: { x: 0, y: 0, width: 390, height: 844 } },
     };
 });
+
+/**
+ * Every test starts as a learner with nothing saved.
+ *
+ * Progress lives in a module-level store so screens can read it synchronously,
+ * which also means one test's half-finished lesson would be waiting for the
+ * next one. That is the feature working, and exactly what a test must not
+ * inherit by accident.
+ */
+beforeEach(() => {
+    // Required here rather than imported at the top: the mocks above have to be
+    // registered before anything that touches storage is loaded.
+    const { resetProgressForTests } = require("@/lib/progress/store");
+    resetProgressForTests();
+});

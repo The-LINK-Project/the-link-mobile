@@ -44,7 +44,6 @@ export function ListenArrangeWords({
                 onPlaySlow={() => speak(sentence, "slow")}
                 speaking={speaking}
                 hasPlayed={hasPlayed}
-                disabled={locked}
             />
 
             {hasPlayed ? null : (

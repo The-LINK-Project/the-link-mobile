@@ -55,14 +55,9 @@ export function DialogueChoice({
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t("play")}
-                    accessibilityState={{ disabled: !!locked, busy: speaking }}
-                    disabled={locked}
+                    accessibilityState={{ busy: speaking }}
                     onPress={() => speak(exercise.line, "normal")}
-                    style={({ pressed }) => [
-                        styles.speaker,
-                        pressed && !locked ? styles.pressed : null,
-                        locked ? styles.disabled : null,
-                    ]}
+                    style={({ pressed }) => [styles.speaker, pressed ? styles.pressed : null]}
                 >
                     {speaking ? (
                         <ActivityIndicator color={colors.white} />
