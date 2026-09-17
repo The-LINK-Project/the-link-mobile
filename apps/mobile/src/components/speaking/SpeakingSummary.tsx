@@ -10,6 +10,7 @@ type Props = {
     title: string;
     goals: { id: string; target: string; result: GoalResult }[];
     onDone: () => void;
+    onAgain: () => void;
 };
 
 /**
@@ -17,7 +18,7 @@ type Props = {
  * practised, not failed: they still heard it and tried it, and a red mark is not
  * what someone needs after speaking a new language out loud for the first time.
  */
-export function SpeakingSummary({ title, goals, onDone }: Props) {
+export function SpeakingSummary({ title, goals, onDone, onAgain }: Props) {
     const t = useTranslations("mobile.speaking");
 
     return (
@@ -25,6 +26,12 @@ export function SpeakingSummary({ title, goals, onDone }: Props) {
             <View style={styles.hero}>
                 <Text variant="label">{title}</Text>
                 <Text variant="title">{t("summaryTitle")}</Text>
+                <Text variant="caption">
+                    {t("summaryCount", {
+                        said: goals.filter((goal) => goal.result === "said").length,
+                        total: goals.length,
+                    })}
+                </Text>
             </View>
 
             <View>
@@ -48,7 +55,10 @@ export function SpeakingSummary({ title, goals, onDone }: Props) {
                 })}
             </View>
 
-            <Button title={t("done")} size="lg" onPress={onDone} />
+            <View style={styles.actions}>
+                <Button title={t("done")} size="lg" onPress={onDone} />
+                <Button title={t("again")} variant="outline" onPress={onAgain} />
+            </View>
         </View>
     );
 }
@@ -64,4 +74,5 @@ const styles = StyleSheet.create({
         borderBottomColor: colors.hairline,
     },
     goalText: { flex: 1, gap: spacing.xs },
+    actions: { gap: spacing.md },
 });

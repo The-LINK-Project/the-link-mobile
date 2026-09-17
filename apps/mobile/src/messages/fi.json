@@ -94,10 +94,6 @@
       },
       "progress": "Progreso ng aralin",
       "quit": "Isara ang aralin",
-      "quitTitle": "Umalis sa aralin?",
-      "quitBody": "Hindi mase-save ang iyong progreso.",
-      "quitStay": "Magpatuloy",
-      "quitLeave": "Umalis",
       "play": "Pakinggan",
       "playSlow": "Mas mabagal",
       "tapToListen": "I-tap para makinig",
@@ -130,14 +126,21 @@
       "summaryDone": "Tapos",
       "summaryRetry": "Magsanay ulit",
       "summarySpeak": "Magsanay magsalita",
-      "summarySkipSpeaking": "Hindi ngayon"
+      "summarySkipSpeaking": "Hindi ngayon",
+      "introTitle": "Mga salita sa araling ito",
+      "introBody": "I-tap ang salita para marinig ito. Simulan kapag handa ka.",
+      "introStart": "Simulan",
+      "statusStarted": "{done} sa {total} ang tapos",
+      "statusLearned": "Tapos",
+      "statusSpoken": "Tapos, at nasabi nang malakas",
+      "statusNext": "Magsimula rito",
+      "continueTitle": "Magpatuloy",
+      "continueTalk": "Pagsasalita: {done} sa {total} ang tapos",
+      "doneCount": "Mga araling tapos: {done} sa {total}",
+      "mixDoneToday": "Tapos para ngayon"
     },
     "speaking": {
       "close": "Isara ang pagsasanay sa pagsasalita",
-      "quitTitle": "Itigil ang pagsasanay?",
-      "quitBody": "Hindi mase-save ang usapang ito.",
-      "quitStay": "Magpatuloy",
-      "quitLeave": "Itigil",
       "title": "Magsanay magsalita",
       "intro": "Kakausapin ka ng isang tutor sa iyong wika. Kapag nagtanong ang tutor, sabihin nang malakas ang Ingles.",
       "language": "Anong wika ang sinasalita mo?",
@@ -177,7 +180,10 @@
       "summaryTitle": "Tapos na ang pagsasanay sa pagsasalita!",
       "summarySaid": "Nasabi mo",
       "summaryHelped": "Nagsanay nang may tulong",
-      "done": "Tapos"
+      "done": "Tapos",
+      "goalCount": "Pangungusap {current} sa {total}",
+      "summaryCount": "Nasabi mo nang kusa ang {said} sa {total}.",
+      "again": "Magsanay ulit"
     }
   },
   "aboutUs": {

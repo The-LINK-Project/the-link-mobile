@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LessonProgress } from "@/components/lessons/LessonProgress";
@@ -23,6 +23,15 @@ import {
     type SpeakingContext,
     type TutorLanguage,
 } from "@/lib/speaking/context";
+import type { SavedTalk } from "@/lib/progress/model";
+import {
+    clearTalk,
+    completeSpeaking,
+    getProgressData,
+    saveTalk,
+    setResume,
+} from "@/lib/progress/store";
+import { restoreConversation, saidCount } from "@/lib/speaking/conversation";
 import { micSettleMs } from "@/lib/speaking/microphone";
 import { usePlayback } from "@/lib/speaking/playback";
 import { useRecorder } from "@/lib/speaking/recorder";
@@ -96,8 +105,17 @@ function SpeakingFlow({
     const localized = useLocalized();
     const router = useRouter();
     const [locale] = useLocale();
+    const insets = useSafeAreaInsets();
     const [chosen, setChosen] = useState<TutorLanguage | null>(null);
-    const [context, setContext] = useState<SpeakingContext | null>(null);
+    // A talk left unfinished is carried on with, not offered as a choice: the
+    // learner asked to practise speaking, and this is them practising speaking.
+    const [saved, setSaved] = useState<SavedTalk | undefined>(() => {
+        const talk = getProgressData().talks[lesson.id];
+        return talk && restoreConversation(talk.context, talk.state) ? talk : undefined;
+    });
+    const [context, setContext] = useState<SpeakingContext | null>(saved?.context ?? null);
+    /** Bumped to begin again, so the conversation starts from nothing. */
+    const [round, setRound] = useState(0);
     const [micBlocked, setMicBlocked] = useState(false);
 
     // The app's language is the likeliest answer, so it starts selected, but only
@@ -117,42 +135,74 @@ function SpeakingFlow({
     }, [language, lesson, run]);
 
     if (context) {
-        return <Conversation lesson={lesson} context={context} screenReader={screenReader} />;
+        return (
+            <Conversation
+                key={round}
+                lesson={lesson}
+                context={context}
+                saved={saved}
+                screenReader={screenReader}
+                onAgain={() => {
+                    clearTalk(lesson.id);
+                    setSaved(undefined);
+                    setContext(null);
+                    setRound((value) => value + 1);
+                }}
+            />
+        );
     }
 
     const preview = buildSpeakingContext(lesson, run, language ?? languages[0]);
 
     return (
-        <Screen edges={["top", "left", "right"]}>
+        <View style={[styles.root, { paddingTop: insets.top }]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <CloseButton label={t("close")} onPress={() => router.back()} />
-            <SpeakingIntro
-                title={localized(lesson.title)}
-                targets={preview?.goals.map((goal) => goal.target) ?? []}
-                languages={languages}
-                language={language}
-                onLanguageChange={setChosen}
-                micBlocked={micBlocked}
-                onStart={start}
-            />
-        </Screen>
+            <View style={styles.header}>
+                <CloseButton label={t("close")} onPress={() => router.back()} />
+            </View>
+            <ScrollView contentContainerStyle={styles.intro} showsVerticalScrollIndicator={false}>
+                <SpeakingIntro
+                    title={localized(lesson.title)}
+                    targets={preview?.goals.map((goal) => goal.target) ?? []}
+                    languages={languages}
+                    language={language}
+                    onLanguageChange={setChosen}
+                    micBlocked={micBlocked}
+                />
+            </ScrollView>
+            {/* Pinned, like every other way forward in a lesson: on a small
+                phone the button used to sit below the privacy notes, out of sight. */}
+            <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
+                <Button
+                    title={t("start")}
+                    size="lg"
+                    disabled={!language}
+                    accessibilityHint={language ? undefined : t("chooseLanguage")}
+                    onPress={start}
+                />
+            </View>
+        </View>
     );
 }
 
 function Conversation({
     lesson,
     context,
+    saved,
     screenReader,
+    onAgain,
 }: {
     lesson: Lesson;
     context: SpeakingContext;
+    saved?: SavedTalk;
     screenReader: boolean;
+    onAgain: () => void;
 }) {
     const t = useTranslations("mobile.speaking");
     const localized = useLocalized();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { state, takeTurn } = useSpeakingSession(context);
+    const { state, takeTurn } = useSpeakingSession(context, saved?.state);
     const recorder = useRecorder();
     const voice = usePlayback();
     const review = usePlayback();
@@ -183,12 +233,24 @@ function Conversation({
         playVoice(latest.audioUri);
     }, [latest, playVoice, screenReader]);
 
-    const quit = useCallback(() => {
-        Alert.alert(t("quitTitle"), t("quitBody"), [
-            { text: t("quitStay"), style: "cancel" },
-            { text: t("quitLeave"), style: "destructive", onPress: () => router.back() },
-        ]);
-    }, [t, router]);
+    // The talk is written down after every turn, and recorded as done the
+    // moment the last goal is, not when the results screen is dismissed: a
+    // learner who closes the app on "well done" has still done it.
+    const recorded = useRef(false);
+    useEffect(() => {
+        if (state.phase === "finished") {
+            if (recorded.current) return;
+            recorded.current = true;
+            completeSpeaking(lesson.id, { said: saidCount(state), total: state.goalCount });
+        } else if (state.phase === "ready") {
+            saveTalk(lesson.id, { context, state }, `/speak/${lesson.id}`);
+        }
+    }, [state, context, lesson.id]);
+
+    useEffect(() => () => setResume(null), []);
+
+    // The talk is kept, so leaving needs no warning.
+    const quit = useCallback(() => router.back(), [router]);
 
     const record = async () => {
         if (operation.current) return;
@@ -243,12 +305,17 @@ function Conversation({
                         result: state.results[index] ?? "helped",
                     }))}
                     onDone={() => router.back()}
+                    onAgain={onAgain}
                 />
             </Screen>
         );
     }
 
     const opening = state.phase === "opening";
+    const goalLabel = {
+        current: Math.min(state.results.length + 1, state.goalCount),
+        total: state.goalCount,
+    };
     const busyLabel = preparing
         ? t("micStarting")
         : opening && !state.error
@@ -264,6 +331,11 @@ function Conversation({
             <View style={styles.header}>
                 <CloseButton label={t("close")} onPress={quit} />
                 <LessonProgress value={state.results.length / state.goalCount} />
+                {/* A bar says "some of it"; a number says when it ends, which is
+                    what somebody with ten minutes of break left wants to know. */}
+                <Text variant="caption" accessibilityLabel={t("goalCount", goalLabel)}>
+                    {`${goalLabel.current}/${goalLabel.total}`}
+                </Text>
             </View>
 
             <ScrollView
@@ -385,6 +457,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     chat: { flexGrow: 1, gap: spacing.md, padding: spacing.lg },
+    intro: { flexGrow: 1, padding: spacing.lg, paddingTop: 0 },
     error: { gap: spacing.sm, alignItems: "center" },
     footer: {
         padding: spacing.lg,

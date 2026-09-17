@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { deleteProgress } from "./progress.js";
 
 export type Identity = {
     id: string;
@@ -54,6 +55,7 @@ export async function syncUser(db: Db, identity: Identity) {
 export async function deleteMobileUser(db: Db, clerkId: string) {
     // Preserve only the opaque Clerk ID and deletion time. This prevents a late
     // sync from resurrecting personal data. Future feature cleanup belongs here.
+    // The tombstone goes first: once it is down, nothing can write progress back.
     await db.collection<MobileUser>("users").updateOne(
         { clerkId },
         {
@@ -70,4 +72,5 @@ export async function deleteMobileUser(db: Db, clerkId: string) {
         },
         { upsert: true },
     );
+    await deleteProgress(db, clerkId);
 }

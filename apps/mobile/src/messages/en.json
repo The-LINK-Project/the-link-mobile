@@ -94,10 +94,6 @@
       },
       "progress": "Lesson progress",
       "quit": "Close lesson",
-      "quitTitle": "Leave the lesson?",
-      "quitBody": "Your progress will not be saved.",
-      "quitStay": "Keep going",
-      "quitLeave": "Leave",
       "play": "Listen",
       "playSlow": "Slower",
       "tapToListen": "Tap to listen",
@@ -130,14 +126,21 @@
       "summaryDone": "Done",
       "summaryRetry": "Practise again",
       "summarySpeak": "Practise speaking",
-      "summarySkipSpeaking": "Not now"
+      "summarySkipSpeaking": "Not now",
+      "introTitle": "Words in this lesson",
+      "introBody": "Tap a word to hear it. Start when you are ready.",
+      "introStart": "Start",
+      "statusStarted": "{done} of {total} done",
+      "statusLearned": "Done",
+      "statusSpoken": "Done and spoken",
+      "statusNext": "Start here",
+      "continueTitle": "Continue",
+      "continueTalk": "Speaking: {done} of {total} done",
+      "doneCount": "Lessons done: {done} of {total}",
+      "mixDoneToday": "Done today"
     },
     "speaking": {
       "close": "Close speaking practice",
-      "quitTitle": "Stop practising?",
-      "quitBody": "This talk will not be saved.",
-      "quitStay": "Keep going",
-      "quitLeave": "Stop",
       "title": "Practise speaking",
       "intro": "A tutor will talk with you in your language. When the tutor asks, say the English out loud.",
       "language": "Which language do you speak?",
@@ -177,7 +180,10 @@
       "summaryTitle": "Speaking practice done!",
       "summarySaid": "You said it",
       "summaryHelped": "Practised with help",
-      "done": "Done"
+      "done": "Done",
+      "goalCount": "Sentence {current} of {total}",
+      "summaryCount": "You said {said} of {total} by yourself.",
+      "again": "Practise again"
     }
   },
   "aboutUs": {

@@ -25,7 +25,7 @@ type Props = {
     onSpeak?: () => void;
 };
 
-export function LessonSummary({ lesson, summary, onDone, onRetry, onSpeak }: Props) {
+export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone" | "onSpeak">) {
     const t = useTranslations("mobile.lessons");
     const localized = useLocalized();
     const perfect = summary.reviewed === 0;
@@ -93,26 +93,37 @@ export function LessonSummary({ lesson, summary, onDone, onRetry, onSpeak }: Pro
                 ))}
             </View>
 
-            {onSpeak ? (
-                // Saying the sentences aloud is the point of the lesson, so it
-                // leads. Skipping stays one tap away for a learner on a crowded
-                // train who cannot speak out loud right now.
-                <View style={styles.actions}>
-                    <Button
-                        title={t("summarySpeak")}
-                        size="lg"
-                        icon={<Ionicons name="mic" size={20} color={colors.onPrimary} />}
-                        onPress={onSpeak}
-                    />
-                    <Button title={t("summaryRetry")} variant="outline" onPress={onRetry} />
-                    <Button title={t("summarySkipSpeaking")} variant="ghost" onPress={onDone} />
-                </View>
-            ) : (
-                <View style={styles.actions}>
-                    <Button title={t("summaryDone")} size="lg" onPress={onDone} />
-                    <Button title={t("summaryRetry")} variant="outline" onPress={onRetry} />
-                </View>
-            )}
+            {/* Doing it again is a real choice but never the next step, so it
+                waits at the end of the page rather than beside the way forward. */}
+            <Button title={t("summaryRetry")} variant="outline" onPress={onRetry} />
+        </View>
+    );
+}
+
+/**
+ * The way forward, pinned to the bottom of the screen.
+ *
+ * It used to sit under everything else, two screens down. A learner who reads
+ * little saw a page of text with nothing to press, which is how a finished
+ * lesson ends in a closed app. What to do next is now always in view, and the
+ * page above it can be read or not.
+ *
+ * Saying the sentences aloud is the point of the lesson, so it leads. Skipping
+ * stays one tap away for a learner on a crowded train who cannot speak out loud
+ * right now.
+ */
+export function LessonSummaryActions({ onDone, onSpeak }: Pick<Props, "onDone" | "onSpeak">) {
+    const t = useTranslations("mobile.lessons");
+    if (!onSpeak) return <Button title={t("summaryDone")} size="lg" onPress={onDone} />;
+    return (
+        <View style={styles.actions}>
+            <Button
+                title={t("summarySpeak")}
+                size="lg"
+                icon={<Ionicons name="mic" size={20} color={colors.onPrimary} />}
+                onPress={onSpeak}
+            />
+            <Button title={t("summarySkipSpeaking")} variant="ghost" onPress={onDone} />
         </View>
     );
 }
@@ -131,5 +142,5 @@ const styles = StyleSheet.create({
     note: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.xs },
     bullet: { marginTop: 7 },
     noteText: { flex: 1 },
-    actions: { gap: spacing.md },
+    actions: { gap: spacing.xs },
 });

@@ -367,3 +367,53 @@ describe("restart", () => {
         expect(restarted.requeued).toEqual([]);
     });
 });
+
+describe("picking a run back up", () => {
+    const { fingerprint, restoreSession, snapshotOf } = jest.requireActual("../session");
+
+    it("returns to the exercise the learner was on, with their results intact", () => {
+        let state = initSession(mrtBasics, "en");
+        state = answerAndAdvance(state, WRONG);
+        state = answerCorrectly(state);
+
+        const restored = restoreSession(mrtBasics, snapshotOf(state), false);
+        expect(restored).toMatchObject({
+            position: 2,
+            phase: "answering",
+            draft: null,
+            queue: state.queue,
+            requeued: state.requeued,
+            records: state.records,
+        });
+        // The missed exercise still comes round again at the end.
+        expect(restored.queue[restored.queue.length - 1]).toBe(state.queue[0]);
+    });
+
+    it("moves past an exercise whose feedback was on screen, since it is already recorded", () => {
+        const state = initSession(mrtBasics, "en");
+        const graded = sessionReducer(state, { type: "submit", answer: correctAt(state) });
+        expect(graded.phase).toBe("graded");
+
+        const restored = restoreSession(mrtBasics, snapshotOf(graded), false);
+        expect(restored.position).toBe(1);
+        expect(restored.records[state.queue[0]].attempts).toBe(1);
+    });
+
+    it("refuses a run that no longer fits", () => {
+        const state = answerCorrectly(initSession(mrtBasics, "en"));
+        const saved = snapshotOf(state);
+
+        const edited: Lesson = { ...mrtBasics, exercises: mrtBasics.exercises.slice(1) };
+        expect(fingerprint(edited)).not.toBe(fingerprint(mrtBasics));
+        expect(restoreSession(edited, saved, false)).toBeNull();
+        // A screen reader switched on since: the queue holds picture exercises.
+        expect(restoreSession(mrtBasics, saved, true)).toBeNull();
+        expect(restoreSession(mrtBasics, { ...saved, locale: "xx" }, false)).toBeNull();
+        expect(
+            restoreSession(mrtBasics, { ...saved, position: saved.queue.length }, false),
+        ).toBeNull();
+        expect(
+            restoreSession(mrtBasics, { ...saved, queue: [...saved.queue, "ex-unknown"] }, false),
+        ).toBeNull();
+    });
+});

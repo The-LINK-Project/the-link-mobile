@@ -5,6 +5,7 @@ import type { Db } from "mongodb";
 import { readConfig } from "./config.js";
 import { database } from "./database.js";
 import { tutorFromConfig } from "./gemini.js";
+import { deleteProgress, parseProgress, readProgress, saveProgress } from "./progress.js";
 import { parseTurnRequest, runTurn, type TutorModel } from "./tutor.js";
 import { deleteMobileUser, syncUser, type Identity } from "./users.js";
 
@@ -138,7 +139,7 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
                 "Access-Control-Allow-Origin": origin,
                 Vary: "Origin",
                 "Access-Control-Allow-Headers": "Authorization, Content-Type",
-                "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             });
         }
         if (req.method === "OPTIONS") {
@@ -184,6 +185,9 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             // Ignore web-only identities. A shared Clerk deletion must clean
             // up a mobile record when one exists, but never manufacture one.
             if (existing) await deleteMobileUser(db, event.data.id);
+            // Progress can exist without a profile row, if the profile sync
+            // never succeeded. It is still theirs, and still has to go.
+            else await deleteProgress(db, event.data.id);
         } else if (existing && !("deletedAt" in existing)) {
             // Only sync existing mobile members; web-only sign-ups do not
             // populate the mobile database. Re-fetch the identity so
@@ -251,6 +255,31 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             });
             res.status(202).json({ success: true, cleanupPending: true });
         }
+    });
+
+    /**
+     * A learner whose account is being deleted must not have progress written
+     * back by a phone that has not heard yet. The tombstone is the record of that.
+     */
+    async function requireMember(db: Db, userId: string) {
+        const user = await db.collection("users").findOne({ clerkId: userId });
+        if (user && "deletedAt" in user) throw new HttpError(401, "Account deleted");
+    }
+
+    app.get("/v1/progress", async (_req, res) => {
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        res.json({ progress: await readProgress(db, userId) });
+    });
+
+    app.put("/v1/progress", express.json({ limit: "256kb" }), async (req, res) => {
+        const parsed = parseProgress(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        res.json({ progress: await saveProgress(db, userId, parsed.value) });
     });
 
     app.post("/v1/tutor/turn", express.json({ limit: "3mb" }), async (req, res) => {

@@ -36,12 +36,13 @@ The API also rate-limits authenticated requests. A mobile build contains no data
 
 ## Current data model
 
-The foundation creates only two collections:
+There are three collections:
 
 - `users`: minimal profile data keyed by unique `clerkId`
 - `rate_limits`: short-lived per-user request counters with a TTL index
+- `progress`: one document per learner, keyed by unique `clerkId`, holding which lessons were finished, how many times, the best first-try score, and the speaking result. No answers, recordings or transcripts. See [LEARNING-FLOW.md](LEARNING-FLOW.md).
 
-There are no lesson, game, quiz, result, survey, audio, or chatbot collections.
+There are no game, quiz, survey, audio, or chatbot collections.
 
 The user profile stores only:
 
@@ -56,7 +57,7 @@ Passwords and session tokens are never stored in MongoDB.
 
 ## Lessons
 
-Lesson content ships inside the app as typed TypeScript (`apps/mobile/src/lib/lessons`), written as if it had come back from `GET /v1/lessons/:id`, so moving it to the API later changes the data source and nothing else. Nothing about a learner's lesson results is stored yet, on the phone or the server.
+Lesson content ships inside the app as typed TypeScript (`apps/mobile/src/lib/lessons`), written as if it had come back from `GET /v1/lessons/:id`, so moving it to the API later changes the data source and nothing else. The order of stages, what is remembered about a learner, and why, are in [LEARNING-FLOW.md](LEARNING-FLOW.md).
 
 Rules the content and the engine keep:
 
@@ -84,7 +85,7 @@ Expo app ── recording + lesson context ──▶ POST /v1/tutor/turn
 ```
 
 - **The English word rule is enforced in code, not only in the prompt.** Every tutor language has its own script, so every run of Latin letters in a reply is English. Each one is checked against the run's vocabulary, its taught sentences, the lesson's listed place names, and `a`, `an`, `the`, `and`. A reply that breaks the rule is rewritten by the model up to twice, then replaced by a line built only from lesson content. Speech is generated from the checked text and nothing else.
-- **Nothing is stored.** A recording travels inside the request and is forwarded to Gemini. The transcript and reply go back to the app and exist only on screen. There is no collection, so nothing to add to account deletion. The app deletes a recording once it is sent or thrown away, and the tutor's audio when the screen closes.
+- **No recording or transcript is stored on the server.** A recording travels inside the request and is forwarded to Gemini. The transcript and reply go back to the app. The phone keeps the words of an unfinished talk for a day so it can be picked up again; the server keeps only that the talk was finished and how many goals were said. The app deletes a recording once it is sent or thrown away, and the tutor's audio when the screen closes.
 - **Use a paid Gemini API key.** On the free tier Google may use submitted content, including voice, to improve its products, and human reviewers may read it. On the paid tier it does not, and keeps logs only briefly for abuse monitoring.
 - The server decides what each turn means (said it, try again, or move on after three tries), and the app only applies that result. A question, or talk about something else, does not use up a try, up to four per goal, and the tutor steers anything off-topic back to the lesson.
 - **A recording is written down before it is judged, by a request told nothing about the lesson.** Given the expected sentence alongside the audio, both Gemini 3.1 Pro and Gemini 3.8 Flash reported hearing it in a recording of "I want to buy a train ticket". Written down first, that recording is judged a miss. The judge allows words spelled the way they sound and English written in the learner's script, but not a different word. A recording with no words is a missed try, decided in code. How well transcription holds up for real Bangladeshi, Tamil and Indian speakers can only be measured on their own recordings, with `npm run eval:tutor`.
@@ -107,7 +108,7 @@ Mobile DELETE /v1/me
         └──▶ mobile API immediately tombstones its local profile
 ```
 
-The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. Future feature owners must extend the deletion service when they add new user-owned collections.
+The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. The deletion service also removes the learner's `progress` document, and refuses progress writes from an account that has a tombstone. The app removes its own copy from the phone. Future feature owners must extend the deletion service when they add new user-owned collections.
 
 Clerk events for people who have only used the website do not create records in the mobile database. `user.created` and `user.updated` synchronize only an existing mobile member; `user.deleted` cleans up only an existing mobile record.
 

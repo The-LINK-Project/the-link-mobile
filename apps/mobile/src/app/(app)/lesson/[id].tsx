@@ -1,19 +1,23 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseRenderer } from "@/components/lessons/ExerciseRenderer";
 import { SELF_GRADING } from "@/components/lessons/exercises/shared";
 import { LessonFooter } from "@/components/lessons/LessonFooter";
+import { LessonIntro } from "@/components/lessons/LessonIntro";
 import { LessonProgress } from "@/components/lessons/LessonProgress";
-import { LessonSummary } from "@/components/lessons/LessonSummary";
-import { ErrorState, LoadingState, Screen, Text } from "@/components/ui";
+import { LessonSummary, LessonSummaryActions } from "@/components/lessons/LessonSummary";
+import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
+import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
 import { useLocalized } from "@/lib/lessons/localized";
-import { useLessonSession } from "@/lib/lessons/session";
+import { restoreSession, snapshotOf, useLessonSession } from "@/lib/lessons/session";
+import type { SavedRun } from "@/lib/progress/model";
+import { completeLesson, getProgressData, saveRun, setResume } from "@/lib/progress/store";
 import { practiceLanguages, runToParams } from "@/lib/speaking/context";
 import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 import { useScreenReader } from "@/lib/useScreenReader";
@@ -54,10 +58,64 @@ export default function LessonScreen() {
         );
     }
 
-    return <LessonRunner lessonId={lesson.id} screenReader={screenReader} />;
+    return <LessonFlow lessonId={lesson.id} screenReader={screenReader} />;
 }
 
-function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
+/**
+ * Words first, then the exercises. A learner coming back to a run they had
+ * started goes straight to where they were: they have met the words already.
+ */
+function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
+    const t = useTranslations("mobile.lessons");
+    const router = useRouter();
+    const insets = useSafeAreaInsets();
+    const lesson = getLesson(lessonId)!;
+    // Read once. The run is saved again on every answer, and re-reading it
+    // would restart the session underneath the learner each time.
+    const [saved] = useState<SavedRun | undefined>(() => {
+        const run = getProgressData().runs[lessonId];
+        return run && restoreSession(lesson, run, screenReader) ? run : undefined;
+    });
+    // The daily mix draws on every lesson's words, far too many to list, and
+    // all of them already met in the lesson they came from.
+    const [started, setStarted] = useState(saved !== undefined || lessonId === DAILY_MIX_ID);
+
+    if (started)
+        return <LessonRunner lessonId={lessonId} screenReader={screenReader} saved={saved} />;
+
+    return (
+        <View style={[styles.root, { paddingTop: insets.top }]}>
+            <Stack.Screen options={{ headerShown: false }} />
+            <View style={styles.header}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("quit")}
+                    onPress={() => router.back()}
+                    style={styles.close}
+                    hitSlop={8}
+                >
+                    <Ionicons name="close" size={28} color={colors.muted} />
+                </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                <LessonIntro lesson={lesson} />
+            </ScrollView>
+            <View style={[styles.introFooter, { paddingBottom: insets.bottom + spacing.lg }]}>
+                <Button title={t("introStart")} size="lg" onPress={() => setStarted(true)} />
+            </View>
+        </View>
+    );
+}
+
+function LessonRunner({
+    lessonId,
+    screenReader,
+    saved,
+}: {
+    lessonId: string;
+    screenReader: boolean;
+    saved?: SavedRun;
+}) {
     const t = useTranslations("mobile.lessons");
     const localized = useLocalized();
     const router = useRouter();
@@ -76,14 +134,38 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
         next,
         restart,
         summary,
-    } = useLessonSession(lesson, screenReader);
+    } = useLessonSession(lesson, screenReader, saved);
 
-    const confirmQuit = useCallback(() => {
-        Alert.alert(t("quitTitle"), t("quitBody"), [
-            { text: t("quitStay"), style: "cancel" },
-            { text: t("quitLeave"), style: "destructive", onPress: () => router.back() },
-        ]);
-    }, [t, router]);
+    // Every answer is written down as it happens. The phone may close the app
+    // at any moment without telling it, so there is no later to save in.
+    const recorded = useRef(false);
+    useEffect(() => {
+        if (state.phase === "finished") {
+            if (recorded.current) return;
+            recorded.current = true;
+            completeLesson(lessonId, {
+                firstTryCorrect: summary.firstTryCorrect,
+                total: summary.total,
+            });
+            return;
+        }
+        recorded.current = false;
+        const snapshot = snapshotOf(state);
+        // Nothing answered yet: there is no place to keep.
+        if (snapshot.position === 0) return;
+        // The last answer of a run is its end, not a place to come back to;
+        // the finished branch above records it a moment later.
+        if (snapshot.position >= snapshot.queue.length) return;
+        saveRun(lessonId, snapshot, `/lesson/${lessonId}`);
+    }, [state, lessonId, summary.firstTryCorrect, summary.total]);
+
+    // Leaving by choice lands on Home next time. Only an app that was closed
+    // underneath the learner reopens inside the lesson.
+    useEffect(() => () => setResume(null), []);
+
+    // No "are you sure?": the place is kept, so leaving costs nothing, and a
+    // dialog of English-shaped choices is one more thing to read.
+    const leave = useCallback(() => router.back(), [router]);
 
     if (state.phase === "finished") {
         const run = {
@@ -92,25 +174,31 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
         };
         const canSpeak = practiceLanguages(lesson, run).length > 0;
         return (
-            <Screen edges={["top", "left", "right"]}>
-                <LessonSummary
-                    lesson={lesson}
-                    summary={summary}
-                    onDone={() => router.back()}
-                    onRetry={restart}
-                    // Replaces the lesson rather than stacking on top of it, so
-                    // finishing the practice goes straight home.
-                    onSpeak={
-                        canSpeak
-                            ? () =>
-                                  router.replace({
-                                      pathname: "/speak/[id]",
-                                      params: { id: lesson.id, ...runToParams(run) },
-                                  })
-                            : undefined
-                    }
-                />
-            </Screen>
+            <View style={[styles.root, { paddingTop: insets.top }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <LessonSummary lesson={lesson} summary={summary} onRetry={restart} />
+                </ScrollView>
+                <View style={[styles.introFooter, { paddingBottom: insets.bottom + spacing.lg }]}>
+                    <LessonSummaryActions
+                        onDone={() => router.back()}
+                        // Replaces the lesson rather than stacking on top of it,
+                        // so finishing the practice goes straight home.
+                        onSpeak={
+                            canSpeak
+                                ? () =>
+                                      router.replace({
+                                          pathname: "/speak/[id]",
+                                          params: { id: lesson.id, ...runToParams(run) },
+                                      })
+                                : undefined
+                        }
+                    />
+                </View>
+            </View>
         );
     }
 
@@ -132,7 +220,7 @@ function LessonRunner({ lessonId, screenReader }: { lessonId: string; screenRead
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t("quit")}
-                    onPress={confirmQuit}
+                    onPress={leave}
                     style={styles.close}
                     hitSlop={8}
                 >
@@ -188,6 +276,13 @@ const styles = StyleSheet.create({
         height: TOUCH_TARGET,
         alignItems: "center",
         justifyContent: "center",
+    },
+    introFooter: {
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: colors.hairline,
+        backgroundColor: colors.surface,
     },
     content: {
         flexGrow: 1,

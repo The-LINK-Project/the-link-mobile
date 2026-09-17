@@ -3,7 +3,13 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import { api, ApiError } from "@/lib/api";
 
 import type { SpeakingContext } from "./context";
-import { conversationReducer, initConversation, turnRequest } from "./conversation";
+import {
+    conversationReducer,
+    initConversation,
+    restoreConversation,
+    turnRequest,
+    type ConversationState,
+} from "./conversation";
 import { deleteFile, saveTutorAudio } from "./files";
 import type { Recording } from "./recorder";
 
@@ -11,8 +17,18 @@ import type { Recording } from "./recorder";
  * Drives a conversation with the tutor. The tutor speaks first, as soon as the
  * screen opens; after that, each call sends one learner recording.
  */
-export function useSpeakingSession(context: SpeakingContext) {
-    const [state, dispatch] = useReducer(conversationReducer, context, initConversation);
+export function useSpeakingSession(
+    context: SpeakingContext,
+    /** A talk saved earlier, to carry on with instead of starting again. */
+    earlier?: ConversationState,
+) {
+    const [state, dispatch] = useReducer(
+        conversationReducer,
+        { context, saved: earlier },
+        (initial) =>
+            (initial.saved && restoreConversation(initial.context, initial.saved)) ||
+            initConversation(initial.context),
+    );
     const saved = useRef<string[]>([]);
     const pending = useRef(false);
     const mounted = useRef(true);
@@ -52,7 +68,8 @@ export function useSpeakingSession(context: SpeakingContext) {
         [context, state],
     );
 
-    const opened = useRef(false);
+    // A talk being carried on has had its opening already.
+    const opened = useRef(state.phase !== "opening");
     useEffect(() => {
         if (opened.current) return;
         opened.current = true;

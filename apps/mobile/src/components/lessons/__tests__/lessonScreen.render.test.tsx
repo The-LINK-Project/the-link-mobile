@@ -9,6 +9,7 @@
  */
 
 import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import * as Speech from "expo-speech";
 import { AccessibilityInfo } from "react-native";
 
 import LessonScreen from "@/app/(app)/lesson/[id]";
@@ -17,6 +18,7 @@ import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import { picturableVocab } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { SelectPictureExercise } from "@/lib/lessons/types";
+import { getProgressData, saveRun } from "@/lib/progress/store";
 
 jest.mock("expo-router", () => ({
     useLocalSearchParams: () => ({ id: "mrt-basics" }),
@@ -69,10 +71,79 @@ function answerTileLabel(): string {
     return `Picture ${index + 1} of ${order.length}`;
 }
 
+/** Open the lesson and go past the word list, to the first exercise. */
+async function startLesson() {
+    const user = userEvent.setup();
+    const view = render(<LessonScreen />);
+    await waitFor(() => expect(screen.getByText("Start")).toBeTruthy());
+    await user.press(screen.getByText("Start"));
+    return { user, view };
+}
+
+describe("opening a lesson", () => {
+    it("shows the words and what they mean before asking anything", async () => {
+        withScreenReader(false);
+        render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByText("Words in this lesson")).toBeTruthy());
+        // Every word of the lesson, each with its meaning, and no question.
+        for (const item of mrtBasics.vocab) {
+            expect(screen.getByText(item.term)).toBeTruthy();
+            expect(screen.getByText(item.meaning.en)).toBeTruthy();
+        }
+        expect(screen.queryByText("Check")).toBeNull();
+    });
+
+    it("says a word aloud when it is tapped", async () => {
+        withScreenReader(false);
+        const user = userEvent.setup();
+        render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByText("platform")).toBeTruthy());
+        await user.press(screen.getByText("platform"));
+        await waitFor(() =>
+            expect(Speech.speak).toHaveBeenCalledWith("platform", expect.anything()),
+        );
+    });
+
+    it("comes back to where the learner was, without the word list", async () => {
+        withScreenReader(false);
+        const { user, view } = await startLesson();
+        await waitFor(() => expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy());
+        await user.press(screen.getByLabelText(answerTileLabel()));
+        await user.press(screen.getByText("Check"));
+        expect(getProgressData().runs["mrt-basics"]?.position).toBe(1);
+
+        // The phone closes the app: the screen goes, what was saved stays.
+        view.unmount();
+        render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByText("Tap the pairs")).toBeTruthy());
+        expect(screen.queryByText("Words in this lesson")).toBeNull();
+        expect(screen.queryByText("Which one is this?")).toBeNull();
+    });
+
+    it("starts again from the words when the saved run is for different exercises", async () => {
+        withScreenReader(false);
+        saveRun("mrt-basics", {
+            fingerprint: "an-older-version-of-this-lesson",
+            locale: "en",
+            screenReader: false,
+            queue: ["ex-gone", "ex-also-gone"],
+            position: 1,
+            records: {},
+            requeued: [],
+        });
+        render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByText("Words in this lesson")).toBeTruthy());
+    });
+});
+
 describe("a lesson run", () => {
     it("opens on the picture exercise", async () => {
         withScreenReader(false);
-        render(<LessonScreen />);
+        await startLesson();
 
         await waitFor(() => expect(screen.getByText("Which one is this?")).toBeTruthy());
         expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy();
@@ -85,7 +156,7 @@ describe("a lesson run", () => {
         // Regression: the flag reached the screen but was never passed to the
         // session, so this exercise was still served to screen-reader users.
         withScreenReader(true);
-        render(<LessonScreen />);
+        await startLesson();
 
         await waitFor(() => expect(screen.getByText("Tap the pairs")).toBeTruthy());
         expect(screen.queryByText("Which one is this?")).toBeNull();
@@ -97,8 +168,7 @@ describe("a lesson run", () => {
         // passed the press event where the answer belonged and every exercise
         // graded as wrong no matter what was chosen.
         withScreenReader(false);
-        const user = userEvent.setup();
-        render(<LessonScreen />);
+        const { user } = await startLesson();
 
         await waitFor(() => expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy());
         await user.press(screen.getByLabelText(answerTileLabel()));
@@ -110,8 +180,7 @@ describe("a lesson run", () => {
 
     it("marks a wrong choice as wrong and reveals the answer", async () => {
         withScreenReader(false);
-        const user = userEvent.setup();
-        render(<LessonScreen />);
+        const { user } = await startLesson();
 
         await waitFor(() => expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy());
         const wrongTile = ["Picture 1 of 3", "Picture 2 of 3", "Picture 3 of 3"].find(
@@ -127,7 +196,7 @@ describe("a lesson run", () => {
 
     it("does not offer Check before anything is chosen", async () => {
         withScreenReader(false);
-        render(<LessonScreen />);
+        await startLesson();
 
         await waitFor(() => expect(screen.getByLabelText("Check")).toBeTruthy());
         expect(screen.getByLabelText("Check").props.accessibilityState?.disabled).toBe(true);

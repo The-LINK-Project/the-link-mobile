@@ -40,7 +40,6 @@ export function ListenChooseMeaning({
                 onPlaySlow={() => speak(exercise.audioText, "slow")}
                 speaking={speaking}
                 hasPlayed={hasPlayed}
-                disabled={locked}
             />
 
             {/* Without this, a learner who has never used an app like this has no

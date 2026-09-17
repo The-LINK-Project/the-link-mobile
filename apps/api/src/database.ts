@@ -14,6 +14,7 @@ export async function database() {
             .then(async () => {
                 const db = client.db(config.dbName);
                 await db.collection("users").createIndex({ clerkId: 1 }, { unique: true });
+                await db.collection("progress").createIndex({ clerkId: 1 }, { unique: true });
                 await db
                     .collection("rate_limits")
                     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });

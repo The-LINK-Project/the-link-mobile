@@ -94,10 +94,6 @@
       },
       "progress": "Kemajuan pelajaran",
       "quit": "Tutup pelajaran",
-      "quitTitle": "Keluar dari pelajaran?",
-      "quitBody": "Kemajuan Anda tidak akan disimpan.",
-      "quitStay": "Lanjutkan",
-      "quitLeave": "Keluar",
       "play": "Dengarkan",
       "playSlow": "Lebih pelan",
       "tapToListen": "Ketuk untuk mendengar",
@@ -130,14 +126,21 @@
       "summaryDone": "Selesai",
       "summaryRetry": "Latih lagi",
       "summarySpeak": "Latih berbicara",
-      "summarySkipSpeaking": "Nanti saja"
+      "summarySkipSpeaking": "Nanti saja",
+      "introTitle": "Kata-kata dalam pelajaran ini",
+      "introBody": "Ketuk kata untuk mendengarnya. Mulai kalau sudah siap.",
+      "introStart": "Mulai",
+      "statusStarted": "{done} dari {total} selesai",
+      "statusLearned": "Selesai",
+      "statusSpoken": "Selesai, sudah diucapkan juga",
+      "statusNext": "Mulai dari sini",
+      "continueTitle": "Lanjutkan",
+      "continueTalk": "Latihan bicara: {done} dari {total} selesai",
+      "doneCount": "Pelajaran selesai: {done} dari {total}",
+      "mixDoneToday": "Selesai hari ini"
     },
     "speaking": {
       "close": "Tutup latihan berbicara",
-      "quitTitle": "Berhenti berlatih?",
-      "quitBody": "Percakapan ini tidak akan disimpan.",
-      "quitStay": "Lanjutkan",
-      "quitLeave": "Berhenti",
       "title": "Latih berbicara",
       "intro": "Seorang tutor akan berbicara dengan Anda dalam bahasa Anda. Saat tutor bertanya, ucapkan bahasa Inggrisnya dengan keras.",
       "language": "Bahasa apa yang Anda pakai?",
@@ -177,7 +180,10 @@
       "summaryTitle": "Latihan berbicara selesai!",
       "summarySaid": "Anda mengucapkannya",
       "summaryHelped": "Berlatih dengan bantuan",
-      "done": "Selesai"
+      "done": "Selesai",
+      "goalCount": "Kalimat {current} dari {total}",
+      "summaryCount": "Anda mengucapkan sendiri {said} dari {total}.",
+      "again": "Latih lagi"
     }
   },
   "aboutUs": {

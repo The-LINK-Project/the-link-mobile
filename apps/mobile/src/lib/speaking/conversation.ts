@@ -57,6 +57,34 @@ export function initConversation(context: SpeakingContext): ConversationState {
     };
 }
 
+/**
+ * A talk picked up again after the app went away, or null when there is
+ * nothing in it worth keeping.
+ *
+ * The tutor's voice files are gone by then, so the lines come back as words
+ * only. A turn that was on its way to the server is treated as never sent: the
+ * learner records it again, which costs them a sentence rather than a session.
+ */
+export function restoreConversation(
+    context: SpeakingContext,
+    saved: ConversationState,
+): ConversationState | null {
+    if (saved.goalCount !== context.goals.length) return null;
+    if (saved.phase === "opening" || saved.messages.length === 0) return null;
+    if (saved.goalIndex < 0 || saved.goalIndex >= saved.goalCount) return null;
+    return {
+        ...saved,
+        phase: saved.phase === "finished" ? "finished" : "ready",
+        messages: saved.messages.map(({ id, role, text }) => ({ id, role, text })),
+        error: null,
+    };
+}
+
+/** Goals the learner said themselves. */
+export function saidCount(state: ConversationState): number {
+    return state.results.filter((result) => result === "said").length;
+}
+
 export function conversationReducer(
     state: ConversationState,
     action: ConversationAction,

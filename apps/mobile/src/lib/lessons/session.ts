@@ -12,16 +12,17 @@
  *   own spaced-repetition reasoning, minus the part that locks people out.
  * - Progress never moves backwards. The bar is `position / queue.length`, and
  *   the queue only ever grows, so a mistake slows the bar rather than undoing it.
- * - Nothing is persisted. Quitting a lesson discards the run, and the next start
- *   is a fresh one. Resuming a half-finished lesson needs a decision about where
- *   that state lives (device or server) and what happens when a lesson's content
- *   changes underneath a saved position, so it waits for the real data model
- *   rather than being guessed at here.
+ * - A run can be saved and picked up again. What is saved is the queue, the
+ *   position and the records: never the answer being built, because an exercise
+ *   keeps the look of its half-built answer to itself and would come back
+ *   disagreeing with it. A learner returns to the start of the exercise they
+ *   were on. A run is thrown away when the lesson's exercises have changed
+ *   underneath it, which `fingerprint` detects.
  */
 
 import { useCallback, useMemo, useReducer } from "react";
 
-import { getLocale, useLocale, type Locale } from "@/lib/i18n";
+import { getLocale, LOCALES, useLocale, type Locale } from "@/lib/i18n";
 
 import { gradeAnswer } from "./grading";
 import { hasTranslation } from "./localized";
@@ -72,6 +73,75 @@ function isAnswer(value: unknown): value is Answer {
     if (typeof value !== "object" || value === null) return false;
     const kind = (value as { kind?: unknown }).kind;
     return kind === "choice" || kind === "tokens" || kind === "pairs";
+}
+
+/** The part of a run worth keeping between app launches. */
+export type RunSnapshot = {
+    fingerprint: string;
+    locale: string;
+    screenReader: boolean;
+    queue: string[];
+    position: number;
+    records: Record<string, ExerciseRecord>;
+    requeued: string[];
+};
+
+/**
+ * Identifies the exercises a run was built from. Ids and types, in order: a
+ * corrected translation leaves a saved run valid, a reordered or replaced
+ * exercise does not. The daily mix changes every day and so invalidates itself.
+ */
+export function fingerprint(lesson: Lesson): string {
+    return lesson.exercises.map((exercise) => `${exercise.id}:${exercise.type}`).join("|");
+}
+
+export function snapshotOf(state: SessionState): RunSnapshot {
+    return {
+        fingerprint: fingerprint(state.lesson),
+        locale: state.locale,
+        screenReader: state.screenReader,
+        queue: state.queue,
+        // Feedback on screen means that exercise is answered and recorded, so
+        // the learner comes back to the one after it.
+        position: state.phase === "graded" ? state.position + 1 : state.position,
+        records: state.records,
+        requeued: state.requeued,
+    };
+}
+
+/**
+ * Pick a saved run back up, or null when it no longer fits: the lesson changed,
+ * the run was already over, or a screen reader has been switched on since and
+ * the queue holds picture exercises it cannot do.
+ */
+export function restoreSession(
+    lesson: Lesson,
+    saved: RunSnapshot,
+    screenReader: boolean,
+): SessionState | null {
+    if (saved.fingerprint !== fingerprint(lesson)) return null;
+    if (saved.screenReader !== screenReader) return null;
+    if (!(LOCALES as readonly string[]).includes(saved.locale)) return null;
+    if (saved.position < 0 || saved.position >= saved.queue.length) return null;
+    const locale = saved.locale as Locale;
+    const known = new Set(
+        lesson.exercises
+            .filter((exercise) => appliesToLearner(exercise, locale, screenReader))
+            .map((exercise) => exercise.id),
+    );
+    if (!saved.queue.every((id) => known.has(id))) return null;
+    return {
+        lesson,
+        locale,
+        screenReader,
+        queue: saved.queue,
+        position: saved.position,
+        phase: "answering",
+        draft: null,
+        result: null,
+        records: saved.records,
+        requeued: saved.requeued,
+    };
 }
 
 type SessionAction =
@@ -276,13 +346,21 @@ export function summarize(state: SessionState): SessionSummary {
 }
 
 /** Session state plus the handlers a screen needs. */
-export function useLessonSession(lesson: Lesson, screenReader = false) {
+export function useLessonSession(
+    lesson: Lesson,
+    screenReader = false,
+    /** A run saved earlier, to continue instead of starting again. */
+    saved?: RunSnapshot,
+) {
     const [locale] = useLocale();
     // Initialised once; a later language change does not rebuild the queue.
     const [state, dispatch] = useReducer(
         sessionReducer,
-        { lesson, locale, screenReader },
-        (initial) => initSession(initial.lesson, initial.locale, initial.screenReader),
+        { lesson, locale, screenReader, saved },
+        (initial) =>
+            (initial.saved &&
+                restoreSession(initial.lesson, initial.saved, initial.screenReader)) ||
+            initSession(initial.lesson, initial.locale, initial.screenReader),
     );
 
     const exercise = useMemo(
