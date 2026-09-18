@@ -22,7 +22,6 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
@@ -33,7 +32,12 @@
     },
     "plugins": [
       "expo-router",
-      "@clerk/expo",
+      [
+        "@clerk/expo",
+        {
+          "appleSignIn": false
+        }
+      ],
       "expo-secure-store",
       "expo-localization",
       [
@@ -43,7 +47,16 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 140
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone so you can practise speaking English.",
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

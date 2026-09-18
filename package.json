@@ -6,7 +6,7 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=20.19.4"
+    "node": "24.x"
   },
   "scripts": {
     "dev:api": "npm run dev --workspace @link/api",
@@ -17,11 +17,17 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "smoke:live": "npm run smoke:live --workspace @link/api",
+    "smoke:tutor": "npm run smoke:tutor --workspace @link/api",
+    "eval:tutor": "npm run eval:tutor --workspace @link/api",
     "build:api": "npm run build --workspace @link/api",
     "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\"",
     "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,json}\" \"apps/*/test/**/*.ts\" \"apps/*/*.{js,json}\" \"*.json\""
   },
   "devDependencies": {
     "prettier": "3.9.6"
+  },
+  "dependencies": {
+    "expo-haptics": "~57.0.3",
+    "expo-speech": "~57.0.3"
   }
 }

@@ -14,12 +14,15 @@ import bn from "@/messages/bn.json";
 import bu from "@/messages/bu.json";
 import en from "@/messages/en.json";
 import fi from "@/messages/fi.json";
+import hi from "@/messages/hi.json";
 import id from "@/messages/in.json";
 import ta from "@/messages/ta.json";
 
 // Same codes as i18n/routing.ts on the web ("in" is Bahasa Indonesia, "bu"
 // Burmese, "fi" Filipino — historical codes, kept for parity with the site).
-export const LOCALES = ["en", "bn", "ta", "bu", "fi", "in"] as const;
+// Hindi is the app's own addition: the speaking tutor already teaches from it,
+// and many Indian workers read it more easily than English.
+export const LOCALES = ["en", "bn", "ta", "hi", "bu", "fi", "in"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
@@ -27,6 +30,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
     en: "English",
     bn: "বাংলা",
     ta: "தமிழ்",
+    hi: "हिन्दी",
     bu: "မြန်မာ",
     fi: "Filipino",
     in: "Bahasa Indonesia",
@@ -34,7 +38,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 const STORAGE_KEY = "link.locale";
 
-const i18n = new I18n({ en, bn, ta, bu, fi, in: id });
+const i18n = new I18n({ en, bn, ta, hi, bu, fi, in: id });
 // A key missing from one catalogue falls back to English rather than showing
 // a "[missing translation]" marker
 i18n.enableFallback = true;
@@ -53,6 +57,8 @@ function detectDeviceLocale(): Locale {
             return "bn";
         case "ta":
             return "ta";
+        case "hi":
+            return "hi";
         case "my":
             return "bu";
         case "fil":
