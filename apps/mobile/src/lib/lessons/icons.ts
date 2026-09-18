@@ -14,6 +14,7 @@ export const PICTURE_KEYS = [
     "train",
     "platform",
     "exit",
+    "mrtFare",
     "money",
     "card",
     "seat",
