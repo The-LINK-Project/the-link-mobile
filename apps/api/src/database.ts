@@ -18,6 +18,12 @@ export async function database() {
                 await db
                     .collection("rate_limits")
                     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+                // Cached translations are keyed by their own hash, so no index
+                // is needed to read one. This only stops the collection growing
+                // forever, and lets a better model's answers take over in time.
+                await db
+                    .collection("translations")
+                    .createIndex({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
                 return client;
             })
             .catch(async (error) => {

@@ -11,8 +11,11 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { WordTranslationHost } from "@/components/translate/WordTranslationHost";
 import { Button, LoadingState, Text } from "@/components/ui";
 import { API_BASE_URL, useApiAuth } from "@/lib/api";
+import { useFirstLanguageReady } from "@/lib/firstLanguage/store";
+import { useFirstLanguageSync } from "@/lib/firstLanguage/sync";
 import i18n, { useLocaleReady } from "@/lib/i18n";
 import { useProgressReady } from "@/lib/progress/store";
 import { useProgressSync } from "@/lib/progress/sync";
@@ -32,22 +35,31 @@ function AppShell() {
     // and then corrects itself.
     const progressReady = useProgressReady(userId);
     useProgressSync(ready && progressReady ? userId : null);
+    // Read before the first screen for the same reason: a learner who chose
+    // their language months ago must not be shown the question again while the
+    // phone is still looking for the answer.
+    const firstLanguageReady = useFirstLanguageReady(userId);
+    useFirstLanguageSync(ready && firstLanguageReady ? userId : null);
 
     useEffect(() => {
-        if (localeReady && progressReady) void SplashScreen.hideAsync();
-    }, [localeReady, progressReady]);
+        if (localeReady && progressReady && firstLanguageReady) void SplashScreen.hideAsync();
+    }, [localeReady, progressReady, firstLanguageReady]);
 
-    if (!ready || !localeReady || !progressReady) return null;
+    if (!ready || !localeReady || !progressReady || !firstLanguageReady) return null;
     return (
         <>
             <StatusBar style="dark" />
-            <OfflineBanner />
-            <Stack
-                screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: colors.background },
-                }}
-            />
+            {/* Around the banner as well as the navigator: its words can be held
+                too, and the bubble has to be able to draw over both. */}
+            <WordTranslationHost>
+                <OfflineBanner />
+                <Stack
+                    screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: colors.background },
+                    }}
+                />
+            </WordTranslationHost>
         </>
     );
 }

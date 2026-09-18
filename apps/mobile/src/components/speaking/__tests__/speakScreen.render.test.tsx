@@ -12,6 +12,7 @@ import { AccessibilityInfo, AppState } from "react-native";
 
 import SpeakScreen from "@/app/(app)/speak/[id]";
 import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
+import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import i18n, { setLocale } from "@/lib/i18n";
 
 /** A speaking-practice string in whatever language the screen is showing. */
@@ -129,6 +130,7 @@ beforeEach(async () => {
     tutorTurn.mockReset();
     mockFiles.clear();
     mockDeleted.length = 0;
+    resetFirstLanguageForTests();
     await act(() => setLocale("bn"));
 });
 
@@ -158,6 +160,30 @@ describe("speaking practice", () => {
         expect(turn.goals.map((goal) => goal.target)).toContain("Which platform for Jurong East?");
         // The tutor's first line plays by itself.
         expect(mockPlayer.play).toHaveBeenCalled();
+    });
+
+    it("opens in the language the learner named as their own", async () => {
+        // The app is in English, but this learner told us they read Tamil.
+        await act(() => setLocale("en"));
+        await act(() => setFirstLanguage("ta"));
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+
+        await user.press(await screen.findByText("Start"));
+        await screen.findByText(OPENING.reply);
+        expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("ta");
+    });
+
+    it("falls back to the app's language when the tutor cannot teach from theirs", async () => {
+        // Thai is a first language but not one the tutor teaches from.
+        await act(() => setFirstLanguage("th"));
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        await startConversation();
+
+        expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("bn");
     });
 
     it("sends nothing until Send, and lets the learner delete a recording first", async () => {

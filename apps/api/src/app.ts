@@ -4,10 +4,22 @@ import { Webhook } from "svix";
 import type { Db } from "mongodb";
 import { readConfig } from "./config.js";
 import { database } from "./database.js";
-import { tutorFromConfig } from "./gemini.js";
+import { createGeminiTranslator, tutorFromConfig } from "./gemini.js";
 import { deleteProgress, parseProgress, readProgress, saveProgress } from "./progress.js";
+import {
+    cachedTranslation,
+    parseTranslateRequest,
+    translateWord,
+    type Translator,
+} from "./translate.js";
 import { parseTurnRequest, runTurn, type TutorModel } from "./tutor.js";
-import { deleteMobileUser, syncUser, type Identity } from "./users.js";
+import {
+    deleteMobileUser,
+    parseFirstLanguageChoice,
+    saveFirstLanguage,
+    syncUser,
+    type Identity,
+} from "./users.js";
 
 type Authenticated = { userId: string; sessionId: string };
 type Dependencies = {
@@ -17,6 +29,7 @@ type Dependencies = {
     deleteIdentity: (id: string) => Promise<unknown>;
     verifyEvent: (body: string, headers: Record<string, string>) => unknown;
     tutor: () => TutorModel;
+    translator: () => Translator;
 };
 
 class HttpError extends Error {
@@ -32,6 +45,9 @@ const WEBHOOK_EVENTS = ["user.created", "user.updated", "user.deleted"];
 const REQUESTS_PER_MINUTE = 60;
 // Each tutor turn is several model calls, so it has a much smaller budget of its own.
 const TUTOR_TURNS_PER_MINUTE = 12;
+// Holding words is quick and repetitive, and most holds are answered from the
+// cache, so this is only here to bound what one learner can cost in model calls.
+const TRANSLATIONS_PER_MINUTE = 30;
 
 // One Clerk client per process; the config does not change at runtime.
 let clerkClient: ReturnType<typeof createClerkClient> | undefined;
@@ -49,6 +65,8 @@ function clerk() {
 // Built once per configuration, so what the tutor learns about quotas, and its
 // speech sign-in, carry over from one turn to the next.
 let tutorCache: { settings: string; tutor: TutorModel } | undefined;
+// The translator keeps its own quota tracker, for the same reason.
+let translatorCache: { settings: string; translator: Translator } | undefined;
 
 function statusOf(error: unknown): number | undefined {
     const status = (error as { status?: unknown }).status;
@@ -122,6 +140,19 @@ const defaults: Dependencies = {
             });
             throw new HttpError(503, "Speaking practice is not configured");
         }
+    },
+    translator() {
+        const config = readConfig();
+        if (!config.geminiApiKey) throw new HttpError(503, "Translation is not configured");
+        const settings = JSON.stringify([config.geminiApiKey, config.translateModels]);
+        if (translatorCache?.settings === settings) return translatorCache.translator;
+        console.info("Translation models", { text: config.translateModels });
+        const translator = createGeminiTranslator({
+            apiKey: config.geminiApiKey,
+            models: config.translateModels,
+        });
+        translatorCache = { settings, translator };
+        return translator;
     },
 };
 
@@ -266,6 +297,21 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         if (user && "deletedAt" in user) throw new HttpError(401, "Account deleted");
     }
 
+    app.put("/v1/me/first-language", express.json({ limit: "4kb" }), async (req, res) => {
+        const parsed = parseFirstLanguageChoice(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        const saved = await saveFirstLanguage(db, userId, parsed.value);
+        // Only if a tombstone landed between the check and the write.
+        if (!saved) throw new HttpError(401, "Account deleted");
+        res.json({
+            firstLanguage: saved.firstLanguage,
+            firstLanguageUpdatedAt: saved.firstLanguageUpdatedAt.toISOString(),
+        });
+    });
+
     app.get("/v1/progress", async (_req, res) => {
         const db = await dep.db();
         const userId = res.locals.userId as string;
@@ -298,6 +344,31 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             // Only the reason is logged: the request carries what the learner said.
             console.error("Tutor turn failed", { message: (error as Error).message });
             throw new HttpError(503, "The tutor is not available right now");
+        }
+    });
+
+    app.post("/v1/translate", express.json({ limit: "8kb" }), async (req, res) => {
+        const parsed = parseTranslateRequest(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        // A learner is holding a finger on a word while this runs. The count
+        // and the cache are two trips to the database that do not depend on
+        // each other, so they go out together. The cache read never throws.
+        const lookup = cachedTranslation(db, parsed.value);
+        if ((await countRequest(db, `translate:${userId}`)) > TRANSLATIONS_PER_MINUTE) {
+            res.set("Retry-After", "60");
+            throw new HttpError(429, "Please wait a minute and try again");
+        }
+
+        const translator = dep.translator();
+        try {
+            res.json(await translateWord(db, parsed.value, translator, lookup));
+        } catch (error) {
+            // Only the reason is logged: the request carries what the learner reads.
+            console.error("Translation failed", { message: (error as Error).message });
+            throw new HttpError(503, "Translation is not available right now");
         }
     });
 

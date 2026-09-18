@@ -32,7 +32,9 @@
     },
     "account": {
       "title": "Account",
-      "language": "Language",
+      "appLanguage": "App language",
+      "myLanguage": "My language",
+      "myLanguageHint": "Hold any English word to see it in this language.",
       "signOut": "Sign out",
       "privacy": "Privacy",
       "deleteAccount": "Delete account",
@@ -184,6 +186,19 @@
       "goalCount": "Sentence {current} of {total}",
       "summaryCount": "You said {said} of {total} by yourself.",
       "again": "Practise again"
+    },
+    "firstLanguage": {
+      "title": "What is your language?",
+      "body": "Choose the language you know best. Hold any English word in the app to see it in your language.",
+      "continue": "Continue",
+      "changeLater": "You can change this later in Account."
+    },
+    "translate": {
+      "loading": "Translating…",
+      "failed": "We could not translate this word.",
+      "offline": "No internet. Try again when you are online.",
+      "retry": "Try again",
+      "listen": "Listen"
     }
   },
   "aboutUs": {

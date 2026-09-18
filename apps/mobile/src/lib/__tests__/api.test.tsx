@@ -65,3 +65,94 @@ describe("API client sign-in bridge", () => {
         await expect(request).rejects.toThrow("Account changed");
     });
 });
+
+describe("the learner's first language", () => {
+    it("sends the choice and gives back what the server now holds", async () => {
+        renderHook(() => useApiAuth());
+        const saved = api.saveFirstLanguage({
+            language: "bn",
+            updatedAt: "2026-09-18T10:00:00.000Z",
+        });
+        await act(async () => {});
+
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            expect.stringContaining("/v1/me/first-language"),
+            expect.objectContaining({
+                method: "PUT",
+                body: JSON.stringify({ language: "bn", updatedAt: "2026-09-18T10:00:00.000Z" }),
+            }),
+        );
+        respond({ firstLanguage: "bn", firstLanguageUpdatedAt: "2026-09-18T10:00:00.000Z" });
+        await expect(saved).resolves.toEqual({
+            firstLanguage: "bn",
+            firstLanguageUpdatedAt: "2026-09-18T10:00:00.000Z",
+        });
+    });
+});
+
+describe("translating one held word", () => {
+    /** A fetch that only ever ends when the request is cancelled. */
+    function neverAnswers() {
+        globalThis.fetch = jest.fn(
+            (_url, init) =>
+                new Promise((_resolve, reject) => {
+                    (init as RequestInit).signal?.addEventListener("abort", () => {
+                        const error = new Error("Aborted");
+                        error.name = "AbortError";
+                        reject(error);
+                    });
+                }),
+        ) as unknown as typeof fetch;
+    }
+
+    it("posts the word with the sentence it was held in", async () => {
+        renderHook(() => useApiAuth());
+        const request = api.translate({
+            word: "platform",
+            context: "Which platform for Jurong East?",
+            language: "bn",
+        });
+        await act(async () => {});
+
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            expect.stringContaining("/v1/translate"),
+            expect.objectContaining({
+                method: "POST",
+                body: JSON.stringify({
+                    word: "platform",
+                    context: "Which platform for Jurong East?",
+                    language: "bn",
+                }),
+            }),
+        );
+        respond({ word: "platform", translation: "প্ল্যাটফর্ম", phrase: null });
+        await expect(request).resolves.toMatchObject({ translation: "প্ল্যাটফর্ম" });
+    });
+
+    it("gives up after twelve seconds, because a finger is being held on the word", async () => {
+        jest.useFakeTimers();
+        neverAnswers();
+        renderHook(() => useApiAuth());
+        const request = api.translate({ word: "platform", context: "", language: "bn" });
+        await act(async () => {});
+
+        jest.advanceTimersByTime(11_999);
+        jest.advanceTimersByTime(1);
+        await expect(request).rejects.toThrow("The request timed out");
+        jest.useRealTimers();
+    });
+
+    it("hands a caller their own cancellation back, not a network error", async () => {
+        neverAnswers();
+        renderHook(() => useApiAuth());
+        const controller = new AbortController();
+        const request = api.translate(
+            { word: "platform", context: "", language: "bn" },
+            { signal: controller.signal },
+        );
+        await act(async () => {});
+
+        controller.abort();
+        await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    });
+});

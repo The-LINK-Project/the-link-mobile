@@ -32,7 +32,6 @@
     },
     "account": {
       "title": "Account",
-      "language": "Wika",
       "signOut": "Mag-sign out",
       "privacy": "Privacy",
       "deleteAccount": "Burahin ang account",
@@ -50,7 +49,10 @@
       "newPassword": "Bagong password",
       "passwordMinLength": "Gumamit ng hindi bababa sa 8 letra o numero.",
       "genericError": "May nangyaring mali. Pakisubukan ulit.",
-      "username": "Username"
+      "username": "Username",
+      "appLanguage": "Wika ng app",
+      "myLanguage": "Aking wika",
+      "myLanguageHint": "Pindutin nang matagal ang anumang salitang Ingles para makita ito sa wikang ito."
     },
     "common": {
       "retry": "Subukan ulit",
@@ -184,6 +186,19 @@
       "goalCount": "Pangungusap {current} sa {total}",
       "summaryCount": "Nasabi mo nang kusa ang {said} sa {total}.",
       "again": "Magsanay ulit"
+    },
+    "firstLanguage": {
+      "title": "Ano ang iyong wika?",
+      "body": "Piliin ang wikang alam mo nang husto. Pindutin nang matagal ang anumang salitang Ingles sa app para makita ito sa iyong wika.",
+      "continue": "Magpatuloy",
+      "changeLater": "Puwede mo itong baguhin mamaya sa Account."
+    },
+    "translate": {
+      "loading": "Isinasalin…",
+      "failed": "Hindi namin maisalin ang salitang ito.",
+      "offline": "Walang internet. Subukan ulit kapag online ka na.",
+      "retry": "Subukan ulit",
+      "listen": "Pakinggan"
     }
   },
   "aboutUs": {

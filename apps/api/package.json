@@ -13,6 +13,7 @@
     "test": "tsx --test test/*.test.ts",
     "smoke:live": "tsx --env-file=.env test/live-smoke.ts",
     "smoke:tutor": "tsx --env-file=.env test/tutor-smoke.ts",
+    "smoke:translate": "tsx --env-file=.env test/translate-smoke.ts",
     "eval:tutor": "tsx --env-file=.env test/tutor-eval.ts"
   },
   "dependencies": {
