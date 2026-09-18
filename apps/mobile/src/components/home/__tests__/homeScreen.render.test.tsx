@@ -5,6 +5,7 @@
 import { act, render, screen, userEvent } from "@testing-library/react-native";
 
 import HomeScreen from "@/app/(app)/(tabs)/index";
+import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import { fingerprint, initSession, snapshotOf } from "@/lib/lessons/session";
@@ -22,7 +23,19 @@ function runAt(done: number) {
 
 beforeEach(async () => {
     mockPush.mockClear();
+    resetFirstLanguageForTests();
     await act(() => setLocale("en"));
+});
+
+it("uses the learner's first language for Home's interface", async () => {
+    await act(() => setFirstLanguage("zh"));
+    render(<HomeScreen />);
+
+    expect(screen.getByText("欢迎来到 LINK")).toBeTruthy();
+    expect(screen.getByText("课程")).toBeTruthy();
+    expect(screen.getByText("乘搭地铁")).toBeTruthy();
+    expect(screen.getByText("找到正确的站台，为交通卡充值，并在正确的车站下车。")).toBeTruthy();
+    expect(screen.getAllByText("6 分钟")).not.toHaveLength(0);
 });
 
 it("points a new learner at the first lesson and locks nothing", async () => {

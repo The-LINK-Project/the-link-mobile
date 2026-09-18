@@ -2,8 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { Badge, Button, Card, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { localized, useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import type { SessionSummary } from "@/lib/lessons/session";
 import type { Lesson } from "@/lib/lessons/types";
 import { colors, spacing } from "@/lib/theme";
@@ -26,8 +26,8 @@ type Props = {
 };
 
 export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone" | "onSpeak">) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const native = useFirstLanguageLocalized();
     const perfect = summary.reviewed === 0;
 
     return (
@@ -36,7 +36,7 @@ export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone"
                 every other screen in the app. A centred badge reads as a generic
                 congratulations panel that could belong to any product. */}
             <View style={styles.hero}>
-                <Text variant="label">{localized(lesson.title)}</Text>
+                <Text variant="label">{localized(lesson.title, "en")}</Text>
                 <Text variant="title">{t("summaryTitle")}</Text>
                 <Text variant="caption">
                     {perfect
@@ -68,7 +68,7 @@ export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone"
                 {summary.phrases.map((phrase) => (
                     <View key={phrase.id} style={styles.phrase}>
                         <Text variant="bodyStrong">{phrase.text}</Text>
-                        <Text variant="caption">{localized(phrase.meaning)}</Text>
+                        <Text variant="caption">{native(phrase.meaning)}</Text>
                     </View>
                 ))}
             </View>
@@ -87,7 +87,7 @@ export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone"
                             style={styles.bullet}
                         />
                         <Text variant="caption" style={styles.noteText}>
-                            {localized(note.text)}
+                            {native(note.text)}
                         </Text>
                     </View>
                 ))}
@@ -113,7 +113,7 @@ export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone"
  * right now.
  */
 export function LessonSummaryActions({ onDone, onSpeak }: Pick<Props, "onDone" | "onSpeak">) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     if (!onSpeak) return <Button title={t("summaryDone")} size="lg" onPress={onDone} />;
     return (
         <View style={styles.actions}>

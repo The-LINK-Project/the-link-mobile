@@ -203,7 +203,7 @@ export type TranslateResponse = {
 
 /** One turn of speaking practice. Mirrors `TurnRequest` in the API. */
 export type TutorTurnRequest = {
-    language: "bn" | "ta" | "hi";
+    language: FirstLanguage;
     scene: string;
     words: string[];
     phrases: string[];

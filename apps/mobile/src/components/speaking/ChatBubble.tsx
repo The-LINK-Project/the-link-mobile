@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { Button, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { ChatMessage } from "@/lib/speaking/conversation";
 import type { PlaybackSpeed } from "@/lib/speaking/playback";
 import { colors, radius, spacing } from "@/lib/theme";
@@ -19,7 +19,7 @@ type Props = {
 };
 
 export function ChatBubble({ message, playing, disabled, onPlay, onStop }: Props) {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
     const tutor = message.role === "tutor";
 
     return (

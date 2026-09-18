@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Tile } from "@/components/lessons/Tile";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { vocabByIds } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { MatchPairsExercise } from "@/lib/lessons/types";
@@ -43,7 +43,7 @@ export function TapThePairs({
     onSelfSubmit,
     locked,
 }: ExerciseProps<MatchPairsExercise>) {
-    const localized = useLocalized();
+    const localized = useFirstLanguageLocalized();
     const pairs = useMemo(() => vocabByIds(lesson, exercise.vocabIds), [lesson, exercise.vocabIds]);
     const terms = useMemo(() => seededShuffle(pairs, `${exercise.id}-terms`), [pairs, exercise.id]);
     const meanings = useMemo(

@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { SpeakerButton } from "@/components/lessons/SpeakerButton";
 import { WordBank } from "@/components/lessons/WordBank";
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { phraseById } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
@@ -28,7 +28,7 @@ export function ListenArrangeWords({
     result,
     locked,
 }: ExerciseProps<ListenArrangeWordsExercise>) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const { speak, speaking, hasPlayed } = useSpeech();
     const sentence = phraseById(lesson, exercise.phraseId)?.text ?? "";
     const tokens = useMemo(

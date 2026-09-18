@@ -15,6 +15,7 @@ import { ListenChooseMeaning } from "@/components/lessons/exercises/ListenChoose
 import { TapThePairs } from "@/components/lessons/exercises/TapThePairs";
 import { TranslateWordBank } from "@/components/lessons/exercises/TranslateWordBank";
 import { LessonFooter } from "@/components/lessons/LessonFooter";
+import { resetFirstLanguageForTests } from "@/lib/firstLanguage/store";
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import type {
@@ -59,6 +60,7 @@ function baseProps() {
 }
 
 beforeEach(async () => {
+    resetFirstLanguageForTests();
     await act(() => setLocale("en"));
 });
 

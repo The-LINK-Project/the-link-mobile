@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
 
 /**
@@ -24,7 +24,7 @@ type Props = {
 };
 
 export function SpeakerButton({ onPlay, onPlaySlow, speaking, hasPlayed, disabled }: Props) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const slowDisabled = disabled || !hasPlayed;
 
     return (

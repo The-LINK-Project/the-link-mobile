@@ -3,8 +3,8 @@ import { StyleSheet, View } from "react-native";
 import { SpeakerButton } from "@/components/lessons/SpeakerButton";
 import { Tile } from "@/components/lessons/Tile";
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { choiceText } from "@/lib/lessons/lookup";
 import { useSpeech } from "@/lib/lessons/speech";
 import type { ListenChooseMeaningExercise } from "@/lib/lessons/types";
@@ -28,8 +28,8 @@ export function ListenChooseMeaning({
     result,
     locked,
 }: ExerciseProps<ListenChooseMeaningExercise>) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const localized = useFirstLanguageLocalized();
     const { speak, speaking, hasPlayed } = useSpeech();
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;
 

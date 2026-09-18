@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { colors, radius, spacing } from "@/lib/theme";
 
 import { Tile } from "./Tile";
@@ -29,7 +29,7 @@ type Props = {
 };
 
 export function WordBank({ tokens, placed, onChange, disabled, outcome, placeholder }: Props) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const used = new Set(placed);
 
     return (

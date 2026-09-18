@@ -33,7 +33,20 @@ const TOKEN_MARGIN_MS = 5 * 60_000;
  * Cloud's codes for the tutor languages. Bengali is Bangladesh's, where most
  * Bengali-speaking workers in Singapore come from.
  */
-const LANGUAGE_CODES: Record<TutorLanguage, string> = { bn: "bn-BD", ta: "ta-IN", hi: "hi-IN" };
+const LANGUAGE_CODES: Record<TutorLanguage, string> = {
+    bn: "bn-BD",
+    ta: "ta-IN",
+    hi: "hi-IN",
+    te: "te-IN",
+    ml: "ml-IN",
+    bu: "my-MM",
+    fi: "fil-PH",
+    in: "id-ID",
+    ms: "ms-MY",
+    zh: "zh-CN",
+    th: "th-TH",
+    vi: "vi-VN",
+};
 
 export type ServiceAccount = { clientEmail: string; privateKey: string };
 

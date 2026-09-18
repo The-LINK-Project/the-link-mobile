@@ -2,8 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { Lesson } from "@/lib/lessons/types";
 import type { ContinuePoint } from "@/lib/progress/model";
 import { colors, radius, shadow, spacing } from "@/lib/theme";
@@ -26,8 +26,8 @@ export function ContinueCard({
     point: ContinuePoint;
     onPress: () => void;
 }) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const lessonCopy = useHomeLessonCopy();
     const where =
         point.kind === "talk"
             ? t("continueTalk", { done: point.done, total: point.total })
@@ -36,7 +36,7 @@ export function ContinueCard({
     return (
         <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${t("continueTitle")}. ${localized(lesson.title)}. ${where}`}
+            accessibilityLabel={`${t("continueTitle")}. ${lessonCopy(lesson.title)}. ${where}`}
             onPress={onPress}
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         >
@@ -52,7 +52,7 @@ export function ContinueCard({
                     {t("continueTitle")}
                 </Text>
                 <Text variant="subheading" color={colors.onPrimary}>
-                    {localized(lesson.title)}
+                    {lessonCopy(lesson.title)}
                 </Text>
                 <View style={styles.track}>
                     <View

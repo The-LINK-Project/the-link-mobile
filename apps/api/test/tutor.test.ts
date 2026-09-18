@@ -17,6 +17,7 @@ import {
     readTranscript,
     restoreNames,
     runTurn,
+    TUTOR_LANGUAGES,
     type Draft,
     type TurnRequest,
     type TutorModel,
@@ -168,7 +169,9 @@ test("Hindi is checked like Bengali and Tamil, since Devanagari keeps English vi
 });
 
 test("turn requests are checked before any model is called", () => {
-    assert.equal(rejection({ ...OPENING, language: "fi" }), "Unsupported language");
+    for (const language of TUTOR_LANGUAGES) {
+        assert.equal(valid({ ...OPENING, language }).language, language);
+    }
     assert.equal(
         rejection({ ...OPENING, goals: [{ ...OPENING.goals[0], ask: `${ASK_PLATFORM} please` }] }),
         "A goal uses English the lesson did not teach",
@@ -450,7 +453,7 @@ test("POST /v1/tutor/turn needs sign-in, rejects bad input without a model, and 
         const anonymous = await fetch(url + "/v1/tutor/turn", { method: "POST", body: "{}" });
         assert.equal(anonymous.status, 401);
 
-        const bad = await postTurn(url, { ...OPENING, language: "fi" });
+        const bad = await postTurn(url, { ...OPENING, language: "xx" });
         assert.equal(bad.status, 400);
         assert.deepEqual(await bad.json(), { error: "Unsupported language" });
         assert.equal(built, 0);

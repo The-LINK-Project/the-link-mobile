@@ -15,14 +15,38 @@
  * the model, and is gone once the response is sent.
  */
 
-export const TUTOR_LANGUAGES = ["bn", "ta", "hi"] as const;
+export const TUTOR_LANGUAGES = [
+    "bn",
+    "ta",
+    "hi",
+    "te",
+    "ml",
+    "bu",
+    "fi",
+    "in",
+    "ms",
+    "zh",
+    "th",
+    "vi",
+] as const;
 export type TutorLanguage = (typeof TUTOR_LANGUAGES)[number];
 
 const LANGUAGES: Record<TutorLanguage, { name: string; script: string }> = {
     bn: { name: "Bengali", script: "Bengali script" },
     ta: { name: "Tamil", script: "Tamil script" },
     hi: { name: "Hindi", script: "Devanagari script" },
+    te: { name: "Telugu", script: "Telugu script" },
+    ml: { name: "Malayalam", script: "Malayalam script" },
+    bu: { name: "Burmese", script: "Myanmar script" },
+    fi: { name: "Filipino", script: "Latin script" },
+    in: { name: "Indonesian", script: "Latin script" },
+    ms: { name: "Malay", script: "Latin script" },
+    zh: { name: "Simplified Chinese", script: "simplified Chinese characters" },
+    th: { name: "Thai", script: "Thai script" },
+    vi: { name: "Vietnamese", script: "Latin script with Vietnamese diacritics" },
 };
+
+const LATIN_SCRIPT_LANGUAGES = new Set<TutorLanguage>(["fi", "in", "ms", "vi"]);
 
 /**
  * English the tutor may use without the lesson teaching it. Deliberately not
@@ -72,7 +96,7 @@ export type TurnRequest = {
     language: TutorLanguage;
     /** The role-play, for the model. The learner never sees it. */
     scene: string;
-    /** Vocabulary this run practised. */
+    /** Vocabulary introduced on the lesson's opening word list. */
     words: string[];
     /** Sentences this run taught. */
     phrases: string[];
@@ -443,6 +467,31 @@ const FALLBACK_LINES: Record<TutorLanguage, { again: string; wellDone: string; d
         done: "இன்றைய பயிற்சி முடிந்தது.",
     },
     hi: { again: "फिर से कोशिश कीजिए।", wellDone: "बहुत बढ़िया!", done: "आज का अभ्यास पूरा हुआ।" },
+    te: {
+        again: "మళ్లీ ప్రయత్నించండి.",
+        wellDone: "చాలా బాగా చెప్పారు!",
+        done: "ఈరోజు అభ్యాసం పూర్తైంది.",
+    },
+    ml: {
+        again: "വീണ്ടും ശ്രമിക്കൂ.",
+        wellDone: "വളരെ നന്നായി!",
+        done: "ഇന്നത്തെ പരിശീലനം കഴിഞ്ഞു.",
+    },
+    bu: {
+        again: "ထပ်ကြိုးစားပါ။",
+        wellDone: "အရမ်းကောင်းပါတယ်!",
+        done: "ဒီနေ့ လေ့ကျင့်မှု ပြီးပါပြီ။",
+    },
+    fi: { again: "Subukan muli.", wellDone: "Magaling!", done: "Tapos na ang pagsasanay ngayon." },
+    in: { again: "Coba lagi.", wellDone: "Bagus sekali!", done: "Latihan hari ini selesai." },
+    ms: { again: "Cuba lagi.", wellDone: "Bagus!", done: "Latihan hari ini selesai." },
+    zh: { again: "再试一次。", wellDone: "做得很好！", done: "今天的练习完成了。" },
+    th: { again: "ลองอีกครั้ง", wellDone: "เก่งมาก!", done: "การฝึกวันนี้เสร็จแล้ว" },
+    vi: {
+        again: "Hãy thử lại.",
+        wellDone: "Rất tốt!",
+        done: "Bài luyện tập hôm nay đã hoàn thành.",
+    },
 };
 
 /**
@@ -505,7 +554,13 @@ export async function runTurn(
     let rewrites = 0;
     let fallback = false;
     for (;;) {
-        const violations = findViolations(reply, allowed);
+        // In Latin-script tutor languages, native words and English words use
+        // the same alphabet, so a regex cannot safely tell them apart. The
+        // prompt still enforces the lesson vocabulary; code-level enforcement
+        // remains active for every tutor language with a distinct script.
+        const violations = LATIN_SCRIPT_LANGUAGES.has(request.language)
+            ? []
+            : findViolations(reply, allowed);
         if (reply && violations.length === 0) break;
         if (!reply || rewrites === MAX_REWRITES || remaining() < REWRITE_TIMEOUT_MS) {
             fallback = true;

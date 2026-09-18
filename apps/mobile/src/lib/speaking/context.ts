@@ -1,13 +1,20 @@
 /**
  * What one speaking session practises, and the English the tutor may use.
  *
- * Built from the run rather than the lesson. A learner is only asked to say a
- * sentence an exercise actually taught them, for the same reason the summary
- * only lists those: an exercise that was skipped taught nothing.
+ * Speaking goals are built from the run: a learner is only asked to say a
+ * sentence an exercise actually taught them. The tutor's vocabulary comes
+ * from `lesson.vocab`, which is the exact list shown on the lesson intro, so it
+ * may reuse every word the learner was introduced to without inventing new
+ * English.
  */
 
 import type { TutorTurnRequest } from "@/lib/api";
-import { hasTranslation, localized } from "@/lib/lessons/localized";
+import {
+    FIRST_LANGUAGES,
+    FIRST_LANGUAGE_LABELS,
+    type FirstLanguage,
+} from "@/lib/firstLanguage/languages";
+import { localized } from "@/lib/lessons/localized";
 import { phraseById, vocabByIds } from "@/lib/lessons/lookup";
 import type { Lesson, Localized, SpeakingGoal } from "@/lib/lessons/types";
 
@@ -18,14 +25,10 @@ export type TutorLanguage = TutorTurnRequest["language"];
  * which is what lets the server pick out every English word and check it. A
  * language written in Latin letters could not be checked that way.
  */
-export const TUTOR_LANGUAGES: readonly TutorLanguage[] = ["bn", "ta", "hi"];
+export const TUTOR_LANGUAGES: readonly TutorLanguage[] = FIRST_LANGUAGES;
 
 /** Each language by its own name, since the learner may not read English. */
-export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguage, string> = {
-    bn: "বাংলা",
-    ta: "தமிழ்",
-    hi: "हिन्दी",
-};
+export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguage, string> = FIRST_LANGUAGE_LABELS;
 
 /** What a finished run covered. */
 export type PractisedRun = { vocabIds: string[]; phraseIds: string[] };
@@ -53,6 +56,10 @@ function wasTaught(goal: SpeakingGoal, run: PractisedRun): boolean {
         : run.vocabIds.includes(goal.vocabId);
 }
 
+function hasAuthoredTutorCopy(language: TutorLanguage): language is "bn" | "ta" | "hi" {
+    return language === "bn" || language === "ta" || language === "hi";
+}
+
 /** Null when nothing in this run can be practised aloud in `language`. */
 export function buildSpeakingContext(
     lesson: Lesson,
@@ -66,13 +73,19 @@ export function buildSpeakingContext(
         const content = wasTaught(goal, run) ? goalContent(lesson, goal) : undefined;
         // The meaning is what the tutor asks for, and its line of last resort.
         // Falling back to English would be exactly the English this avoids.
-        if (!content || !hasTranslation(content.meaning, language)) return [];
+        if (!content) return [];
         return [
             {
                 id: goal.id,
                 target: content.target,
                 keywords: goal.keywords,
-                ask: localized(content.meaning, language),
+                // Bengali, Tamil and Hindi have authored lesson explanations.
+                // For every other language, the target itself is the safe
+                // fallback; Gemini is instructed to set it up and explain it
+                // in the selected language without inventing other English.
+                ask: hasAuthoredTutorCopy(language)
+                    ? localized(content.meaning, language as FirstLanguage)
+                    : content.target,
             },
         ];
     });
@@ -81,9 +94,10 @@ export function buildSpeakingContext(
     return {
         language,
         scene: practice.scene,
-        words: lesson.vocab
-            .filter((item) => run.vocabIds.includes(item.id))
-            .map((item) => item.term),
+        // This is intentionally the same list, in the same order, as
+        // LessonIntro. Even if an exercise did not happen to drill a word, the
+        // learner already met it before starting the lesson.
+        words: lesson.vocab.map((item) => item.term),
         phrases: lesson.phrases
             .filter((phrase) => run.phraseIds.includes(phrase.id))
             .map((phrase) => phrase.text),

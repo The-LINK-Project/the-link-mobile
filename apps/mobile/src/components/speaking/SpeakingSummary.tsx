@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { Button, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { GoalResult } from "@/lib/speaking/conversation";
 import { colors, spacing } from "@/lib/theme";
 
@@ -19,7 +19,7 @@ type Props = {
  * what someone needs after speaking a new language out loud for the first time.
  */
 export function SpeakingSummary({ title, goals, onDone, onAgain }: Props) {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
 
     return (
         <View style={styles.container}>

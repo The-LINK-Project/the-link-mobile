@@ -1,17 +1,22 @@
+import { useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
+import { FirstLanguagePicker } from "@/components/language/FirstLanguagePicker";
 import { Button, Card, ListRow, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { TUTOR_LANGUAGE_LABELS, type TutorLanguage } from "@/lib/speaking/context";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import {
+    FIRST_LANGUAGE_ENGLISH_NAMES,
+    FIRST_LANGUAGE_LABELS,
+    type FirstLanguage,
+} from "@/lib/firstLanguage/languages";
 import { spacing } from "@/lib/theme";
 
 type Props = {
     title: string;
     /** The English the learner will be asked to say. */
     targets: string[];
-    languages: readonly TutorLanguage[];
-    language: TutorLanguage | null;
-    onLanguageChange: (language: TutorLanguage) => void;
+    language: FirstLanguage | null;
+    onLanguageChange: (language: FirstLanguage) => void;
     micBlocked: boolean;
 };
 
@@ -20,15 +25,11 @@ type Props = {
  * learner will say. Languages are listed by their own names in their own
  * scripts, since the learner may not read the English around them.
  */
-export function SpeakingIntro({
-    title,
-    targets,
-    languages,
-    language,
-    onLanguageChange,
-    micBlocked,
-}: Props) {
-    const t = useTranslations("mobile.speaking");
+export function SpeakingIntro({ title, targets, language, onLanguageChange, micBlocked }: Props) {
+    const t = useFirstLanguageInterface("speaking");
+    const [languageOpen, setLanguageOpen] = useState(false);
+    const languageLabel = language ? FIRST_LANGUAGE_LABELS[language] : t("chooseLanguage");
+    const languageEnglish = language ? FIRST_LANGUAGE_ENGLISH_NAMES[language] : undefined;
 
     return (
         <View style={styles.container}>
@@ -41,19 +42,24 @@ export function SpeakingIntro({
             <View style={styles.section}>
                 <Text variant="label">{t("language")}</Text>
                 <Card padded={false}>
-                    <View accessibilityRole="radiogroup" accessibilityLabel={t("language")}>
-                        {languages.map((option, index) => (
-                            <ListRow
-                                key={option}
-                                title={TUTOR_LANGUAGE_LABELS[option]}
-                                trailing="check"
-                                selected={option === language}
-                                accessibilityRole="radio"
-                                last={index === languages.length - 1}
-                                onPress={() => onLanguageChange(option)}
-                            />
-                        ))}
-                    </View>
+                    <ListRow
+                        title={languageLabel}
+                        value={languageEnglish === languageLabel ? undefined : languageEnglish}
+                        accessibilityLabel={`${t("language")}. ${languageLabel}`}
+                        accessibilityState={{ expanded: languageOpen }}
+                        last={!languageOpen}
+                        onPress={() => setLanguageOpen((open) => !open)}
+                    />
+                    {languageOpen ? (
+                        <FirstLanguagePicker
+                            value={language}
+                            label={t("language")}
+                            onChange={(next) => {
+                                onLanguageChange(next);
+                                setLanguageOpen(false);
+                            }}
+                        />
+                    ) : null}
                 </Card>
             </View>
 

@@ -114,6 +114,28 @@ export function missingKeywords(answer: string, keywords: string[], ignore?: str
     return keywords.filter((keyword) => !containsKeyword(words, keyword));
 }
 
+/**
+ * Content words in an answer that do not belong in the model sentence.
+ *
+ * Keyword grading deliberately allows learners to omit optional grammar and
+ * rearrange the sentence. It must not, however, make the word bank's decoy
+ * tiles meaningless: adding "exit" to a platform question changes the answer.
+ * Match as a multiset so repeating a valid word is also caught, while the same
+ * small spelling tolerance used by keyword matching remains available.
+ */
+export function unexpectedWords(answer: string, target: string, ignore?: string[]): string[] {
+    const ignored = ignore ? new Set([...IGNORED_WORDS, ...ignore.map(normalize)]) : IGNORED_WORDS;
+    const available = meaningfulWords(target, ignored);
+    const unexpected: string[] = [];
+
+    for (const word of meaningfulWords(answer, ignored)) {
+        const match = available.findIndex((expected) => wordsMatch(word, expected));
+        if (match === -1) unexpected.push(word);
+        else available.splice(match, 1);
+    }
+    return unexpected;
+}
+
 /** The model answer string for an exercise, used in feedback. */
 function modelAnswerFor(lesson: Lesson, exercise: Exercise): string {
     switch (exercise.type) {
@@ -161,6 +183,11 @@ function gradeTokens(
 
     const missing = missingKeywords(answer, rule.keywords, rule.ignore);
     if (missing.length > 0) return { correct: false, missing };
+
+    // Required ideas are present, but an unrelated content word still makes
+    // the constructed answer wrong. Ignored fillers such as "please" have
+    // already been removed by `unexpectedWords`.
+    if (unexpectedWords(answer, target, rule.ignore).length > 0) return { correct: false };
 
     // All required words present. Flag anything that is not word-perfect so the
     // feedback can show the model sentence without calling the learner wrong.

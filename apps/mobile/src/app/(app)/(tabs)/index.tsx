@@ -7,7 +7,7 @@ import { StyleSheet, View } from "react-native";
 import { ContinueCard } from "@/components/lessons/ContinueCard";
 import { LessonCard } from "@/components/lessons/LessonCard";
 import { ErrorState, Screen, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { getDailyMix, getLesson, listLessons } from "@/lib/lessons/data";
 import { fingerprint } from "@/lib/lessons/session";
 import type { Lesson } from "@/lib/lessons/types";
@@ -38,8 +38,8 @@ function canSpeak(lesson: Lesson): boolean {
 // outage may take away the only thing on this screen a learner came here to
 // do. A failed sync is reported above the lessons instead of replacing them.
 export default function HomeScreen() {
-    const t = useTranslations("mobile.foundation");
-    const l = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("foundation");
+    const l = useFirstLanguageInterface("lessons");
     const router = useRouter();
     const me = useMe();
     const data = useProgressData();

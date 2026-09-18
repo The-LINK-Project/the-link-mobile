@@ -4,7 +4,11 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { FirstLanguagePicker } from "@/components/language/FirstLanguagePicker";
 import { Button, Card, Screen, Text } from "@/components/ui";
-import { suggestFirstLanguage, type FirstLanguage } from "@/lib/firstLanguage/languages";
+import {
+    FIRST_LANGUAGE_ONBOARDING_COPY,
+    suggestFirstLanguage,
+    type FirstLanguage,
+} from "@/lib/firstLanguage/languages";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
@@ -25,6 +29,16 @@ export default function ChooseLanguageScreen() {
     // it overrule a learner who has already tapped something else.
     const [chosen, setChosen] = useState<FirstLanguage | null>(() => suggestFirstLanguage());
     const [saving, setSaving] = useState(false);
+    // Before a choice, use the app's current locale. Once someone taps their
+    // language, explain the rest of this decision in that language right away.
+    const copy = chosen
+        ? FIRST_LANGUAGE_ONBOARDING_COPY[chosen]
+        : {
+              title: t("title"),
+              body: t("body"),
+              continue: t("continue"),
+              changeLater: t("changeLater"),
+          };
 
     async function save() {
         if (!chosen || saving) return;
@@ -45,15 +59,15 @@ export default function ChooseLanguageScreen() {
                         accessibilityLabel="The LINK Project"
                     />
                     <Text variant="title" center>
-                        {t("title")}
+                        {copy.title}
                     </Text>
                     <Text center style={styles.body}>
-                        {t("body")}
+                        {copy.body}
                     </Text>
                 </View>
 
                 <Card padded={false}>
-                    <FirstLanguagePicker value={chosen} onChange={setChosen} label={t("title")} />
+                    <FirstLanguagePicker value={chosen} onChange={setChosen} label={copy.title} />
                 </Card>
             </ScrollView>
 
@@ -61,14 +75,14 @@ export default function ChooseLanguageScreen() {
                 on a small phone the button would otherwise be off the screen. */}
             <View style={styles.footer}>
                 <Button
-                    title={t("continue")}
+                    title={copy.continue}
                     size="lg"
                     disabled={!chosen}
                     loading={saving}
                     onPress={() => void save()}
                 />
                 <Text variant="caption" center>
-                    {t("changeLater")}
+                    {copy.changeLater}
                 </Text>
             </View>
         </Screen>
