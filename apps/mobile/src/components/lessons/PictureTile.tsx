@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { VocabularyVisual } from "@/components/lessons/LessonVisual";
 import type { PictureKey } from "@/lib/lessons/icons";
 import { colors, radius, spacing } from "@/lib/theme";
 
@@ -15,34 +16,6 @@ import type { TileState } from "./Tile";
  * that the art carries the meaning: a picture that can be misread produces a
  * wrong answer that is not the learner's fault.
  */
-const ICONS: Record<PictureKey, React.ComponentProps<typeof Ionicons>["name"]> = {
-    train: "train-outline",
-    platform: "subway-outline",
-    exit: "exit-outline",
-    money: "cash-outline",
-    card: "card-outline",
-    seat: "accessibility-outline",
-    transfer: "swap-horizontal-outline",
-    clock: "time-outline",
-    thermometer: "thermometer-outline",
-    medicine: "medkit-outline",
-    clinic: "medical-outline",
-    calendar: "calendar-outline",
-    bed: "bed-outline",
-    document: "document-text-outline",
-    food: "restaurant-outline",
-    bag: "bag-handle-outline",
-    flame: "flame-outline",
-    drink: "cafe-outline",
-    price: "pricetag-outline",
-    stall: "storefront-outline",
-    helmet: "construct-outline",
-    boots: "footsteps-outline",
-    warning: "warning-outline",
-    firstAid: "bandage-outline",
-    person: "person-outline",
-};
-
 type Props = {
     picture: PictureKey;
     onPress: () => void;
@@ -75,7 +48,21 @@ export function PictureTile({ picture, onPress, state = "default", disabled, pos
             ]}
         >
             <View style={styles.art}>
-                <Ionicons name={ICONS[picture]} size={52} color={ICON_COLOR[state]} />
+                <VocabularyVisual picture={picture} fill />
+                {state === "correct" || state === "incorrect" ? (
+                    <View
+                        style={[
+                            styles.resultMark,
+                            state === "correct" ? styles.resultCorrect : styles.resultIncorrect,
+                        ]}
+                    >
+                        <Ionicons
+                            name={state === "correct" ? "checkmark" : "close"}
+                            size={18}
+                            color={colors.white}
+                        />
+                    </View>
+                ) : null}
             </View>
         </Pressable>
     );
@@ -92,18 +79,10 @@ export function PictureArt({ picture }: { picture: PictureKey }) {
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
         >
-            <Ionicons name={ICONS[picture]} size={72} color={colors.primaryDark} />
+            <VocabularyVisual picture={picture} large />
         </View>
     );
 }
-
-const ICON_COLOR: Record<TileState, string> = {
-    default: colors.foreground,
-    selected: colors.primaryDark,
-    correct: colors.success,
-    incorrect: colors.destructive,
-    used: colors.border,
-};
 
 const EDGE = 4;
 
@@ -120,14 +99,31 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         backgroundColor: colors.surface,
     },
-    art: { alignItems: "center", justifyContent: "center" },
-    prompt: {
-        width: 140,
-        height: 140,
+    art: {
+        width: "100%",
+        height: "100%",
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: radius.xl,
-        backgroundColor: colors.primarySoft,
+    },
+    resultMark: {
+        position: "absolute",
+        right: -2,
+        bottom: -2,
+        width: 28,
+        height: 28,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: radius.full,
+        borderWidth: 2,
+        borderColor: colors.white,
+    },
+    resultCorrect: { backgroundColor: colors.success },
+    resultIncorrect: { backgroundColor: colors.destructive },
+    prompt: {
+        width: 164,
+        height: 164,
+        alignItems: "center",
+        justifyContent: "center",
     },
     default: {},
     selected: { backgroundColor: colors.primarySoft, borderColor: colors.primaryDark },
