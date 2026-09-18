@@ -32,7 +32,6 @@
     },
     "account": {
       "title": "Akun",
-      "language": "Bahasa",
       "signOut": "Keluar",
       "privacy": "Privasi",
       "deleteAccount": "Hapus akun",
@@ -50,7 +49,10 @@
       "newPassword": "Kata sandi baru",
       "passwordMinLength": "Pakai paling sedikit 8 huruf atau angka.",
       "genericError": "Ada yang salah. Silakan coba lagi.",
-      "username": "Nama pengguna"
+      "username": "Nama pengguna",
+      "appLanguage": "Bahasa aplikasi",
+      "myLanguage": "Bahasa saya",
+      "myLanguageHint": "Tekan dan tahan kata bahasa Inggris apa saja untuk melihatnya dalam bahasa ini."
     },
     "common": {
       "retry": "Coba lagi",
@@ -184,6 +186,19 @@
       "goalCount": "Kalimat {current} dari {total}",
       "summaryCount": "Anda mengucapkan sendiri {said} dari {total}.",
       "again": "Latih lagi"
+    },
+    "firstLanguage": {
+      "title": "Apa bahasa Anda?",
+      "body": "Pilih bahasa yang paling Anda kuasai. Tekan dan tahan kata bahasa Inggris apa saja di aplikasi untuk melihatnya dalam bahasa Anda.",
+      "continue": "Lanjutkan",
+      "changeLater": "Anda bisa mengubahnya nanti di Akun."
+    },
+    "translate": {
+      "loading": "Menerjemahkan…",
+      "failed": "Kami tidak bisa menerjemahkan kata ini.",
+      "offline": "Tidak ada internet. Coba lagi saat Anda online.",
+      "retry": "Coba lagi",
+      "listen": "Dengarkan"
     }
   },
   "aboutUs": {

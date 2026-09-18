@@ -59,4 +59,10 @@ beforeEach(() => {
     // registered before anything that touches storage is loaded.
     const { resetProgressForTests } = require("@/lib/progress/store");
     resetProgressForTests();
+    // The chosen first language is kept the same way and for the same reason,
+    // and a test that inherited one would never see the screen that asks for
+    // it. Only the store is reset here: its sync would pull the API client, and
+    // with it Clerk, into every suite in the app.
+    const { resetFirstLanguageForTests } = require("@/lib/firstLanguage/store");
+    resetFirstLanguageForTests();
 });

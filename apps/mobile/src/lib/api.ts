@@ -1,6 +1,7 @@
 import { isClerkAPIResponseError, useAuth } from "@clerk/expo";
 import { useLayoutEffect, useState } from "react";
 
+import type { FirstLanguage } from "@/lib/firstLanguage/languages";
 import type { Progress } from "@/lib/progress/model";
 
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
@@ -70,11 +71,18 @@ type RequestOptions = {
     body?: unknown;
     /** Request deadline in milliseconds. */
     timeoutMs?: number;
+    /**
+     * The caller's own cancellation, for work a screen can walk away from. An
+     * abort through this signal comes back as the abort itself rather than as
+     * an ApiError, so the caller can tell "I cancelled this" from "the network
+     * failed" without inspecting messages.
+     */
+    signal?: AbortSignal;
 };
 
 async function request<T>(
     path: string,
-    { method = "GET", body, timeoutMs = 20_000 }: RequestOptions = {},
+    { method = "GET", body, timeoutMs = 20_000, signal }: RequestOptions = {},
 ): Promise<T> {
     const generation = authGeneration;
     let token: string | null;
@@ -94,6 +102,14 @@ async function request<T>(
     if (generation !== authGeneration) throw new ApiError(0, "Account changed");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // The caller's signal is folded into the deadline's controller rather than
+    // handed to fetch, so the timeout keeps working exactly as it did and only
+    // one of the two has to win.
+    const abort = () => controller.abort();
+    if (signal) {
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort);
+    }
 
     let response: Response;
     let json: unknown = null;
@@ -117,9 +133,13 @@ async function request<T>(
     } catch (error) {
         if (error instanceof ApiError) throw error;
         const aborted = (error as { name?: string })?.name === "AbortError";
+        // A caller who cancelled on purpose gets their abort back: nobody is
+        // waiting to be told that the request they dropped did not finish.
+        if (aborted && signal?.aborted) throw error;
         throw new ApiError(0, aborted ? "The request timed out" : "Network error");
     } finally {
         clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
     }
 
     if (generation !== authGeneration) throw new ApiError(0, "Account changed");
@@ -150,6 +170,35 @@ export type ApiUser = {
     firstName: string;
     lastName: string;
     photo: string;
+    /**
+     * The language the learner reads best, as a first-language code. Absent
+     * until they have chosen, and typed loosely on purpose: the server is free
+     * to learn a new code before this app is updated, and the reader in
+     * `firstLanguage/store` drops anything it does not know.
+     */
+    firstLanguage?: string;
+    firstLanguageUpdatedAt?: string;
+};
+
+/** What the server holds for a learner's first language, after a merge. */
+export type FirstLanguageResponse = {
+    firstLanguage?: string;
+    firstLanguageUpdatedAt?: string;
+};
+
+/** One word to put into the learner's language. Mirrors `POST /v1/translate`. */
+export type TranslateRequest = {
+    word: string;
+    /** The sentence the word was held in, so "top up" is not translated as "top". */
+    context?: string;
+    language: FirstLanguage;
+};
+
+export type TranslateResponse = {
+    word: string;
+    translation: string;
+    /** Set when the word belongs to an expression that means something else. */
+    phrase: { text: string; translation: string } | null;
 };
 
 /** One turn of speaking practice. Mirrors `TurnRequest` in the API. */
@@ -186,6 +235,23 @@ export const api = {
         request<{ progress: unknown }>("/v1/progress", { method: "PUT", body: { progress } }),
     deleteAccount: () =>
         request<{ success: true; cleanupPending: boolean }>("/v1/me", { method: "DELETE" }),
+    /** Sends the phone's choice; the server keeps whichever is newer and answers. */
+    saveFirstLanguage: (choice: { language: FirstLanguage; updatedAt: string }) =>
+        request<FirstLanguageResponse>("/v1/me/first-language", { method: "PUT", body: choice }),
+    // A learner is holding a finger on a word while this runs, so it gets a
+    // shorter deadline than an ordinary call. Twelve seconds rather than ten:
+    // the server allows the model eight and spends about one more either side,
+    // and giving up a moment before a good answer lands helps nobody.
+    translate: (
+        input: TranslateRequest,
+        { signal, timeoutMs = 12_000 }: { signal?: AbortSignal; timeoutMs?: number } = {},
+    ) =>
+        request<TranslateResponse>("/v1/translate", {
+            method: "POST",
+            body: input,
+            timeoutMs,
+            signal,
+        }),
     // Transcribing, replying, checking the reply and speaking it happen in one
     // request, so a turn gets far longer than an ordinary call.
     tutorTurn: (turn: TutorTurnRequest) =>

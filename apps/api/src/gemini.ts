@@ -9,6 +9,12 @@ import {
     VOICE,
     type Spoken,
 } from "./google.js";
+import {
+    translationInstruction,
+    translationPrompt,
+    type TranslationDraft,
+    type Translator,
+} from "./translate.js";
 import type { TutorLanguage, TutorModel } from "./tutor.js";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -37,6 +43,21 @@ const REWRITE_SCHEMA = {
     type: "object",
     properties: { reply: { type: "string" } },
     required: ["reply"],
+};
+
+/**
+ * Flat required strings rather than an optional `phrase` object: asked for a
+ * field it may leave out, a model either leaves out the whole answer or invents
+ * a phrase to have something to say. Empty means there is no phrase.
+ */
+const TRANSLATE_SCHEMA = {
+    type: "object",
+    properties: {
+        translation: { type: "string", description: "The meaning of the word, in a few words." },
+        phraseText: { type: "string", description: "Copied from the sentence, or empty." },
+        phraseTranslation: { type: "string", description: "What that expression means." },
+    },
+    required: ["translation", "phraseText", "phraseTranslation"],
 };
 
 async function generate(
@@ -93,6 +114,40 @@ function jsonOutput(response: GenerateResponse): Record<string, unknown> {
     throw new GoogleError("Gemini returned malformed JSON");
 }
 
+// Every second of thinking is a second the learner waits, and neither writing
+// down a short clip, judging one sentence, nor glossing one word needs much of it.
+const thinkingConfig = { thinkingLevel: "LOW" };
+
+const jsonConfig = (schema: object) => ({
+    responseMimeType: "application/json",
+    responseJsonSchema: schema,
+    thinkingConfig,
+});
+
+/**
+ * A request to the first of these models with quota left. Only a quota error
+ * moves on: any other failure would most likely repeat on the next model, and
+ * the learner is already waiting.
+ */
+function modelChain(apiKey: string, models: string[], quota: QuotaTracker) {
+    return async function generateText(body: unknown, timeoutMs: number) {
+        const deadline = Date.now() + timeoutMs;
+        let failure = new GoogleError("Every model is out of quota");
+        for (const model of models) {
+            if (!quota.hasQuota(model)) continue;
+            try {
+                return await generate(apiKey, model, body, deadline - Date.now());
+            } catch (error) {
+                if (!(error instanceof QuotaError)) throw error;
+                quota.outOfQuota(model, error);
+                console.warn("Gemini model out of quota, using the next one", { model });
+                failure = error;
+            }
+        }
+        throw failure;
+    };
+}
+
 /**
  * How long a voice may go without answering before the next voice is started
  * alongside it. A normal reply takes 5 to 12 seconds; a stalled one took over 30.
@@ -122,36 +177,7 @@ export type TutorOptions = {
 export function createGeminiTutor(options: TutorOptions): TutorModel {
     const now = options.now ?? Date.now;
     const quota = new QuotaTracker(now);
-    // Every second of thinking is a second the learner waits, and neither writing
-    // down a short clip nor judging one sentence needs much of it.
-    const thinkingConfig = { thinkingLevel: "LOW" };
-    const jsonConfig = (schema: object) => ({
-        responseMimeType: "application/json",
-        responseJsonSchema: schema,
-        thinkingConfig,
-    });
-
-    /**
-     * A request to the first tutor model with quota left. Only a quota error
-     * moves on: any other failure would most likely repeat on the next model,
-     * and the learner is already waiting.
-     */
-    async function generateText(body: unknown, timeoutMs: number): Promise<GenerateResponse> {
-        const deadline = Date.now() + timeoutMs;
-        let failure = new GoogleError("Every tutor model is out of quota");
-        for (const model of options.tutorModels) {
-            if (!quota.hasQuota(model)) continue;
-            try {
-                return await generate(options.apiKey, model, body, deadline - Date.now());
-            } catch (error) {
-                if (!(error instanceof QuotaError)) throw error;
-                quota.outOfQuota(model, error);
-                console.warn("Gemini model out of quota, using the next one", { model });
-                failure = error;
-            }
-        }
-        throw failure;
-    }
+    const generateText = modelChain(options.apiKey, options.tutorModels, quota);
 
     const voices: Voice[] = [];
     if (options.cloudSpeech) {
@@ -332,6 +358,48 @@ export function tutorFromConfig(config: {
         speechModels: config.speechModels,
         cloudSpeech: account && { account, models: config.cloudSpeechModels },
     });
+}
+
+/**
+ * One English word, glossed into the learner's language.
+ *
+ * Its own quota tracker and model list, so a tutor turn that has exhausted a
+ * model does not decide what a translation costs, and the cheaper model a
+ * gloss needs can be configured separately.
+ */
+export function createGeminiTranslator(options: {
+    apiKey: string;
+    models: string[];
+    now?: () => number;
+}): Translator {
+    const quota = new QuotaTracker(options.now ?? Date.now);
+    const generateText = modelChain(options.apiKey, options.models, quota);
+
+    return {
+        async translate(request, timeoutMs): Promise<TranslationDraft> {
+            const json = jsonOutput(
+                await generateText(
+                    {
+                        systemInstruction: {
+                            parts: [{ text: translationInstruction(request.language) }],
+                        },
+                        contents: [{ role: "user", parts: [{ text: translationPrompt(request) }] }],
+                        generationConfig: jsonConfig(TRANSLATE_SCHEMA),
+                    },
+                    timeoutMs,
+                ),
+            );
+            const { translation, phraseText, phraseTranslation } = json;
+            if (typeof translation !== "string") {
+                throw new GoogleError("Gemini returned an unexpected shape");
+            }
+            const text = typeof phraseText === "string" ? phraseText.trim() : "";
+            const meaning = typeof phraseTranslation === "string" ? phraseTranslation.trim() : "";
+            // Two empty fields are how the schema says there is no phrase.
+            const phrase = text !== "" && meaning !== "" ? { text, translation: meaning } : null;
+            return { translation, phrase };
+        },
+    };
 }
 
 const SENTENCE_END = /(?<=[।.?!])\s+/;

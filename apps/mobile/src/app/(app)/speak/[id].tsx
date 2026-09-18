@@ -11,6 +11,7 @@ import { RecordBar } from "@/components/speaking/RecordBar";
 import { SpeakingIntro } from "@/components/speaking/SpeakingIntro";
 import { SpeakingSummary } from "@/components/speaking/SpeakingSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
+import { useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useLocale, useTranslations } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
 import { useLocalized } from "@/lib/lessons/localized";
@@ -105,6 +106,7 @@ function SpeakingFlow({
     const localized = useLocalized();
     const router = useRouter();
     const [locale] = useLocale();
+    const [firstLanguage] = useFirstLanguage();
     const insets = useSafeAreaInsets();
     const [chosen, setChosen] = useState<TutorLanguage | null>(null);
     // A talk left unfinished is carried on with, not offered as a choice: the
@@ -118,9 +120,16 @@ function SpeakingFlow({
     const [round, setRound] = useState(0);
     const [micBlocked, setMicBlocked] = useState(false);
 
-    // The app's language is the likeliest answer, so it starts selected, but only
-    // when the tutor can teach from it.
-    const language = chosen ?? languages.find((option) => option === locale) ?? null;
+    // The language the learner named as the one they know best comes first: they
+    // said so in so many words, and they may well be reading the app in English
+    // anyway. The app's language is the next best guess. Either only counts when
+    // the tutor can teach from it, and both are only a starting point: the list
+    // above is still there to be tapped.
+    const language =
+        chosen ??
+        languages.find((option) => option === firstLanguage) ??
+        languages.find((option) => option === locale) ??
+        null;
 
     const start = useCallback(async () => {
         if (!language) return;

@@ -36,11 +36,12 @@ The API also rate-limits authenticated requests. A mobile build contains no data
 
 ## Current data model
 
-There are three collections:
+There are four collections:
 
 - `users`: minimal profile data keyed by unique `clerkId`
 - `rate_limits`: short-lived per-user request counters with a TTL index
 - `progress`: one document per learner, keyed by unique `clerkId`, holding which lessons were finished, how many times, the best first-try score, and the speaking result. No answers, recordings or transcripts. See [LEARNING-FLOW.md](LEARNING-FLOW.md).
+- `translations`: cached word translations, keyed by a hash of the language, the word and the sentence the word was used in. The sentence itself is never stored, and neither is who asked for it. Entries expire after 90 days.
 
 There are no game, quiz, survey, audio, or chatbot collections.
 
@@ -52,6 +53,7 @@ The user profile stores only:
 - first and last name when enabled in Clerk
 - profile image URL
 - created/updated timestamps
+- the language the learner reads best, and when they chose it
 
 Passwords and session tokens are never stored in MongoDB.
 
@@ -94,6 +96,28 @@ Expo app ── recording + lesson context ──▶ POST /v1/tutor/turn
 - Tutor turns have their own limit of 12 a minute, on top of the general request limit.
 - `GEMINI_API_KEY` is optional. Without it the rest of the API runs and the tutor route answers 503.
 
+## First language and holding a word
+
+Every learner names the language they know best, and holding a finger on any English word in the app shows that word in it. The two are separate from the app's own language: a learner may run the app in English and still read Bengali in the bubble. The whole feature is specified in [FIRST-LANGUAGE.md](FIRST-LANGUAGE.md).
+
+```text
+Expo app ── word + the sentence it was in + language ──▶ POST /v1/translate
+                                                  │
+                                                  ├── cache: a hash of language, word and sentence
+                                                  │
+                                                  ├──▶ Gemini: what the word means as used there
+                                                  │
+                                                  └── script rule: the answer must be written in
+                                                      that language's own script ──▶ back to the app
+```
+
+- `PUT /v1/me/first-language` takes `{ language, updatedAt }` and keeps whichever of the stored and the sent choice is newer. The comparison is part of the update, so two phones saving at once cannot read the same old value and overwrite each other, and a learner whose profile has never synced still gets a record. A timestamp from a fast clock is clamped to the server's. `GET /v1/me` returns the choice, and the Clerk profile sync never clears it, because Clerk knows nothing about it.
+- **The word and the sentence are data, not instructions.** They are learner-visible text, so they reach the model as JSON, and the instructions tell it to translate them and never to obey anything written in them.
+- **The model's answer is checked before it is trusted**, the same principle as the tutor's word rule. A gloss must be short, one line, and written in the language's own script, which is checkable because every non-Latin first language has a script of its own. The word returned unchanged is how the model says it is a name, or already in that language. A phrase is offered only when it is a contiguous piece of the sentence that contains the word, and one that is not is dropped silently rather than failing the request.
+- **A cached translation cannot say who asked for it.** The sentence is hashed into the key and then thrown away, and the learner's id is never part of the record. Two learners holding the same word in the same lesson share one answer. A cache that cannot be read or written never fails the request; it only costs a model call.
+- Translations have their own limit of 30 a minute per learner, on top of the general request limit.
+- `GEMINI_TRANSLATE_MODEL` defaults to the tutor's model list. Without `GEMINI_API_KEY` the route answers 503 and the rest of the API still runs.
+
 ## Account deletion
 
 The Clerk user is the shared account. Therefore, deleting an account in mobile intentionally removes access to both the mobile app and website.
@@ -108,7 +132,7 @@ Mobile DELETE /v1/me
         └──▶ mobile API immediately tombstones its local profile
 ```
 
-The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. The deletion service also removes the learner's `progress` document, and refuses progress writes from an account that has a tombstone. The app removes its own copy from the phone. Future feature owners must extend the deletion service when they add new user-owned collections.
+The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. The deletion service also removes the learner's `progress` document and their first language, and refuses progress and first-language writes from an account that has a tombstone. The app removes its own copy from the phone. Future feature owners must extend the deletion service when they add new user-owned collections.
 
 Clerk events for people who have only used the website do not create records in the mobile database. `user.created` and `user.updated` synchronize only an existing mobile member; `user.deleted` cleans up only an existing mobile record.
 

@@ -17,6 +17,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
             .filter(Boolean);
         return items.length > 0 ? items : fallback;
     };
+    const tutorModels = list("GEMINI_TUTOR_MODEL", ["gemini-3.8-flash", "gemini-3.7-flash"]);
     const secretKey = required("CLERK_SECRET_KEY");
     const publishableKey = required("CLERK_PUBLISHABLE_KEY");
     if (
@@ -37,7 +38,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
         geminiApiKey: optional("GEMINI_API_KEY"),
         // Ordered lists. Google limits each model separately, even with billing on,
         // so when one is out of quota the next answers instead of the tutor stopping.
-        tutorModels: list("GEMINI_TUTOR_MODEL", ["gemini-3.8-flash", "gemini-3.7-flash"]),
+        tutorModels,
+        // Glossing one word is a far smaller job than a tutor turn, so this
+        // exists to point it at a cheaper model without touching the tutor.
+        translateModels: list("GEMINI_TRANSLATE_MODEL", tutorModels),
         speechModels: list("GEMINI_SPEECH_MODEL", [
             "gemini-3.1-flash-tts-preview",
             "gemini-2.5-flash-preview-tts",
