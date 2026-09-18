@@ -83,7 +83,11 @@
       "accountTitle": "Your LINK account",
       "accountBody": "Clerk keeps your sign-in details safe. The app keeps your account ID, email, username, name and photo link in its own database. It does not keep your password.",
       "sharedTitle": "One account, separate app data",
-      "sharedBody": "Your login and profile are the same as on the LINK website. What you do in the app is kept separately. The app does not keep your voice recordings or lesson results.",
+      "sharedBody": "Your login and profile are the same as on the LINK website. Data from this app is kept separately.",
+      "learningTitle": "Your learning data",
+      "learningBody": "The app keeps your first-language choice and lesson progress. The LINK Project does not keep exercise answers or voice recordings. An unfinished speaking practice can stay on this phone for one day. The server does not keep its transcript.",
+      "aiTitle": "Translation and speaking AI",
+      "aiBody": "When you hold an English word, the word and its sentence are sent to Google's Gemini AI for translation. In speaking practice, your voice is sent to Gemini so the tutor can hear you.",
       "deleteTitle": "Deleting your account",
       "deleteBody": "Deleting your account removes your login and starts removing your data in the app and on the website. The app keeps only a hidden account ID and the date, so old data cannot come back.",
       "contactHint": "Go to Contact us in Account to ask the LINK team about your data."

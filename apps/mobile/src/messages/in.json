@@ -83,7 +83,11 @@
       "accountTitle": "Akun LINK Anda",
       "accountBody": "Clerk menjaga data masuk Anda dengan aman. Aplikasi menyimpan ID akun, email, nama pengguna, nama, dan tautan foto Anda di basis datanya sendiri. Aplikasi tidak menyimpan kata sandi Anda.",
       "sharedTitle": "Satu akun, data aplikasi terpisah",
-      "sharedBody": "Login dan profil Anda sama dengan di situs web LINK. Apa yang Anda lakukan di aplikasi disimpan terpisah. Aplikasi tidak menyimpan rekaman suara atau hasil pelajaran Anda.",
+      "sharedBody": "Login dan profil Anda sama dengan di situs web LINK. Data dari aplikasi ini disimpan terpisah.",
+      "learningTitle": "Data belajar Anda",
+      "learningBody": "Aplikasi menyimpan pilihan bahasa pertama dan perkembangan pelajaran Anda. The LINK Project tidak menyimpan jawaban latihan atau rekaman suara. Latihan berbicara yang belum selesai dapat tersimpan di ponsel ini selama satu hari. Server tidak menyimpan transkripnya.",
+      "aiTitle": "AI untuk terjemahan dan latihan berbicara",
+      "aiBody": "Saat Anda menekan lama kata bahasa Inggris, kata dan kalimatnya dikirim ke Gemini AI milik Google untuk diterjemahkan. Dalam latihan berbicara, suara Anda dikirim ke Gemini agar tutor dapat mendengar Anda.",
       "deleteTitle": "Menghapus akun Anda",
       "deleteBody": "Menghapus akun akan menghapus login Anda dan mulai menghapus data Anda di aplikasi dan situs web. Aplikasi hanya menyimpan ID akun tersembunyi dan tanggalnya, agar data lama tidak bisa kembali.",
       "contactHint": "Buka Hubungi kami di Akun untuk bertanya kepada tim LINK tentang data Anda."
