@@ -33,7 +33,7 @@ jest.mock("@clerk/expo", () => ({
 }));
 
 /** An account string in whatever language the screen is showing. */
-const label = (key: string) => i18n.t(`mobile.account.${key}`);
+const label = (key: string, locale = "en") => i18n.t(`mobile.account.${key}`, { locale });
 
 beforeEach(async () => {
     resetFirstLanguageForTests();
@@ -44,8 +44,8 @@ it("shows the language the learner chose, and changes it in one tap", async () =
     await act(() => setFirstLanguage("bn"));
     render(<AccountScreen />);
 
-    const myLanguage = () => screen.getByLabelText(`${label("myLanguage")}, বাংলা`);
-    expect(screen.getByText(label("myLanguageHint"))).toBeTruthy();
+    const myLanguage = () => screen.getByLabelText(`${label("myLanguage", "bn")}, বাংলা`);
+    expect(screen.getByText(label("myLanguageHint", "bn"))).toBeTruthy();
 
     const user = userEvent.setup();
     await user.press(myLanguage());
@@ -55,20 +55,20 @@ it("shows the language the learner chose, and changes it in one tap", async () =
     expect(getFirstLanguage()).toBe("ta");
     // Answered, so the list folds away again and the row carries the answer.
     expect(screen.queryByLabelText("தமிழ், Tamil")).toBeNull();
-    expect(screen.getByLabelText(`${label("myLanguage")}, தமிழ்`)).toBeTruthy();
+    expect(screen.getByLabelText(`${label("myLanguage", "ta")}, தமிழ்`)).toBeTruthy();
 });
 
-it("keeps the app's language and the learner's language apart", async () => {
+it("uses the learner's language for Account, while lesson content remains separate", async () => {
     await act(() => setFirstLanguage("bn"));
     const user = userEvent.setup();
     render(<AccountScreen />);
 
-    await user.press(screen.getByLabelText(`${label("myLanguage")}, বাংলা`));
+    await user.press(screen.getByLabelText(`${label("myLanguage", "bn")}, বাংলা`));
     expect(screen.getByLabelText("తెలుగు, Telugu")).toBeTruthy();
 
     // Opening the app-language list closes the other one, rather than pushing
     // nineteen rows down the screen.
-    await user.press(screen.getByLabelText(`${label("appLanguage")}, English`));
+    await user.press(screen.getByLabelText(`${label("appLanguage", "bn")}, English`));
     expect(screen.queryByLabelText("తెలుగు, Telugu")).toBeNull();
     expect(screen.getByLabelText("Filipino")).toBeTruthy();
 
@@ -76,4 +76,12 @@ it("keeps the app's language and the learner's language apart", async () => {
     await user.press(screen.getByLabelText("Filipino"));
     expect(i18n.locale).toBe("fi");
     expect(getFirstLanguage()).toBe("bn");
+});
+
+it("uses the onboarding language for Account even when it has no full app catalogue", async () => {
+    await act(() => setFirstLanguage("zh"));
+    render(<AccountScreen />);
+
+    expect(screen.getByText("账户")).toBeTruthy();
+    expect(screen.getByText("长按任何英文单词，即可用此语言查看它。")).toBeTruthy();
 });

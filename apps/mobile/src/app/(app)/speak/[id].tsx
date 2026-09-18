@@ -11,8 +11,9 @@ import { RecordBar } from "@/components/speaking/RecordBar";
 import { SpeakingIntro } from "@/components/speaking/SpeakingIntro";
 import { SpeakingSummary } from "@/components/speaking/SpeakingSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
-import { useLocale, useTranslations } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
 import { useLocalized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
@@ -48,7 +49,7 @@ import { useScreenReader } from "@/lib/useScreenReader";
  * taught. The exercises taught what the words mean; this is where they get said.
  */
 export default function SpeakScreen() {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
     const { id, words, phrases } = useLocalSearchParams<{
         id: string;
         words?: string;
@@ -102,7 +103,7 @@ function SpeakingFlow({
     languages: TutorLanguage[];
     screenReader: boolean;
 }) {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
     const localized = useLocalized();
     const router = useRouter();
     const [locale] = useLocale();
@@ -173,7 +174,6 @@ function SpeakingFlow({
                 <SpeakingIntro
                     title={localized(lesson.title)}
                     targets={preview?.goals.map((goal) => goal.target) ?? []}
-                    languages={languages}
                     language={language}
                     onLanguageChange={setChosen}
                     micBlocked={micBlocked}
@@ -207,7 +207,7 @@ function Conversation({
     screenReader: boolean;
     onAgain: () => void;
 }) {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
     const localized = useLocalized();
     const router = useRouter();
     const insets = useSafeAreaInsets();

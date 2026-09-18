@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { PictureTile } from "@/components/lessons/PictureTile";
 import { SpeakerButton } from "@/components/lessons/SpeakerButton";
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { picturableVocab, vocabByIds } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
@@ -34,7 +34,7 @@ export function SelectPicture({
     result,
     locked,
 }: ExerciseProps<SelectPictureExercise>) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const { speak, speaking, hasPlayed } = useSpeech();
 
     const [subject] = vocabByIds(lesson, [exercise.vocabId]);

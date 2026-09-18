@@ -61,14 +61,15 @@ export type Phrase = {
  */
 export type SentenceGradingRule =
     /**
-     * Lenient: correct when all `keywords` appear, ignoring order, articles,
-     * filler words and small spelling slips. This is the rule that lets
-     * "I want go Jurong" count as understood, and is the default for this app.
+     * Lenient: correct when all `keywords` appear and every other content word
+     * belongs in the model sentence, ignoring order, articles, filler words and
+     * small spelling slips. This lets "I want top up ten dollar" count without
+     * allowing an unrelated decoy such as "exit" into the answer.
      */
     | {
           mode: "keywords";
           keywords: string[];
-          /** Extra words never required. */ ignore?: string[];
+          /** Extra filler words that are explicitly allowed. */ ignore?: string[];
       }
     /**
      * Strict: the same words in the same order, ignoring punctuation, case and

@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { Button, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { RecorderStatus } from "@/lib/speaking/recorder";
 import { colors, radius, spacing } from "@/lib/theme";
 
@@ -33,7 +33,7 @@ function clock(ms: number): string {
 
 /** The microphone controls: record, then cancel, or listen back, delete or send. */
 export function RecordBar(props: Props) {
-    const t = useTranslations("mobile.speaking");
+    const t = useFirstLanguageInterface("speaking");
     const { status, busyLabel } = props;
     const busy = busyLabel !== null;
     const caption = busyLabel ?? props.notice;

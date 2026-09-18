@@ -12,6 +12,7 @@ import { AccessibilityInfo, AppState } from "react-native";
 
 import SpeakScreen from "@/app/(app)/speak/[id]";
 import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
+import { FIRST_LANGUAGE_LABELS } from "@/lib/firstLanguage/languages";
 import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import i18n, { setLocale } from "@/lib/i18n";
 
@@ -150,6 +151,7 @@ describe("speaking practice", () => {
         expect((await screen.findByLabelText("Start")).props.accessibilityState?.disabled).toBe(
             true,
         );
+        await user.press(screen.getByText("Choose your language first"));
         await user.press(screen.getByText("தமிழ்"));
         await user.press(screen.getByText("Start"));
 
@@ -171,19 +173,47 @@ describe("speaking practice", () => {
         const user = userEvent.setup();
         render(<SpeakScreen />);
 
-        await user.press(await screen.findByText("Start"));
+        expect(await screen.findByText("பேசிப் பயிற்சி")).toBeTruthy();
+        expect(
+            screen.getByText(
+                "ஆசிரியர் உங்களைக் கேட்க, உங்கள் குரல் Google-இன் Gemini AI-க்கு அனுப்பப்படும். தி லிங்க் ப்ராஜெக்ட் உங்கள் பதிவுகளை வைத்திருக்காது.",
+            ),
+        ).toBeTruthy();
+        await user.press(await screen.findByText("தொடங்கு"));
         await screen.findByText(OPENING.reply);
         expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("ta");
     });
 
-    it("falls back to the app's language when the tutor cannot teach from theirs", async () => {
-        // Thai is a first language but not one the tutor teaches from.
+    it("opens in any onboarding language the learner chose", async () => {
         await act(() => setFirstLanguage("th"));
         withScreenReader(false);
         tutorTurn.mockResolvedValueOnce(OPENING);
-        await startConversation();
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+        expect(await screen.findByText("ฝึกพูด")).toBeTruthy();
+        expect(
+            screen.getByText(
+                "เสียงของคุณจะถูกส่งไปยัง Gemini AI ของ Google เพื่อให้ผู้สอนได้ยินคุณ The LINK Project จะไม่เก็บเสียงบันทึกของคุณ",
+            ),
+        ).toBeTruthy();
+        await user.press(await screen.findByText("เริ่ม"));
+        await screen.findByText(OPENING.reply);
 
-        expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("bn");
+        expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("th");
+    });
+
+    it("keeps every onboarding language in a collapsed dropdown", async () => {
+        await act(() => setFirstLanguage("hi"));
+        withScreenReader(false);
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+
+        expect(await screen.findByText("हिन्दी")).toBeTruthy();
+        expect(screen.queryByText("ไทย")).toBeNull();
+        await user.press(screen.getByText("हिन्दी"));
+        for (const ownName of Object.values(FIRST_LANGUAGE_LABELS)) {
+            expect(screen.getAllByText(ownName).length).toBeGreaterThan(0);
+        }
     });
 
     it("sends nothing until Send, and lets the learner delete a recording first", async () => {

@@ -16,12 +16,12 @@ function englishWords(text: string): string[] {
 }
 
 describe("speaking practice context", () => {
-    it("asks only for sentences and words the run taught", () => {
+    it("asks only for goals the run taught and allows every word from the lesson intro", () => {
         const run = { vocabIds: ["v-tap-out"], phraseIds: ["p-top-up-ten"] };
         const context = buildSpeakingContext(mrtBasics, run, "bn")!;
 
         expect(context.goals.map((goal) => goal.id)).toEqual(["say-top-up", "say-tap-out"]);
-        expect(context.words).toEqual(["tap out"]);
+        expect(context.words).toEqual(mrtBasics.vocab.map((item) => item.term));
         expect(context.phrases).toEqual(["I want to top up ten dollars."]);
     });
 

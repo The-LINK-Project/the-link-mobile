@@ -10,6 +10,7 @@
 import { act, render, screen, userEvent } from "@testing-library/react-native";
 
 import ChooseLanguageScreen from "@/app/(app)/choose-language";
+import { FIRST_LANGUAGE_ONBOARDING_COPY } from "@/lib/firstLanguage/languages";
 import { getFirstLanguage, resetFirstLanguageForTests } from "@/lib/firstLanguage/store";
 import i18n, { setLocale } from "@/lib/i18n";
 
@@ -46,7 +47,10 @@ it("waits for an answer before it lets the learner on", async () => {
     expect(getFirstLanguage()).toBeNull();
 
     await user.press(screen.getByLabelText("বাংলা, Bengali"));
-    expect(screen.getByLabelText(label("continue")).props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.title)).toBeTruthy();
+    expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.body)).toBeTruthy();
+    expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.changeLater)).toBeTruthy();
+    expect(screen.getByLabelText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.continue).props.accessibilityState.disabled).toBe(false);
 });
 
 it("saves the answer on the phone, where the bubble can read it", async () => {
@@ -54,7 +58,7 @@ it("saves the answer on the phone, where the bubble can read it", async () => {
     render(<ChooseLanguageScreen />);
 
     await user.press(screen.getByLabelText("മലയാളം, Malayalam"));
-    await user.press(screen.getByLabelText(label("continue")));
+    await user.press(screen.getByLabelText(FIRST_LANGUAGE_ONBOARDING_COPY.ml.continue));
 
     expect(getFirstLanguage()).toBe("ml");
 });

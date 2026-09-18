@@ -1,12 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { colors } from "@/lib/theme";
 
 export default function TabLayout() {
-    const t = useTranslations("mobile.foundation");
-    const a = useTranslations("mobile.account");
+    const t = useFirstLanguageInterface("foundation");
+    const a = useFirstLanguageInterface("account");
 
     return (
         <Tabs

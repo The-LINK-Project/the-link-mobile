@@ -3,9 +3,9 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { LessonIcon } from "@/lib/lessons/icons";
-import { useLocalized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
 import type { LessonStatus } from "@/lib/progress/model";
 import { colors, radius, shadow, spacing, TOUCH_TARGET } from "@/lib/theme";
@@ -43,8 +43,8 @@ type Props = {
  * the clinic lesson today, whatever order the list is in.
  */
 export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }: Props) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const lessonCopy = useHomeLessonCopy();
     const router = useRouter();
     const finished = status.kind === "learned" || status.kind === "spoken";
 
@@ -63,10 +63,10 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
         <View style={[styles.card, next && styles.cardNext]}>
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={[localized(lesson.title), statusLabel]
+                accessibilityLabel={[lessonCopy(lesson.title), statusLabel]
                     .filter(Boolean)
                     .join(". ")}
-                accessibilityHint={localized(lesson.goal)}
+                accessibilityHint={lessonCopy(lesson.goal)}
                 onPress={() => router.push(`/lesson/${lesson.id}`)}
                 style={({ pressed }) => [styles.main, pressed && styles.pressed]}
             >
@@ -84,8 +84,10 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                 </View>
 
                 <View style={styles.body}>
-                    <Text variant="subheading">{localized(lesson.title)}</Text>
-                    <Text variant="caption">{localized(lesson.goal)}</Text>
+                    <Text variant="subheading">{lessonCopy(lesson.title)}</Text>
+                    <Text variant="caption" style={styles.description}>
+                        {lessonCopy(lesson.goal)}
+                    </Text>
 
                     {status.kind === "started" ? (
                         <View style={styles.started}>
@@ -131,7 +133,7 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
             {onSpeak ? (
                 <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${t("summarySpeak")}. ${localized(lesson.title)}`}
+                    accessibilityLabel={`${t("summarySpeak")}. ${lessonCopy(lesson.title)}`}
                     onPress={onSpeak}
                     style={({ pressed }) => [styles.speak, pressed && styles.pressed]}
                 >
@@ -184,6 +186,7 @@ const styles = StyleSheet.create({
         borderColor: colors.surface,
     },
     body: { flex: 1, gap: spacing.xs },
+    description: { flexShrink: 1 },
     meta: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
     started: { gap: spacing.xs, marginTop: spacing.xs },
     track: {

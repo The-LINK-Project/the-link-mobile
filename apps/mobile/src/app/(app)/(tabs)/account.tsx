@@ -6,14 +6,15 @@ import { StyleSheet, View } from "react-native";
 
 import { FirstLanguagePicker } from "@/components/language/FirstLanguagePicker";
 import { Button, Card, ListRow, Screen, Text } from "@/components/ui";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { FIRST_LANGUAGE_LABELS } from "@/lib/firstLanguage/languages";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
-import { LOCALES, LOCALE_LABELS, useLocale, useTranslations } from "@/lib/i18n";
+import { LOCALES, LOCALE_LABELS, useLocale } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
 
 export default function AccountScreen() {
-    const t = useTranslations("mobile.account");
-    const f = useTranslations("mobile.foundation");
+    const t = useFirstLanguageInterface("account");
+    const f = useFirstLanguageInterface("foundation");
     const router = useRouter();
     const { user } = useUser();
     const { signOut } = useClerk();

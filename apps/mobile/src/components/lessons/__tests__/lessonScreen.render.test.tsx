@@ -13,6 +13,7 @@ import * as Speech from "expo-speech";
 import { AccessibilityInfo } from "react-native";
 
 import LessonScreen from "@/app/(app)/lesson/[id]";
+import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import { picturableVocab } from "@/lib/lessons/lookup";
@@ -47,6 +48,7 @@ function withScreenReader(enabled: boolean) {
 }
 
 beforeEach(async () => {
+    resetFirstLanguageForTests();
     await act(() => setLocale("en"));
 });
 
@@ -92,6 +94,30 @@ describe("opening a lesson", () => {
             expect(screen.getByText(item.meaning.en)).toBeTruthy();
         }
         expect(screen.queryByText("Check")).toBeNull();
+    });
+
+    it("uses the first language for directions and meanings but keeps lesson content English", async () => {
+        withScreenReader(false);
+        await act(() => setFirstLanguage("bn"));
+        const user = userEvent.setup();
+        render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByText("এই পাঠের শব্দ")).toBeTruthy());
+        expect(
+            screen.queryByText("সঠিক প্ল্যাটফর্ম খোঁজা, কার্ডে টাকা ভরা, আর ঠিক স্টেশনে নামা।"),
+        ).toBeNull();
+        expect(
+            screen.getByText(
+                "Find the right platform, top up your card, and get off at the right stop.",
+            ),
+        ).toBeTruthy();
+        expect(screen.getByText("platform")).toBeTruthy();
+        expect(screen.getByText("যেখানে ট্রেনের জন্য অপেক্ষা করেন")).toBeTruthy();
+        expect(screen.getByText("শব্দে চাপ দিলে শুনতে পাবেন। তৈরি হলে শুরু করুন।")).toBeTruthy();
+
+        await user.press(screen.getByText("শুরু করুন"));
+        await waitFor(() => expect(screen.getByText("এটি কোনটি?")).toBeTruthy());
+        expect(screen.getByText("platform")).toBeTruthy();
     });
 
     it("says a word aloud when it is tapped", async () => {

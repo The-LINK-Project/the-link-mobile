@@ -22,7 +22,10 @@
 
 import { useCallback, useMemo, useReducer } from "react";
 
-import { getLocale, LOCALES, useLocale, type Locale } from "@/lib/i18n";
+import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import { FIRST_LANGUAGES } from "@/lib/firstLanguage/languages";
+import { getFirstLanguage, useFirstLanguage } from "@/lib/firstLanguage/store";
+import { getLocale, LOCALES, type Locale } from "@/lib/i18n";
 
 import { gradeAnswer } from "./grading";
 import { hasTranslation } from "./localized";
@@ -44,7 +47,7 @@ export type SessionState = {
      * language mid-lesson changes the words on screen, but must not rebuild the
      * queue under the learner.
      */
-    locale: Locale;
+    locale: Locale | FirstLanguage;
     /** Whether a screen reader was running when the run was built. */
     screenReader: boolean;
     /** Exercise ids in the order they will be shown. Grows when a mistake is re-queued. */
@@ -121,9 +124,13 @@ export function restoreSession(
 ): SessionState | null {
     if (saved.fingerprint !== fingerprint(lesson)) return null;
     if (saved.screenReader !== screenReader) return null;
-    if (!(LOCALES as readonly string[]).includes(saved.locale)) return null;
+    if (
+        !(LOCALES as readonly string[]).includes(saved.locale) &&
+        !(FIRST_LANGUAGES as readonly string[]).includes(saved.locale)
+    )
+        return null;
     if (saved.position < 0 || saved.position >= saved.queue.length) return null;
-    const locale = saved.locale as Locale;
+    const locale = saved.locale as Locale | FirstLanguage;
     const known = new Set(
         lesson.exercises
             .filter((exercise) => appliesToLearner(exercise, locale, screenReader))
@@ -161,7 +168,7 @@ type SessionAction =
  */
 export function appliesToLearner(
     exercise: Exercise,
-    locale: Locale,
+    locale: Locale | FirstLanguage,
     screenReader = false,
 ): boolean {
     // A picture exercise cannot be done without seeing the pictures, and the
@@ -185,7 +192,11 @@ export function appliesToLearner(
  * becomes worth building once lessons are generated rather than hand-written,
  * and this is deliberately the cheap version until then.
  */
-export function buildQueue(exercises: Exercise[], locale: Locale, screenReader = false): string[] {
+export function buildQueue(
+    exercises: Exercise[],
+    locale: Locale | FirstLanguage,
+    screenReader = false,
+): string[] {
     const remaining = exercises.filter((exercise) =>
         appliesToLearner(exercise, locale, screenReader),
     );
@@ -204,7 +215,7 @@ export function buildQueue(exercises: Exercise[], locale: Locale, screenReader =
 
 export function initSession(
     lesson: Lesson,
-    locale: Locale = getLocale(),
+    locale: Locale | FirstLanguage = getFirstLanguage() ?? getLocale(),
     screenReader = false,
 ): SessionState {
     const queue = buildQueue(lesson.exercises, locale, screenReader);
@@ -352,7 +363,8 @@ export function useLessonSession(
     /** A run saved earlier, to continue instead of starting again. */
     saved?: RunSnapshot,
 ) {
-    const [locale] = useLocale();
+    const [firstLanguage] = useFirstLanguage();
+    const locale = firstLanguage ?? getLocale();
     // Initialised once; a later language change does not rebuild the queue.
     const [state, dispatch] = useReducer(
         sessionReducer,

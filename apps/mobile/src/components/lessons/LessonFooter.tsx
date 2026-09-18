@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Button, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { GradeResult } from "@/lib/lessons/types";
 import { colors, spacing } from "@/lib/theme";
 
@@ -39,7 +39,7 @@ export function LessonFooter({
     isLastStep,
     hideSubmit,
 }: Props) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const graded = phase === "graded" && result;
 
     // The reinforcement triad is sound, animation and haptic fired on the moment

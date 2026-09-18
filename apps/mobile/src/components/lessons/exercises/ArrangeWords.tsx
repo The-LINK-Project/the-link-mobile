@@ -3,8 +3,8 @@ import { StyleSheet, View } from "react-native";
 
 import { WordBank } from "@/components/lessons/WordBank";
 import { Card, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { phraseById } from "@/lib/lessons/lookup";
 import { spacing } from "@/lib/theme";
 import { seededShuffle } from "@/lib/lessons/shuffle";
@@ -34,8 +34,8 @@ export function ArrangeWords({
     result,
     locked,
 }: ExerciseProps<ArrangeWordsExercise>) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const localized = useFirstLanguageLocalized();
     const phrase = phraseById(lesson, exercise.phraseId);
     const tokens = useMemo(
         () => seededShuffle(exercise.tokens, exercise.id),

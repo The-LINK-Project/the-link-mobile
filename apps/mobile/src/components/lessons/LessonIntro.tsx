@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { LessonHero, VocabularyVisual } from "@/components/lessons/LessonVisual";
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { localized, useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { useSpeech } from "@/lib/lessons/speech";
 import type { Lesson, VocabItem } from "@/lib/lessons/types";
 import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
@@ -24,8 +24,8 @@ import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
  * learner has never seen is not a fair one.
  */
 export function LessonIntro({ lesson }: { lesson: Lesson }) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const native = useFirstLanguageLocalized();
     const { speak, speaking } = useSpeech();
     const [current, setCurrent] = useState<string | null>(null);
 
@@ -39,11 +39,11 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
     return (
         <View style={styles.container}>
             <View style={styles.hero}>
-                <Text variant="label">{localized(lesson.title)}</Text>
+                <Text variant="label">{localized(lesson.title, "en")}</Text>
                 <Text variant="title">{t("introTitle")}</Text>
                 <LessonHero lesson={lesson} />
                 <Text variant="bodyStrong" color={colors.primaryDark}>
-                    {localized(lesson.goal)}
+                    {localized(lesson.goal, "en")}
                 </Text>
                 <Text variant="caption">{t("introBody")}</Text>
             </View>
@@ -55,7 +55,7 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
                         <Pressable
                             key={item.id}
                             accessibilityRole="button"
-                            accessibilityLabel={`${item.term}. ${localized(item.meaning)}`}
+                            accessibilityLabel={`${item.term}. ${native(item.meaning)}`}
                             accessibilityHint={t("tapToListen")}
                             onPress={() => say(item)}
                             style={({ pressed }) => [styles.word, pressed && styles.pressed]}
@@ -63,7 +63,9 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
                             {item.picture ? <VocabularyVisual picture={item.picture} /> : null}
                             <View style={styles.wordText}>
                                 <Text variant="subheading">{item.term}</Text>
-                                <Text variant="caption">{localized(item.meaning)}</Text>
+                                <Text variant="caption" style={styles.meaning}>
+                                    {native(item.meaning)}
+                                </Text>
                             </View>
                             <View style={[styles.speaker, playing && styles.speakerOn]}>
                                 <Ionicons
@@ -107,4 +109,5 @@ const styles = StyleSheet.create({
     },
     speakerOn: { backgroundColor: colors.primaryDark },
     wordText: { flex: 1, gap: 2 },
+    meaning: { flexShrink: 1 },
 });

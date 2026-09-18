@@ -1,4 +1,6 @@
 import { useLocale, type Locale } from "@/lib/i18n";
+import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import { useFirstLanguage } from "@/lib/firstLanguage/store";
 
 import type { LearnerLanguage, Localized } from "./types";
 
@@ -20,7 +22,10 @@ function isTranslated(language: string): language is Exclude<LearnerLanguage, "e
  * Pure, and takes the locale explicitly. Components should use `useLocalized`
  * instead; this form is for grading, tests and anything outside React.
  */
-export function localized(value: Localized, language: Locale | LearnerLanguage): string {
+export function localized(
+    value: Localized,
+    language: Locale | LearnerLanguage | FirstLanguage,
+): string {
     if (isTranslated(language)) {
         const translated = value[language];
         if (translated) return translated;
@@ -44,6 +49,18 @@ export function useLocalized() {
 }
 
 /**
+ * Resolve explanations and directions in the language the learner said they
+ * know best. This is deliberately separate from the app locale: English is
+ * the subject of the lesson, while the first language is what explains it.
+ */
+export function useFirstLanguageLocalized() {
+    const [firstLanguage] = useFirstLanguage();
+    const [locale] = useLocale();
+    const language = firstLanguage ?? locale;
+    return (value: Localized) => localized(value, language);
+}
+
+/**
  * Is this content actually written in the learner's language?
  *
  * Distinct from `localized`, which always returns something: for a language
@@ -55,7 +72,10 @@ export function useLocalized() {
  * The supported set is narrower than the app's locale list, and is listed here
  * rather than derived, so adding a language is a deliberate edit in one place.
  */
-export function hasTranslation(value: Localized, language: Locale | LearnerLanguage): boolean {
+export function hasTranslation(
+    value: Localized,
+    language: Locale | LearnerLanguage | FirstLanguage,
+): boolean {
     // English is the fallback, so it is never a translation of itself.
     return isTranslated(language) && Boolean(value[language]);
 }

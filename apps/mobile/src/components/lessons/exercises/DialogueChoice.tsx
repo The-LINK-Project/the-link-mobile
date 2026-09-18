@@ -4,8 +4,8 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { Tile } from "@/components/lessons/Tile";
 import { Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { dialogueReplies } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
@@ -31,8 +31,8 @@ export function DialogueChoice({
     result,
     locked,
 }: ExerciseProps<DialogueChoiceExercise>) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const localized = useFirstLanguageLocalized();
     const { speak, speaking } = useSpeech();
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;
     const replies = useMemo(

@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { colors, radius } from "@/lib/theme";
 
 /**
@@ -11,7 +11,7 @@ import { colors, radius } from "@/lib/theme";
  * slows progress instead of undoing it.
  */
 export function LessonProgress({ value }: { value: number }) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const clamped = Math.max(0, Math.min(1, value));
 
     return (

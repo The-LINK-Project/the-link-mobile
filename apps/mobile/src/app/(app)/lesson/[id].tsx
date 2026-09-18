@@ -11,10 +11,10 @@ import { LessonIntro } from "@/components/lessons/LessonIntro";
 import { LessonProgress } from "@/components/lessons/LessonProgress";
 import { LessonSummary, LessonSummaryActions } from "@/components/lessons/LessonSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { getLesson } from "@/lib/lessons/data";
 import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { restoreSession, snapshotOf, useLessonSession } from "@/lib/lessons/session";
 import type { SavedRun } from "@/lib/progress/model";
 import { completeLesson, getProgressData, saveRun, setResume } from "@/lib/progress/store";
@@ -66,7 +66,7 @@ export default function LessonScreen() {
  * started goes straight to where they were: they have met the words already.
  */
 function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
-    const t = useTranslations("mobile.lessons");
+    const t = useFirstLanguageInterface("lessons");
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const lesson = getLesson(lessonId)!;
@@ -116,8 +116,8 @@ function LessonRunner({
     screenReader: boolean;
     saved?: SavedRun;
 }) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const localized = useFirstLanguageLocalized();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     // Non-null: the parent only renders this once the lesson has resolved.

@@ -1,4 +1,10 @@
-import { gradeAnswer, meaningfulWords, missingKeywords, normalize } from "../grading";
+import {
+    gradeAnswer,
+    meaningfulWords,
+    missingKeywords,
+    normalize,
+    unexpectedWords,
+} from "../grading";
 import { mrtBasics } from "../data/mrt-basics";
 import type {
     ArrangeWordsExercise,
@@ -9,6 +15,7 @@ import type {
     MatchPairsExercise,
     PictureToWordExercise,
     SelectPictureExercise,
+    TranslateWordBankExercise,
 } from "../types";
 
 const arrange = mrtBasics.exercises.find(
@@ -25,6 +32,9 @@ const picture = mrtBasics.exercises.find(
 )!;
 const pairs = mrtBasics.exercises.find(
     (exercise): exercise is MatchPairsExercise => exercise.type === "matchPairs",
+)!;
+const translate = mrtBasics.exercises.find(
+    (exercise): exercise is TranslateWordBankExercise => exercise.type === "translateWordBank",
 )!;
 
 describe("normalize", () => {
@@ -76,6 +86,23 @@ describe("missingKeywords", () => {
     });
 });
 
+describe("unexpectedWords", () => {
+    it("finds a selected decoy that is not in the model answer", () => {
+        expect(
+            unexpectedWords(
+                "Which platform for exit Jurong East",
+                "Which platform for Jurong East?",
+            ),
+        ).toEqual(["exit"]);
+    });
+
+    it("allows omitted grammar, reordered words and polite filler", () => {
+        expect(
+            unexpectedWords("please dollars ten top up want", "I want to top up ten dollars."),
+        ).toEqual([]);
+    });
+});
+
 describe("gradeAnswer", () => {
     it("accepts jumbled but understandable word order", () => {
         const result = gradeAnswer(mrtBasics, arrange, {
@@ -106,12 +133,30 @@ describe("gradeAnswer", () => {
         expect(result.missing).toEqual(["top up", "ten"]);
     });
 
-    it("ignores decoy tiles that do not change the meaning", () => {
+    it("rejects an extra content word even when all keywords are present", () => {
         const result = gradeAnswer(mrtBasics, arrange, {
             kind: "tokens",
             tokens: ["I", "want", "to", "top up", "ten", "dollars", "tomorrow"],
         });
+        expect(result.correct).toBe(false);
+    });
+
+    it("rejects the exact MRT answer shown with the exit decoy selected", () => {
+        const result = gradeAnswer(mrtBasics, translate, {
+            kind: "tokens",
+            tokens: ["Which", "platform", "for", "exit", "Jurong East"],
+        });
+        expect(result.correct).toBe(false);
+        expect(result.modelAnswer).toBe("Which platform for Jurong East?");
+    });
+
+    it("still accepts harmless polite filler", () => {
+        const result = gradeAnswer(mrtBasics, translate, {
+            kind: "tokens",
+            tokens: ["Which", "platform", "for", "Jurong East", "please"],
+        });
         expect(result.correct).toBe(true);
+        expect(result.accepted).toBe(true);
     });
 
     it("grades single-choice exercises against the recorded answer", () => {

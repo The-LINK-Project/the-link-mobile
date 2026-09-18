@@ -3,8 +3,8 @@ import { StyleSheet, View } from "react-native";
 
 import { WordBank } from "@/components/lessons/WordBank";
 import { Card, Text } from "@/components/ui";
-import { useTranslations } from "@/lib/i18n";
-import { useLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { TranslateWordBankExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
@@ -16,7 +16,8 @@ import { tokenIndices, type ExerciseProps } from "./shared";
  *
  * This is the hardest thing in the lesson: full production with no English on
  * screen to copy from. Answered with tiles rather than a keyboard, and graded
- * on keywords so word order and articles do not decide the outcome.
+ * on keywords so word order and articles do not decide the outcome while
+ * unrelated decoy tiles are still rejected.
  */
 export function TranslateWordBank({
     exercise,
@@ -25,8 +26,8 @@ export function TranslateWordBank({
     result,
     locked,
 }: ExerciseProps<TranslateWordBankExercise>) {
-    const t = useTranslations("mobile.lessons");
-    const localized = useLocalized();
+    const t = useFirstLanguageInterface("lessons");
+    const localized = useFirstLanguageLocalized();
     const tokens = useMemo(
         () => seededShuffle(exercise.tokens, exercise.id),
         [exercise.id, exercise.tokens],
