@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { LessonHero, VocabularyVisual } from "@/components/lessons/LessonVisual";
 import { Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
 import { useLocalized } from "@/lib/lessons/localized";
@@ -40,6 +41,10 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
             <View style={styles.hero}>
                 <Text variant="label">{localized(lesson.title)}</Text>
                 <Text variant="title">{t("introTitle")}</Text>
+                <LessonHero lesson={lesson} />
+                <Text variant="bodyStrong" color={colors.primaryDark}>
+                    {localized(lesson.goal)}
+                </Text>
                 <Text variant="caption">{t("introBody")}</Text>
             </View>
 
@@ -55,16 +60,17 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
                             onPress={() => say(item)}
                             style={({ pressed }) => [styles.word, pressed && styles.pressed]}
                         >
+                            {item.picture ? <VocabularyVisual picture={item.picture} /> : null}
+                            <View style={styles.wordText}>
+                                <Text variant="subheading">{item.term}</Text>
+                                <Text variant="caption">{localized(item.meaning)}</Text>
+                            </View>
                             <View style={[styles.speaker, playing && styles.speakerOn]}>
                                 <Ionicons
                                     name={playing ? "volume-high" : "volume-medium-outline"}
                                     size={24}
                                     color={playing ? colors.white : colors.primaryDark}
                                 />
-                            </View>
-                            <View style={styles.wordText}>
-                                <Text variant="subheading">{item.term}</Text>
-                                <Text variant="caption">{localized(item.meaning)}</Text>
                             </View>
                         </Pressable>
                     );
@@ -76,13 +82,13 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
 
 const styles = StyleSheet.create({
     container: { gap: spacing.xl },
-    hero: { gap: spacing.xs },
-    words: { gap: spacing.sm },
+    hero: { gap: spacing.md },
+    words: { width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.sm },
     word: {
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.md,
-        minHeight: TOUCH_TARGET + spacing.lg,
+        minHeight: 92,
         padding: spacing.md,
         borderRadius: radius.lg,
         borderWidth: 1,
@@ -93,6 +99,7 @@ const styles = StyleSheet.create({
     speaker: {
         width: TOUCH_TARGET,
         height: TOUCH_TARGET,
+        flexShrink: 0,
         borderRadius: radius.full,
         alignItems: "center",
         justifyContent: "center",

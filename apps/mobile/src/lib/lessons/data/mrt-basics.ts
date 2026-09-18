@@ -118,7 +118,7 @@ export const mrtBasics: Lesson = {
                 ta: "பயணத்திற்குச் செலுத்தும் பணம்",
                 hi: "सफ़र के लिए जो पैसे देते हैं",
             },
-            picture: "money",
+            picture: "mrtFare",
             reviewed: false,
         },
         {
