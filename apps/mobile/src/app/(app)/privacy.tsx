@@ -5,7 +5,7 @@ import { Screen, Text } from "@/components/ui";
 import { useTranslations } from "@/lib/i18n";
 import { spacing } from "@/lib/theme";
 
-const SECTIONS = ["account", "shared", "delete"] as const;
+const SECTIONS = ["account", "shared", "learning", "ai", "delete"] as const;
 
 export default function PrivacyScreen() {
     const t = useTranslations("mobile.privacy");

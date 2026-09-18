@@ -30,6 +30,16 @@ test("Hindi is an app language, since the tutor already teaches from it", async 
     expect(i18n.t("mobile.lessons.check")).toBe("जाँचें");
 });
 
+test("privacy copy names the learning data kept and the AI data sent", () => {
+    const privacy = en.mobile.privacy;
+
+    expect(privacy.learningBody).toContain("first-language choice");
+    expect(privacy.learningBody).toContain("lesson progress");
+    expect(privacy.learningBody).toContain("does not keep exercise answers");
+    expect(privacy.aiBody).toContain("word and its sentence");
+    expect(privacy.aiBody).toContain("Gemini");
+});
+
 test.each(LOCALES.filter((locale) => locale !== "en"))(
     "%s translates every string a learner meets in a lesson or speaking practice",
     (locale) => {

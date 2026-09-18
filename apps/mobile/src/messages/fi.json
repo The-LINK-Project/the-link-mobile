@@ -83,7 +83,11 @@
       "accountTitle": "Ang iyong LINK account",
       "accountBody": "Iniingatan ng Clerk ang iyong sign-in details. Itinatago ng app ang iyong account ID, email, username, pangalan, at link ng larawan sa sarili nitong database. Hindi nito itinatago ang iyong password.",
       "sharedTitle": "Isang account, hiwalay na data ng app",
-      "sharedBody": "Pareho ang iyong login at profile sa LINK website. Hiwalay na itinatago ang ginagawa mo sa app. Hindi itinatago ng app ang iyong voice recording o resulta ng aralin.",
+      "sharedBody": "Pareho ang iyong login at profile sa LINK website. Hiwalay na itinatago ang data mula sa app na ito.",
+      "learningTitle": "Ang iyong learning data",
+      "learningBody": "Itinatago ng app ang pinili mong unang wika at ang iyong progreso sa mga aralin. Hindi itinatago ng The LINK Project ang mga sagot sa ehersisyo o voice recording. Maaaring manatili sa teleponong ito nang isang araw ang hindi natapos na speaking practice. Hindi itinatago ng server ang transcript nito.",
+      "aiTitle": "AI para sa pagsasalin at pagsasalita",
+      "aiBody": "Kapag pinindot mo nang matagal ang isang salitang Ingles, ipinapadala ang salita at ang pangungusap nito sa Gemini AI ng Google para isalin. Sa speaking practice, ipinapadala ang iyong boses sa Gemini para marinig ka ng tutor.",
       "deleteTitle": "Pagbura ng iyong account",
       "deleteBody": "Ang pagbura ng account ay nagtatanggal ng iyong login at nagsisimulang magbura ng iyong data sa app at sa website. Isang nakatagong account ID at petsa lang ang itinatago ng app, para hindi na bumalik ang lumang data.",
       "contactHint": "Pumunta sa Makipag-ugnayan sa amin sa Account para magtanong sa LINK team tungkol sa iyong data."
