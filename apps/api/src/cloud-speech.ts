@@ -46,6 +46,8 @@ const LANGUAGE_CODES: Record<TutorLanguage, string> = {
     zh: "zh-CN",
     th: "th-TH",
     vi: "vi-VN",
+    fr: "fr-FR",
+    es: "es-ES",
 };
 
 export type ServiceAccount = { clientEmail: string; privateKey: string };

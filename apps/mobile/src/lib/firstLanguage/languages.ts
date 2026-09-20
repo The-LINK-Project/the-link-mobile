@@ -34,6 +34,8 @@ export const FIRST_LANGUAGES = [
     "zh",
     "th",
     "vi",
+    "fr",
+    "es",
     "en",
 ] as const;
 
@@ -64,6 +66,8 @@ export const FIRST_LANGUAGE_LABELS: Record<FirstLanguage, string> = {
     zh: "中文",
     th: "ไทย",
     vi: "Tiếng Việt",
+    fr: "Français",
+    es: "Español",
     en: "English",
 };
 
@@ -81,15 +85,17 @@ export const FIRST_LANGUAGE_ENGLISH_NAMES: Record<FirstLanguage, string> = {
     zh: "Chinese (Simplified)",
     th: "Thai",
     vi: "Vietnamese",
+    fr: "French",
+    es: "Spanish",
     en: "English",
 };
 
 /**
  * The brief explanation on the first-language question, in the language the
  * learner has just picked. These are intentionally kept with the picker
- * languages instead of the app locale catalogues: five translation languages
- * (Telugu, Malayalam, Malay, Chinese, Thai, and Vietnamese) are offered in
- * the bubble but are not full app locales yet.
+ * languages instead of the app locale catalogues: eight translation languages
+ * (Telugu, Malayalam, Malay, Chinese, Thai, Vietnamese, French and Spanish) are
+ * offered in the bubble but are not full app locales yet.
  */
 export const FIRST_LANGUAGE_ONBOARDING_COPY: Record<
     FirstLanguage,
@@ -167,6 +173,18 @@ export const FIRST_LANGUAGE_ONBOARDING_COPY: Record<
         continue: "Tiếp tục",
         changeLater: "Bạn có thể thay đổi điều này sau trong Tài khoản.",
     },
+    fr: {
+        title: "Quelle est votre langue ?",
+        body: "Choisissez la langue que vous connaissez le mieux. Maintenez le doigt sur un mot anglais dans l'application pour le voir dans votre langue.",
+        continue: "Continuer",
+        changeLater: "Vous pourrez la changer plus tard dans Compte.",
+    },
+    es: {
+        title: "¿Cuál es tu idioma?",
+        body: "Elige el idioma que mejor conoces. Mantén pulsada cualquier palabra en inglés de la app para verla en tu idioma.",
+        continue: "Continuar",
+        changeLater: "Puedes cambiarlo más tarde en Cuenta.",
+    },
     en: {
         title: "What is your language?",
         // Not the usual promise: there is no other language to show a held
@@ -208,6 +226,8 @@ const DEVICE_LANGUAGES: Record<string, TranslationLanguage> = {
     zh: "zh",
     th: "th",
     vi: "vi",
+    fr: "fr",
+    es: "es",
 };
 
 function fromDeviceTag(tag: string | null | undefined): TranslationLanguage | null {

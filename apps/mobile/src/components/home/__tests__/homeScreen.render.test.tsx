@@ -44,7 +44,7 @@ it("points a new learner at the first lesson and locks nothing", async () => {
     expect(screen.getByLabelText("Taking the MRT. Start here")).toBeTruthy();
     expect(screen.queryByText("Continue")).toBeNull();
     // Every lesson can be opened, whatever the order says.
-    await userEvent.setup().press(screen.getByLabelText("Seeing a doctor"));
+    await userEvent.setup().press(screen.getByLabelText("Seeing a doctor. Not started"));
     expect(mockPush).toHaveBeenCalledWith("/lesson/clinic-visit");
 });
 
@@ -68,24 +68,40 @@ it("ignores a saved run for exercises the lesson no longer has", () => {
     expect(screen.getByLabelText("Taking the MRT. Start here")).toBeTruthy();
 });
 
-it("marks what is done, moves on to the next lesson, and offers speaking again", async () => {
+it("does not call a lesson done until it has been said aloud", async () => {
     completeLesson("mrt-basics", { firstTryCorrect: 7, total: 8 });
     const view = render(<HomeScreen />);
 
-    expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
-    expect(screen.getByLabelText("Taking the MRT. Done")).toBeTruthy();
-    expect(screen.getByLabelText("Buying food. Start here")).toBeTruthy();
+    // The exercises are half the lesson. It used to get its tick here, and the
+    // talk with the tutor passed for an extra nobody had to do.
+    expect(screen.queryByText(/Lessons done/)).toBeNull();
+    expect(screen.getByLabelText("Taking the MRT. In progress. Next: speaking")).toBeTruthy();
+    // What is owed comes first, and no new lesson is pushed in the meantime.
+    expect(screen.getByLabelText("Continue. Taking the MRT. Next: speaking")).toBeTruthy();
+    expect(screen.queryByText("Start here")).toBeNull();
 
-    await userEvent.setup().press(screen.getByLabelText("Practise speaking. Taking the MRT"));
+    await userEvent.setup().press(screen.getByText("Continue"));
     expect(mockPush).toHaveBeenCalledWith("/speak/mrt-basics");
+    await userEvent.setup().press(screen.getByLabelText("Practise speaking. Taking the MRT"));
+    expect(mockPush).toHaveBeenCalledTimes(2);
 
     act(() => completeSpeaking("mrt-basics", { said: 2, total: 3 }));
     view.rerender(<HomeScreen />);
-    expect(screen.getByLabelText("Taking the MRT. Done and spoken")).toBeTruthy();
+    expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Taking the MRT. Done")).toBeTruthy();
+    expect(screen.getByLabelText("Buying food. Start here")).toBeTruthy();
+    // Saying it again stays on offer.
+    expect(screen.getByLabelText("Practise speaking. Taking the MRT")).toBeTruthy();
+});
+
+it("says which lessons have not been started", () => {
+    render(<HomeScreen />);
+    expect(screen.getByLabelText("Seeing a doctor. Not started")).toBeTruthy();
 });
 
 it("keeps a finished lesson finished while the learner goes through it again", () => {
     completeLesson("mrt-basics", { firstTryCorrect: 7, total: 8 });
+    completeSpeaking("mrt-basics", { said: 3, total: 3 });
     saveRun("mrt-basics", runAt(3));
     render(<HomeScreen />);
 
@@ -93,7 +109,7 @@ it("keeps a finished lesson finished while the learner goes through it again", (
     // which read as the app having lost the lesson.
     expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
     const total = initSession(mrtBasics, "en").queue.length;
-    expect(screen.getByLabelText(`Taking the MRT. 3 of ${total} done`)).toBeTruthy();
+    expect(screen.getByLabelText(`Taking the MRT. Done. 3 of ${total} done`)).toBeTruthy();
     expect(screen.getByLabelText("Practise speaking. Taking the MRT")).toBeTruthy();
     // And the lesson after it is not pushed as new while this one is open.
     expect(screen.queryByText("Start here")).toBeNull();

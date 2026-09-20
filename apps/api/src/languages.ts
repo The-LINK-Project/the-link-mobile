@@ -29,6 +29,8 @@ export const FIRST_LANGUAGES = [
     "zh",
     "th",
     "vi",
+    "fr",
+    "es",
     "en",
 ] as const;
 
@@ -55,6 +57,8 @@ export const FIRST_LANGUAGE_NAMES: Record<TranslationLanguage, string> = {
     zh: "Chinese (Simplified)",
     th: "Thai",
     vi: "Vietnamese",
+    fr: "French",
+    es: "Spanish",
 };
 
 /**
@@ -78,6 +82,8 @@ export const FIRST_LANGUAGE_SCRIPTS: Record<TranslationLanguage, string | null> 
     zh: "Han",
     th: "Thai",
     vi: null,
+    fr: null,
+    es: null,
 };
 
 export function isFirstLanguage(value: unknown): value is FirstLanguage {

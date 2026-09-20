@@ -20,11 +20,12 @@ import { picturableVocab } from "@/lib/lessons/lookup";
 import { buildQueue, fingerprint } from "@/lib/lessons/session";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { SelectPictureExercise } from "@/lib/lessons/types";
-import { completeLesson, getProgressData, saveRun } from "@/lib/progress/store";
+import { completeLesson, completeSpeaking, getProgressData, saveRun } from "@/lib/progress/store";
 
+const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn() };
 jest.mock("expo-router", () => ({
     useLocalSearchParams: () => ({ id: "mrt-basics" }),
-    useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+    useRouter: () => mockRouter,
     Stack: { Screen: () => null },
 }));
 
@@ -166,9 +167,28 @@ describe("opening a lesson", () => {
         await waitFor(() => expect(screen.getByText("Words in this lesson")).toBeTruthy());
     });
 
+    it("says the talk is still to come when only the exercises are finished", async () => {
+        withScreenReader(false);
+        completeLesson("mrt-basics", { firstTryCorrect: 7, total: 9 });
+        const user = userEvent.setup();
+        render(<LessonScreen />);
+
+        // Not "Lesson done!": the talk with the tutor is the lesson's second
+        // stage, and the way forward from here.
+        await waitFor(() => expect(screen.getByText("Exercises done!")).toBeTruthy());
+        expect(screen.queryByText("Lesson done!")).toBeNull();
+        expect(screen.getByText("In progress")).toBeTruthy();
+        expect(screen.getByText("Now say it aloud to finish the lesson.")).toBeTruthy();
+        expect(screen.getByText("7 of 9")).toBeTruthy();
+
+        await user.press(screen.getByText("Practise speaking"));
+        expect(mockRouter.replace).toHaveBeenCalledWith("/speak/mrt-basics");
+    });
+
     it("says a finished lesson is done rather than starting it again", async () => {
         withScreenReader(false);
         completeLesson("mrt-basics", { firstTryCorrect: 7, total: 9 });
+        completeSpeaking("mrt-basics", { said: 3, total: 3 });
         const user = userEvent.setup();
         render(<LessonScreen />);
 
@@ -220,9 +240,12 @@ describe("a lesson run", () => {
         });
         expect(getProgressData().runs["mrt-basics"]).toBeUndefined();
 
-        // Pressing Continue afterwards must not count the lesson twice.
+        // Pressing Continue afterwards must not count the lesson twice. And
+        // what is finished is the exercises: the talk is still to come.
         await user.press(screen.getByText("Finish"));
-        await waitFor(() => expect(screen.getByText("Lesson done!")).toBeTruthy());
+        await waitFor(() => expect(screen.getByText("Exercises done!")).toBeTruthy());
+        expect(screen.queryByText("Lesson done!")).toBeNull();
+        expect(screen.getByText("Speak later")).toBeTruthy();
         expect(getProgressData().progress.lessons["mrt-basics"].runs).toBe(1);
         view.unmount();
     });

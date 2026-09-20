@@ -7,8 +7,11 @@ import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { LessonIcon } from "@/lib/lessons/icons";
 import type { Lesson } from "@/lib/lessons/types";
-import type { LessonStatus } from "@/lib/progress/model";
+import { lessonStage, type LessonStage, type LessonStatus } from "@/lib/progress/model";
+import { canPractiseSpeaking } from "@/lib/speaking/context";
 import { colors, radius, shadow, spacing, TOUCH_TARGET } from "@/lib/theme";
+
+import { LessonStages, stagesOf } from "./LessonStages";
 
 /** One picture per lesson, so a learner can find the lesson without reading. */
 export const LESSON_ICONS: Record<LessonIcon, React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -26,7 +29,7 @@ type Props = {
     next?: boolean;
     /** Shown instead of the usual badges, e.g. the daily mix done for today. */
     doneLabel?: string;
-    /** Present when the lesson is finished and can be practised aloud. */
+    /** Present when the exercises are finished and the lesson can be said aloud. */
     onSpeak?: () => void;
 };
 
@@ -37,8 +40,13 @@ type Props = {
  * because "ask for the right platform" is a reason to tap and "Taking the MRT"
  * is only a label.
  *
- * Where the lesson stands is carried by a picture as well as words: a tick, a
- * bar, a microphone. A learner who reads little can still see what is done.
+ * Where the lesson stands is one of three things, and each looks like nothing
+ * else: not started is an empty outline, in progress is yellow, done is solid
+ * green with a tick. The app's own colour is green, and a finished lesson used
+ * to be a darker shade of the card it started as, which nobody could tell
+ * apart at a glance. Every colour is said again by a picture and by words, for
+ * a learner who cannot tell the colours apart or reads little.
+ *
  * No lesson is ever locked. Somebody who is going to the clinic tomorrow needs
  * the clinic lesson today, whatever order the list is in.
  */
@@ -46,43 +54,67 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
     const t = useFirstLanguageInterface("lessons");
     const lessonCopy = useHomeLessonCopy();
     const router = useRouter();
-    const { run } = status;
-    // A lesson being gone through again is still a finished lesson: the tick
-    // stays, and the bar says how far the new run has got.
-    const finished = status.finished !== "none";
+    const { run, talk } = status;
+    // Said by `doneLabel` for the daily mix, which is new again every morning.
+    const stage = doneLabel ? "done" : lessonStage(status);
+    const twoStages = canPractiseSpeaking(lesson);
 
-    const statusLabel = run
-        ? t("statusStarted", { done: run.done, total: run.total })
-        : status.finished === "spoken"
-          ? t("statusSpoken")
-          : status.finished === "learned"
-            ? t("statusLearned")
-            : next
-              ? t("statusNext")
-              : "";
+    const stageLabel =
+        doneLabel ??
+        (stage === "done"
+            ? t("statusDone")
+            : stage === "progress"
+              ? t("statusInProgress")
+              : next
+                ? t("statusNext")
+                : t("statusNotStarted"));
+    // How far the stage in hand has got. A lesson being gone through again is
+    // still a finished lesson: the tick stays, and the bar is the new run's.
+    const bar = run ?? (status.finished === "learned" ? talk : null);
+    const detail = run
+        ? t("statusStarted", run)
+        : status.finished !== "learned"
+          ? ""
+          : talk
+            ? t("continueTalk", talk)
+            : t("statusSpeakingLeft");
+
+    const tile = TILE[stage];
 
     return (
-        <View style={[styles.card, next && styles.cardNext]}>
+        <View
+            style={[
+                styles.card,
+                stage === "progress" && styles.cardProgress,
+                stage === "done" && styles.cardDone,
+                next && stage === "new" && styles.cardNext,
+            ]}
+        >
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={[lessonCopy(lesson.title), statusLabel]
+                accessibilityLabel={[lessonCopy(lesson.title), stageLabel, detail]
                     .filter(Boolean)
                     .join(". ")}
                 accessibilityHint={lessonCopy(lesson.goal)}
                 onPress={() => router.push(`/lesson/${lesson.id}`)}
                 style={({ pressed }) => [styles.main, pressed && styles.pressed]}
             >
-                <View style={[styles.icon, finished && styles.iconDone]}>
-                    <Ionicons
-                        name={LESSON_ICONS[lesson.icon]}
-                        size={26}
-                        color={finished ? colors.white : colors.primaryDark}
-                    />
-                    {finished ? (
-                        <View style={styles.tick}>
-                            <Ionicons name="checkmark" size={14} color={colors.white} />
+                <View style={[styles.icon, { backgroundColor: tile.bg, borderColor: tile.border }]}>
+                    <Ionicons name={LESSON_ICONS[lesson.icon]} size={26} color={tile.fg} />
+                    {stage === "new" ? null : (
+                        <View
+                            style={[
+                                styles.mark,
+                                stage === "done" ? styles.markDone : styles.markProgress,
+                            ]}
+                        >
+                            <Ionicons
+                                name={stage === "done" ? "checkmark" : "ellipsis-horizontal"}
+                                size={14}
+                                color={colors.white}
+                            />
                         </View>
-                    ) : null}
+                    )}
                 </View>
 
                 <View style={styles.body}>
@@ -91,60 +123,79 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                         {lessonCopy(lesson.goal)}
                     </Text>
 
-                    {run ? (
-                        <View style={styles.started}>
-                            <View style={styles.track}>
-                                <View
-                                    style={[
-                                        styles.fill,
-                                        { width: `${(run.done / run.total) * 100}%` },
-                                    ]}
+                    <View style={styles.meta}>
+                        <Badge
+                            label={stageLabel}
+                            tone={STAGE_TONE[next && stage === "new" ? "next" : stage]}
+                            icon={stage === "new" && next ? undefined : STAGE_ICON[stage]}
+                        />
+                        {stage === "new" ? (
+                            <>
+                                <Badge
+                                    label={t("minutes", { count: lesson.estimatedMinutes })}
+                                    tone="primary"
                                 />
-                            </View>
-                            <Text
-                                variant="caption"
-                                color={colors.primaryDark}
-                                style={styles.strong}
-                            >
-                                {statusLabel}
-                            </Text>
+                                {next ? null : <Badge label={t(`level.${lesson.level}`)} />}
+                            </>
+                        ) : null}
+                    </View>
+
+                    {bar ? (
+                        <View style={styles.track}>
+                            <View
+                                style={[
+                                    styles.fill,
+                                    stage === "done" && styles.fillDone,
+                                    { width: `${(bar.done / bar.total) * 100}%` },
+                                ]}
+                            />
                         </View>
-                    ) : (
-                        <View style={styles.meta}>
-                            {doneLabel ? (
-                                <Badge label={doneLabel} tone="success" />
-                            ) : finished ? (
-                                <Badge label={statusLabel} tone="success" />
-                            ) : (
-                                <>
-                                    {next ? <Badge label={statusLabel} tone="accent" /> : null}
-                                    <Badge
-                                        label={t("minutes", { count: lesson.estimatedMinutes })}
-                                        tone="primary"
-                                    />
-                                    {next ? null : <Badge label={t(`level.${lesson.level}`)} />}
-                                </>
-                            )}
-                        </View>
-                    )}
+                    ) : null}
+                    {detail ? (
+                        <Text
+                            variant="caption"
+                            color={stage === "done" ? colors.success : colors.warning}
+                            style={styles.strong}
+                        >
+                            {detail}
+                        </Text>
+                    ) : null}
                 </View>
 
                 <Ionicons name="chevron-forward" size={20} color={colors.muted} />
             </Pressable>
+
+            {/* Under the row and as wide as the card: beside the picture there is
+                no room for two labels in Bengali or Tamil. A done lesson has
+                said all this with its tick. */}
+            {twoStages && stage !== "done" ? (
+                <View style={styles.stages}>
+                    <LessonStages {...stagesOf(status)} />
+                </View>
+            ) : null}
 
             {onSpeak ? (
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${t("summarySpeak")}. ${lessonCopy(lesson.title)}`}
                     onPress={onSpeak}
-                    style={({ pressed }) => [styles.speak, pressed && styles.pressed]}
+                    style={({ pressed }) => [
+                        styles.speak,
+                        // Owed, not optional: it is the way to finish the lesson.
+                        stage === "progress" && styles.speakOwed,
+                        pressed && styles.pressed,
+                    ]}
                 >
                     <Ionicons
-                        name={status.finished === "spoken" ? "mic" : "mic-outline"}
+                        name={stage === "done" ? "mic-outline" : "mic"}
                         size={20}
-                        color={colors.primaryDark}
+                        color={stage === "progress" ? colors.warning : colors.primaryDark}
                     />
-                    <Text variant="bodyStrong" color={colors.primaryDark} style={styles.speakText}>
+                    <Text
+                        variant="bodyStrong"
+                        color={stage === "progress" ? colors.warning : colors.primaryDark}
+                        style={styles.speakText}
+                    >
                         {t("summarySpeak")}
                     </Text>
                 </Pressable>
@@ -152,6 +203,25 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
         </View>
     );
 }
+
+const TILE: Record<LessonStage, { bg: string; fg: string; border: string }> = {
+    new: { bg: colors.surface, fg: colors.primaryDark, border: colors.border },
+    progress: { bg: colors.warningSoft, fg: colors.warning, border: colors.warningFill },
+    done: { bg: colors.success, fg: colors.white, border: colors.success },
+};
+
+const STAGE_TONE = {
+    new: "neutral",
+    next: "accent",
+    progress: "warning",
+    done: "success",
+} as const;
+
+const STAGE_ICON = {
+    new: "ellipse-outline",
+    progress: "time",
+    done: "checkmark-circle",
+} as const;
 
 const styles = StyleSheet.create({
     card: {
@@ -163,6 +233,8 @@ const styles = StyleSheet.create({
         ...shadow.card,
     },
     cardNext: { borderColor: colors.primary, borderWidth: 2 },
+    cardProgress: { borderColor: colors.warningFill, borderWidth: 2 },
+    cardDone: { borderColor: colors.success, backgroundColor: "#f6fdf8" },
     main: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.lg },
     pressed: { opacity: 0.85 },
     icon: {
@@ -171,10 +243,9 @@ const styles = StyleSheet.create({
         borderRadius: radius.md,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.primarySoft,
+        borderWidth: 1.5,
     },
-    iconDone: { backgroundColor: colors.primaryDark },
-    tick: {
+    mark: {
         position: "absolute",
         right: -6,
         bottom: -6,
@@ -183,22 +254,24 @@ const styles = StyleSheet.create({
         borderRadius: radius.full,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.success,
         borderWidth: 2,
         borderColor: colors.surface,
     },
+    markDone: { backgroundColor: colors.success },
+    markProgress: { backgroundColor: colors.warningFill },
     body: { flex: 1, gap: spacing.xs },
     description: { flexShrink: 1 },
     meta: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
-    started: { gap: spacing.xs, marginTop: spacing.xs },
     track: {
         height: 8,
         borderRadius: radius.full,
         backgroundColor: colors.mutedSurface,
         overflow: "hidden",
     },
-    fill: { height: "100%", borderRadius: radius.full, backgroundColor: colors.primary },
+    fill: { height: "100%", borderRadius: radius.full, backgroundColor: colors.warningFill },
+    fillDone: { backgroundColor: colors.success },
     strong: { fontWeight: "600" },
+    stages: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
     speak: {
         minHeight: TOUCH_TARGET,
         flexDirection: "row",
@@ -210,5 +283,6 @@ const styles = StyleSheet.create({
         borderTopColor: colors.hairline,
         backgroundColor: colors.primarySoft,
     },
+    speakOwed: { backgroundColor: colors.warningSoft, borderTopColor: colors.warningFill },
     speakText: { flexShrink: 1 },
 });

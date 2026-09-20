@@ -28,6 +28,8 @@ export const TUTOR_LANGUAGES = [
     "zh",
     "th",
     "vi",
+    "fr",
+    "es",
 ] as const;
 export type TutorLanguage = (typeof TUTOR_LANGUAGES)[number];
 
@@ -44,9 +46,11 @@ const LANGUAGES: Record<TutorLanguage, { name: string; script: string }> = {
     zh: { name: "Simplified Chinese", script: "simplified Chinese characters" },
     th: { name: "Thai", script: "Thai script" },
     vi: { name: "Vietnamese", script: "Latin script with Vietnamese diacritics" },
+    fr: { name: "French", script: "Latin script with French accents" },
+    es: { name: "Spanish", script: "Latin script with Spanish accents" },
 };
 
-const LATIN_SCRIPT_LANGUAGES = new Set<TutorLanguage>(["fi", "in", "ms", "vi"]);
+const LATIN_SCRIPT_LANGUAGES = new Set<TutorLanguage>(["fi", "in", "ms", "vi", "fr", "es"]);
 
 /**
  * English the tutor may use without the lesson teaching it. Deliberately not
@@ -491,6 +495,16 @@ const FALLBACK_LINES: Record<TutorLanguage, { again: string; wellDone: string; d
         again: "Hãy thử lại.",
         wellDone: "Rất tốt!",
         done: "Bài luyện tập hôm nay đã hoàn thành.",
+    },
+    fr: {
+        again: "Essayez encore.",
+        wellDone: "Très bien !",
+        done: "L'entraînement d'aujourd'hui est terminé.",
+    },
+    es: {
+        again: "Inténtalo otra vez.",
+        wellDone: "¡Muy bien!",
+        done: "La práctica de hoy ha terminado.",
     },
 };
 

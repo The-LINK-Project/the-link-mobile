@@ -17,10 +17,12 @@ import type { Lesson, Localized, SpeakingGoal } from "@/lib/lessons/types";
 export type TutorLanguage = TutorTurnRequest["language"];
 
 /**
- * Languages the tutor teaches from. Each is written in a script of its own,
- * which is what lets the server pick out every English word and check it. A
- * language written in Latin letters could not be checked that way. English is
- * not one of them: the tutor explains English from another language.
+ * Languages the tutor teaches from. Where one is written in a script of its
+ * own, the server picks out every English word the tutor wrote and checks it
+ * was taught; for those in Latin letters (French and Spanish among them) it
+ * cannot tell the two apart, and the instructions alone hold the tutor to the
+ * lesson's words. English is not one of them: the tutor explains English from
+ * another language.
  */
 export const TUTOR_LANGUAGES: readonly TutorLanguage[] = TRANSLATION_LANGUAGES;
 

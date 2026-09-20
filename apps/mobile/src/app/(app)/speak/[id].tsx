@@ -13,7 +13,7 @@ import { SpeakingSummary } from "@/components/speaking/SpeakingSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
-import { useFirstLanguage } from "@/lib/firstLanguage/store";
+import { getFirstLanguageChoice, useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useLocale } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
 import type { Lesson } from "@/lib/lessons/types";
@@ -114,8 +114,17 @@ function SpeakingFlow({
     // learner asked to practise speaking, and this is them practising speaking.
     const [saved, setSaved] = useState<SavedTalk | undefined>(() => {
         const talk = getProgressData().talks[lesson.id];
-        return talk && restoreConversation(talk.context, talk.state) ? talk : undefined;
+        if (!talk || !restoreConversation(talk.context, talk.state)) return undefined;
+        return outdatedBy(talk, languages) ? undefined : talk;
     });
+    // Not in the initialiser above: Home is mounted underneath and listens to
+    // the store, and it may not be told of a change while this is rendering.
+    useEffect(() => {
+        const talk = getProgressData().talks[lesson.id];
+        if (talk && outdatedBy(talk, languages)) clearTalk(lesson.id);
+        // Once, on opening. Later changes to the talk are this screen's own.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [context, setContext] = useState<SpeakingContext | null>(saved?.context ?? null);
     /** Bumped to begin again, so the conversation starts from nothing. */
     const [round, setRound] = useState(0);
@@ -191,6 +200,22 @@ function SpeakingFlow({
                 />
             </View>
         </View>
+    );
+}
+
+/**
+ * A talk kept in a language the learner has since moved away from. They told
+ * the app they read Spanish now, and a tutor carrying on in Bengali would be
+ * answering a question they did not ask. Only a change made after the talk was
+ * kept counts: a learner may well have picked the tutor's language by hand.
+ */
+function outdatedBy(talk: SavedTalk, languages: TutorLanguage[]): boolean {
+    const choice = getFirstLanguageChoice();
+    return (
+        choice !== null &&
+        choice.language !== talk.context.language &&
+        (languages as string[]).includes(choice.language) &&
+        Date.parse(choice.updatedAt) >= Date.parse(talk.savedAt)
     );
 }
 

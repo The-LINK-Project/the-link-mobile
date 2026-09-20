@@ -83,6 +83,10 @@ it("maps the codes phones use to the codes this app uses", () => {
     // Any Chinese is offered Simplified; we do not ask a learner about scripts.
     device("zh-Hans-CN");
     expect(suggestFirstLanguage()).toBe("zh");
+    device("fr-CA");
+    expect(suggestFirstLanguage()).toBe("fr");
+    device("es-MX");
+    expect(suggestFirstLanguage()).toBe("es");
 });
 
 it("does not offer a Finn Filipino", () => {
@@ -93,12 +97,12 @@ it("does not offer a Finn Filipino", () => {
 });
 
 it("takes the first phone language it recognises", () => {
-    device("fr-FR", "ta-SG", "hi-IN");
+    device("de-DE", "ta-SG", "hi-IN");
     expect(suggestFirstLanguage()).toBe("ta");
 });
 
 it("suggests nothing when it knows nothing", () => {
-    device("fr-FR");
+    device("de-DE");
     expect(suggestFirstLanguage()).toBeNull();
     device();
     expect(suggestFirstLanguage()).toBeNull();

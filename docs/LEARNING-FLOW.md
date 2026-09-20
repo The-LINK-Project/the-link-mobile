@@ -3,7 +3,7 @@
 Who this is for: a migrant worker in Singapore with little English, often little schooling, a cheap Android phone, and ten minutes between shifts. Three things follow from that, and every decision below comes back to one of them.
 
 1. **They will be interrupted.** A supervisor, a phone call, the end of a break, or the phone closing the app to free memory. Nothing they have done may be lost to that.
-2. **They may read very little, in any language.** What to do next is always one large button in view. Where a lesson stands is shown by a picture (a tick, a bar, a microphone) as well as words.
+2. **They may read very little, in any language.** What to do next is always one large button in view. Where a lesson stands is shown by a colour and a picture (an empty outline, a yellow clock, a green tick) as well as words.
 3. **They came for one real situation.** Somebody going to the clinic tomorrow needs the clinic lesson today. Nothing is ever locked; the app only suggests an order.
 
 ## The whole journey
@@ -19,7 +19,9 @@ flowchart TD
     cont -- no --> pick[Pick a lesson.<br/>'Start here' marks the next one]
 
     pick --> before{Finished before?}
-    before -- yes --> was[Lesson done: best score, the words.<br/>Practise speaking, or go through it again]
+    before -- "exercises only" --> half[Exercises done, in progress:<br/>best score, the words.<br/>Practise speaking is the way forward]
+    half --> talk
+    before -- "exercises and talk" --> was[Lesson done: best score, the words.<br/>Go through it again, or speak again]
     was -- again --> ex
     before -- no --> words
     words[1. Words<br/>see each word, its meaning,<br/>hear it as often as wanted]
@@ -31,10 +33,10 @@ flowchart TD
     right -- yes --> more{More left?}
     right -- no --> again[Shown the answer.<br/>Comes back once, at the end] --> more
     more -- yes --> ex
-    more -- no --> done[3. Lesson done<br/>recorded at once]
+    more -- no --> done[3. Exercises done<br/>recorded at once.<br/>The lesson is in progress]
 
-    done --> say{Practise speaking?}
-    say -- not now --> home
+    done --> say{Speak now?}
+    say -- "later" --> home
     say -- yes --> talk[4. Talk with the tutor<br/>in the learner's language]
 
     talk --> goal[Tutor asks for one sentence]
@@ -44,7 +46,7 @@ flowchart TD
     try -- "no, third try" --> told[Tutor says it for them] --> next
     try -- asked a question --> answer[Tutor answers.<br/>Does not cost a try] --> goal
     next -- yes --> goal
-    next -- no --> result[5. Speaking done<br/>recorded at once]
+    next -- no --> result[5. Lesson done<br/>recorded at once]
     result --> home
 ```
 
@@ -54,9 +56,23 @@ flowchart TD
 |---|---|---|
 | Words | Looks at each English word with its meaning in their language. Taps to hear it. Starts when ready. | The first question used to be about a word nobody had shown them. Guessing right teaches nothing; guessing wrong teaches that the app is a test. |
 | Exercises | Eight to ten short tasks, all taps: choose a picture, match pairs, listen and choose, put words in order, pick a reply. | A keyboard is the biggest obstacle for this learner, so there is none. |
-| Lesson done | Sees the sentences they can now say and one thing worth knowing in Singapore. One button leads on to speaking. | Ends on what they can do, not on a score. |
-| Speaking | A tutor sets a scene in Bengali, Tamil or Hindi and asks for each sentence in turn. | The exercises teach what the words mean. This is where they get said. |
-| Speaking done | Sees which sentences they said alone and which with help. | Help is shown as practice, never as failure. |
+| Exercises done | Sees the sentences they can now say and one thing worth knowing in Singapore. Both stages are shown, the first ticked and the second next, and one button leads on to speaking. | Ends on what they can do, not on a score, and does not say "Lesson done" about half a lesson. |
+| Speaking | A tutor sets a scene in the learner's language and asks for each sentence in turn. | The exercises teach what the words mean. This is where they get said. It is the second stage of the lesson, not an extra after it. |
+| Lesson done | Sees which sentences they said alone and which with help. | Help is shown as practice, never as failure. |
+
+## When is a lesson done?
+
+A lesson is two stages, the exercises and the talk with the tutor, and it is done when both are. Finishing the exercises used to tick the lesson off, which told every learner the talk was optional, and most of what the lesson is for went unsaid. Now:
+
+| Where the lesson stands | On Home | Counts as done |
+|---|---|---|
+| Not started | Empty outline, grey "Not started" | No |
+| Exercises part-way | Yellow, "In progress", a bar with "4 of 9 done" | No |
+| Exercises finished, talk still to do | Yellow, "In progress", "Next: speaking". The Continue card at the top leads to the talk | No |
+| Talk part-way | Yellow, "In progress", a bar with "Speaking: 1 of 3 done" | No |
+| Exercises and talk finished | Green with a tick, "Done" | Yes |
+
+Putting the talk off is always allowed ("Speak later"): somebody on a crowded train cannot speak aloud, and the lesson waits for them in progress. A lesson with nothing to say aloud, and the daily mix, are done by their exercises alone. Nothing new is stored for any of this: a lesson record with a speaking result is a done lesson, so records made before this rule simply show as in progress until the talk is had. The rule is `lessonStatus` in `lib/progress/model.ts`.
 
 ## When is speaking practice finished?
 
@@ -90,7 +106,7 @@ Two copies of a learner's progress are merged by taking, for each lesson, the la
 
 - The phone closes the app mid-exercise, or mid-talk while a recording is being sent. The learner comes back to that exercise, or to that goal on the same try.
 - The learner answers the last exercise and leaves on its feedback, without pressing Finish. The lesson is finished by its last answer, so it is recorded; it used to wait for the button, and they came back to do that exercise again.
-- A finished lesson is opened again. It says it is done, with the best score and the words, and leaves going through it again as a choice. It does not open on its first question as if nothing had been kept.
+- A finished lesson is opened again. It says it is done, with the best score and the words, and leaves going through it again as a choice. It does not open on its first question as if nothing had been kept. One whose talk is still to do says "Exercises done" instead, and its main button is the talk.
 - A finished lesson is being gone through again. It is still finished: its tick stays on Home and it still counts towards the lessons done, with the bar showing how far the new run has got.
 - The learner changes their language part-way through a lesson. Their place and their answers stand. Only the exercises still ahead are chosen again: a translation exercise whose prompt would now fall back to English is dropped, one that has become possible is added at the end, and the score is out of what was actually queued.
 - The lesson was edited, or yesterday's daily mix is no longer today's. The saved run is discarded and not offered as something to continue.

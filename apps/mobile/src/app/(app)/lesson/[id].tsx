@@ -95,6 +95,9 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
         return <LessonRunner lessonId={lessonId} screenReader={screenReader} saved={saved} />;
 
     const canSpeak = canPractiseSpeaking(lesson);
+    // The talk is the lesson's second stage, so without it the lesson is
+    // in progress, and its way forward is the talk rather than a second run.
+    const speakingLeft = canSpeak && !record?.speaking;
 
     return (
         <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -112,7 +115,7 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
             </View>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 {record ? (
-                    <LessonDone lesson={lesson} record={record} />
+                    <LessonDone lesson={lesson} record={record} speakingLeft={speakingLeft} />
                 ) : (
                     <LessonIntro lesson={lesson} />
                 )}
@@ -198,7 +201,12 @@ function LessonRunner({
             vocabIds: summary.practisedVocabIds,
             phraseIds: summary.phrases.map((phrase) => phrase.id),
         };
-        const canSpeak = practiceLanguages(lesson, run).length > 0;
+        // What this run taught is what gets said. A run that taught nothing
+        // sayable (none does today) must not strand a lesson that has a talk:
+        // the talk then takes the whole lesson as taught.
+        const ownTalk = practiceLanguages(lesson, run).length > 0;
+        const canSpeak = ownTalk || canPractiseSpeaking(lesson);
+        const spoken = getProgressData().progress.lessons[lessonId]?.speaking !== undefined;
         return (
             <View style={[styles.root, { paddingTop: insets.top }]}>
                 <Stack.Screen options={{ headerShown: false }} />
@@ -206,10 +214,16 @@ function LessonRunner({
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <LessonSummary lesson={lesson} summary={summary} onRetry={restart} />
+                    <LessonSummary
+                        lesson={lesson}
+                        summary={summary}
+                        speakingLeft={canSpeak && !spoken}
+                        onRetry={restart}
+                    />
                 </ScrollView>
                 <View style={[styles.introFooter, { paddingBottom: insets.bottom + spacing.lg }]}>
                     <LessonSummaryActions
+                        speakingLeft={canSpeak && !spoken}
                         onDone={() => router.back()}
                         // Replaces the lesson rather than stacking on top of it,
                         // so finishing the practice goes straight home.
@@ -218,7 +232,10 @@ function LessonRunner({
                                 ? () =>
                                       router.replace({
                                           pathname: "/speak/[id]",
-                                          params: { id: lesson.id, ...runToParams(run) },
+                                          params: {
+                                              id: lesson.id,
+                                              ...(ownTalk ? runToParams(run) : {}),
+                                          },
                                       })
                                 : undefined
                         }

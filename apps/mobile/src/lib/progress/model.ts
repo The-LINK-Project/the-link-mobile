@@ -6,6 +6,8 @@
  * - `Progress` is what was finished: which lessons, how well, and whether they
  *   were said aloud. It is small, it only ever grows, and it is what gets
  *   copied to the server so a new phone starts where the old one stopped.
+ *   A lesson has two stages, the exercises and then the talk with the tutor,
+ *   and it is done when both are: see `lessonStatus`.
  * - A saved run or talk is where the learner is *right now* inside one lesson.
  *   It stays on the phone. It is only worth anything for a little while, and a
  *   half-built answer is not something a second device should inherit.
@@ -337,20 +339,36 @@ export function withSpeakingDone(
 /**
  * Where a lesson stands for this learner, as the Home screen shows it.
  *
- * Two facts, kept apart. What has been finished is only ever added to: a
- * learner who opens a finished lesson to go through it again has not unlearned
- * it, so its tick stays while the new run is part-way through.
+ * A lesson is two stages: the exercises, then saying it aloud with the tutor.
+ * The talk is not an extra. The exercises teach what the words mean, and the
+ * lesson exists so that they get said, so a lesson whose talk is still to come
+ * is a lesson in progress and not a lesson done.
+ *
+ * What has been finished is kept apart from what is in flight, and is only
+ * ever added to: a learner who opens a finished lesson to go through it again
+ * has not unlearned it, so its tick stays while the new run is part-way through.
  */
 export type LessonStatus = {
     /**
-     * - `none`: never finished.
-     * - `learned`: exercises finished, not yet said aloud (or cannot be).
-     * - `spoken`: exercises finished and the speaking practice too.
+     * - `none`: no stage finished.
+     * - `learned`: exercises finished, the talk still to do.
+     * - `done`: every stage the lesson has. For a lesson with nothing to say
+     *   aloud, that is the exercises alone.
      */
-    finished: "none" | "learned" | "spoken";
+    finished: "none" | "learned" | "done";
     /** A run in flight: `done` of `total` exercises are behind them. */
     run: { done: number; total: number } | null;
+    /** A talk in flight: `done` of `total` sentences are behind them. */
+    talk: { done: number; total: number } | null;
 };
+
+/** The one word for it: what colour the lesson is on Home. */
+export type LessonStage = "new" | "progress" | "done";
+
+export function lessonStage(status: LessonStatus): LessonStage {
+    if (status.finished === "done") return "done";
+    return status.finished === "learned" || status.run || status.talk ? "progress" : "new";
+}
 
 /** A run somebody can actually come back to. */
 function liveRun(data: ProgressData, lessonId: string, fingerprint: string): SavedRun | undefined {
@@ -362,36 +380,51 @@ function liveRun(data: ProgressData, lessonId: string, fingerprint: string): Sav
     return run.position > 0 && run.position < run.queue.length ? run : undefined;
 }
 
-export function lessonStatus(
-    data: ProgressData,
-    lessonId: string,
+/** A talk somebody can actually come back to. */
+function liveTalk(data: ProgressData, lessonId: string): SavedTalk | undefined {
+    const talk = data.talks[lessonId];
+    return talk && talk.state.phase !== "finished" && talk.state.messages.length > 0
+        ? talk
+        : undefined;
+}
+
+/** What Home needs to know about a lesson that exists now. */
+export type LessonRef = {
+    id: string;
     /** Of the lesson as it is now; see `fingerprint` in the lesson session. */
-    fingerprint: string,
-): LessonStatus {
-    const run = liveRun(data, lessonId, fingerprint);
-    const record = data.progress.lessons[lessonId];
+    fingerprint: string;
+    /** Whether the lesson has a talk with the tutor as its second stage. */
+    speakable: boolean;
+};
+
+export function lessonStatus(data: ProgressData, lesson: LessonRef): LessonStatus {
+    const run = liveRun(data, lesson.id, lesson.fingerprint);
+    const talk = liveTalk(data, lesson.id);
+    const record = data.progress.lessons[lesson.id];
     return {
-        finished: !record ? "none" : record.speaking ? "spoken" : "learned",
+        finished: !record ? "none" : record.speaking || !lesson.speakable ? "done" : "learned",
         run: run ? { done: run.position, total: run.queue.length } : null,
+        talk:
+            talk && lesson.speakable
+                ? { done: talk.state.results.length, total: talk.state.goalCount }
+                : null,
     };
 }
 
 /** The unfinished thing most recently worked on, for the Continue card. */
 export type ContinuePoint =
     | { kind: "lesson"; lessonId: string; done: number; total: number }
-    | { kind: "talk"; lessonId: string; done: number; total: number };
+    | { kind: "talk"; lessonId: string; done: number; total: number }
+    /** Exercises finished and the talk not yet begun: the lesson is half done. */
+    | { kind: "speak"; lessonId: string };
 
-export function continuePoint(
-    data: ProgressData,
-    /** Lessons that exist now, with their fingerprints. Anything else is ignored. */
-    lessons: { id: string; fingerprint: string }[],
-): ContinuePoint | null {
+export function continuePoint(data: ProgressData, lessons: LessonRef[]): ContinuePoint | null {
     let best: { at: number; point: ContinuePoint } | null = null;
     const offer = (savedAt: string, point: ContinuePoint) => {
         const at = Date.parse(savedAt);
         if (!best || at > best.at) best = { at, point };
     };
-    for (const { id, fingerprint } of lessons) {
+    for (const { id, fingerprint, speakable } of lessons) {
         const run = liveRun(data, id, fingerprint);
         if (run) {
             offer(run.savedAt, {
@@ -401,14 +434,18 @@ export function continuePoint(
                 total: run.queue.length,
             });
         }
-        const talk = data.talks[id];
-        if (talk && talk.state.phase !== "finished" && talk.state.messages.length > 0) {
+        const talk = liveTalk(data, id);
+        if (talk) {
             offer(talk.savedAt, {
                 kind: "talk",
                 lessonId: id,
                 done: talk.state.results.length,
                 total: talk.state.goalCount,
             });
+        }
+        const record = data.progress.lessons[id];
+        if (speakable && record && !record.speaking && !talk) {
+            offer(record.completedAt, { kind: "speak", lessonId: id });
         }
     }
     return (best as { at: number; point: ContinuePoint } | null)?.point ?? null;
