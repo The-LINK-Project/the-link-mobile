@@ -12,7 +12,7 @@ import { AccessibilityInfo, AppState } from "react-native";
 
 import SpeakScreen from "@/app/(app)/speak/[id]";
 import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
-import { FIRST_LANGUAGE_LABELS } from "@/lib/firstLanguage/languages";
+import { FIRST_LANGUAGE_LABELS, TRANSLATION_LANGUAGES } from "@/lib/firstLanguage/languages";
 import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import i18n, { setLocale } from "@/lib/i18n";
 
@@ -202,7 +202,7 @@ describe("speaking practice", () => {
         expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("th");
     });
 
-    it("keeps every onboarding language in a collapsed dropdown", async () => {
+    it("keeps every language the tutor teaches from in a collapsed dropdown", async () => {
         await act(() => setFirstLanguage("hi"));
         withScreenReader(false);
         const user = userEvent.setup();
@@ -211,9 +211,12 @@ describe("speaking practice", () => {
         expect(await screen.findByText("हिन्दी")).toBeTruthy();
         expect(screen.queryByText("ไทย")).toBeNull();
         await user.press(screen.getByText("हिन्दी"));
-        for (const ownName of Object.values(FIRST_LANGUAGE_LABELS)) {
-            expect(screen.getAllByText(ownName).length).toBeGreaterThan(0);
+        for (const language of TRANSLATION_LANGUAGES) {
+            expect(screen.getAllByText(FIRST_LANGUAGE_LABELS[language]).length).toBeGreaterThan(0);
         }
+        // The tutor explains English from another language, so English is a
+        // first language a learner can have but not one the tutor can speak.
+        expect(screen.queryByText("English")).toBeNull();
     });
 
     it("sends nothing until Send, and lets the learner delete a recording first", async () => {

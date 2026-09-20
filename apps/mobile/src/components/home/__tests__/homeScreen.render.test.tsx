@@ -84,6 +84,21 @@ it("marks what is done, moves on to the next lesson, and offers speaking again",
     expect(screen.getByLabelText("Taking the MRT. Done and spoken")).toBeTruthy();
 });
 
+it("keeps a finished lesson finished while the learner goes through it again", () => {
+    completeLesson("mrt-basics", { firstTryCorrect: 7, total: 8 });
+    saveRun("mrt-basics", runAt(3));
+    render(<HomeScreen />);
+
+    // Starting it again used to take it off the count and take its tick away,
+    // which read as the app having lost the lesson.
+    expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
+    const total = initSession(mrtBasics, "en").queue.length;
+    expect(screen.getByLabelText(`Taking the MRT. 3 of ${total} done`)).toBeTruthy();
+    expect(screen.getByLabelText("Practise speaking. Taking the MRT")).toBeTruthy();
+    // And the lesson after it is not pushed as new while this one is open.
+    expect(screen.queryByText("Start here")).toBeNull();
+});
+
 it("reopens the lesson the phone closed, once, and never an address it does not know", () => {
     saveRun("mrt-basics", runAt(2), "/lesson/mrt-basics");
     const first = render(<HomeScreen />);

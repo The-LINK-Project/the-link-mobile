@@ -130,12 +130,6 @@ export function saveRun(lessonId: string, run: Omit<SavedRun, "savedAt">, href?:
     });
 }
 
-export function clearRun(lessonId: string) {
-    if (!(lessonId in data.runs)) return;
-    const { [lessonId]: _gone, ...runs } = data.runs;
-    commit({ ...data, runs });
-}
-
 export function completeLesson(
     lessonId: string,
     result: { firstTryCorrect: number; total: number },

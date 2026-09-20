@@ -11,11 +11,11 @@ import { RecordBar } from "@/components/speaking/RecordBar";
 import { SpeakingIntro } from "@/components/speaking/SpeakingIntro";
 import { SpeakingSummary } from "@/components/speaking/SpeakingSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
+import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useLocale } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
-import { useLocalized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
 import {
     buildSpeakingContext,
@@ -104,7 +104,7 @@ function SpeakingFlow({
     screenReader: boolean;
 }) {
     const t = useFirstLanguageInterface("speaking");
-    const localized = useLocalized();
+    const lessonCopy = useHomeLessonCopy();
     const router = useRouter();
     const [locale] = useLocale();
     const [firstLanguage] = useFirstLanguage();
@@ -172,7 +172,7 @@ function SpeakingFlow({
             </View>
             <ScrollView contentContainerStyle={styles.intro} showsVerticalScrollIndicator={false}>
                 <SpeakingIntro
-                    title={localized(lesson.title)}
+                    title={lessonCopy(lesson.title)}
                     targets={preview?.goals.map((goal) => goal.target) ?? []}
                     language={language}
                     onLanguageChange={setChosen}
@@ -208,7 +208,7 @@ function Conversation({
     onAgain: () => void;
 }) {
     const t = useFirstLanguageInterface("speaking");
-    const localized = useLocalized();
+    const lessonCopy = useHomeLessonCopy();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { state, takeTurn } = useSpeakingSession(context, saved?.state);
@@ -307,7 +307,7 @@ function Conversation({
             <Screen edges={["top", "left", "right"]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <SpeakingSummary
-                    title={localized(lesson.title)}
+                    title={lessonCopy(lesson.title)}
                     goals={context.goals.map((goal, index) => ({
                         id: goal.id,
                         target: goal.target,

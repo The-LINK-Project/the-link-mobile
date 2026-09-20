@@ -1,4 +1,3 @@
-import type Ionicons from "@expo/vector-icons/Ionicons";
 import type { ImageSource } from "expo-image";
 
 import type { PictureKey } from "./icons";
@@ -15,58 +14,45 @@ const LESSON_VISUALS: Partial<Record<string, ImageSource>> = {
 };
 
 /**
- * Use a photograph only when one frame can communicate the word without a
- * caption. Abstract ideas keep the simpler icon below.
+ * One photograph per picture key, and every key has one: the record is total,
+ * so a key added without its photograph does not compile. A line icon asks a
+ * learner to decode a symbol before they can answer, and the symbols are not
+ * shared across the places these learners come from; a scene is.
  */
-const PICTURE_VISUALS: Partial<Record<PictureKey, ImageSource>> = {
+const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
+    train: require("../../../assets/lessons/alight.jpg"),
     platform: require("../../../assets/lessons/mrt-platform.jpg"),
     exit: require("../../../assets/lessons/mrt-exit.jpg"),
     mrtFare: require("../../../assets/lessons/mrt-fare.jpg"),
-    food: require("../../../assets/lessons/chicken-rice.jpg"),
-    bag: require("../../../assets/lessons/takeaway.jpg"),
-    drink: require("../../../assets/lessons/drink.jpg"),
+    money: require("../../../assets/lessons/cash.jpg"),
+    card: require("../../../assets/lessons/top-up.jpg"),
+    seat: require("../../../assets/lessons/reserved-seat.jpg"),
+    transfer: require("../../../assets/lessons/interchange.jpg"),
+    clock: require("../../../assets/lessons/break.jpg"),
     thermometer: require("../../../assets/lessons/fever.jpg"),
     medicine: require("../../../assets/lessons/medicine.jpg"),
     clinic: require("../../../assets/lessons/clinic-reception.jpg"),
-    warning: require("../../../assets/lessons/dangerous.jpg"),
+    appointment: require("../../../assets/lessons/appointment.jpg"),
     calendar: require("../../../assets/lessons/day-off.jpg"),
-    clock: require("../../../assets/lessons/break.jpg"),
+    bed: require("../../../assets/lessons/rest.jpg"),
+    document: require("../../../assets/lessons/mc.jpg"),
+    food: require("../../../assets/lessons/chicken-rice.jpg"),
+    bag: require("../../../assets/lessons/takeaway.jpg"),
+    flame: require("../../../assets/lessons/spicy.jpg"),
+    drink: require("../../../assets/lessons/drink.jpg"),
+    price: require("../../../assets/lessons/price.jpg"),
+    stall: require("../../../assets/lessons/stall.jpg"),
+    helmet: require("../../../assets/lessons/helmet.jpg"),
+    boots: require("../../../assets/lessons/safety-boots.jpg"),
+    warning: require("../../../assets/lessons/dangerous.jpg"),
     firstAid: require("../../../assets/lessons/hurt.jpg"),
-};
-
-export const PICTURE_ICONS: Record<PictureKey, React.ComponentProps<typeof Ionicons>["name"]> = {
-    train: "train-outline",
-    platform: "subway-outline",
-    exit: "exit-outline",
-    mrtFare: "card-outline",
-    money: "cash-outline",
-    card: "card-outline",
-    seat: "accessibility-outline",
-    transfer: "swap-horizontal-outline",
-    clock: "time-outline",
-    thermometer: "thermometer-outline",
-    medicine: "medkit-outline",
-    clinic: "medical-outline",
-    calendar: "calendar-outline",
-    bed: "bed-outline",
-    document: "document-text-outline",
-    food: "restaurant-outline",
-    bag: "bag-handle-outline",
-    flame: "flame-outline",
-    drink: "cafe-outline",
-    price: "pricetag-outline",
-    stall: "storefront-outline",
-    helmet: "construct-outline",
-    boots: "footsteps-outline",
-    warning: "warning-outline",
-    firstAid: "bandage-outline",
-    person: "person-outline",
+    person: require("../../../assets/lessons/supervisor.jpg"),
 };
 
 export function lessonVisual(lessonId: string): ImageSource | undefined {
     return LESSON_VISUALS[lessonId];
 }
 
-export function pictureVisual(picture: PictureKey): ImageSource | undefined {
+export function pictureVisual(picture: PictureKey): ImageSource {
     return PICTURE_VISUALS[picture];
 }

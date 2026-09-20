@@ -46,18 +46,20 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
     const t = useFirstLanguageInterface("lessons");
     const lessonCopy = useHomeLessonCopy();
     const router = useRouter();
-    const finished = status.kind === "learned" || status.kind === "spoken";
+    const { run } = status;
+    // A lesson being gone through again is still a finished lesson: the tick
+    // stays, and the bar says how far the new run has got.
+    const finished = status.finished !== "none";
 
-    const statusLabel =
-        status.kind === "started"
-            ? t("statusStarted", { done: status.done, total: status.total })
-            : status.kind === "spoken"
-              ? t("statusSpoken")
-              : status.kind === "learned"
-                ? t("statusLearned")
-                : next
-                  ? t("statusNext")
-                  : "";
+    const statusLabel = run
+        ? t("statusStarted", { done: run.done, total: run.total })
+        : status.finished === "spoken"
+          ? t("statusSpoken")
+          : status.finished === "learned"
+            ? t("statusLearned")
+            : next
+              ? t("statusNext")
+              : "";
 
     return (
         <View style={[styles.card, next && styles.cardNext]}>
@@ -89,13 +91,13 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                         {lessonCopy(lesson.goal)}
                     </Text>
 
-                    {status.kind === "started" ? (
+                    {run ? (
                         <View style={styles.started}>
                             <View style={styles.track}>
                                 <View
                                     style={[
                                         styles.fill,
-                                        { width: `${(status.done / status.total) * 100}%` },
+                                        { width: `${(run.done / run.total) * 100}%` },
                                     ]}
                                 />
                             </View>
@@ -138,7 +140,7 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                     style={({ pressed }) => [styles.speak, pressed && styles.pressed]}
                 >
                     <Ionicons
-                        name={status.kind === "spoken" ? "mic" : "mic-outline"}
+                        name={status.finished === "spoken" ? "mic" : "mic-outline"}
                         size={20}
                         color={colors.primaryDark}
                     />

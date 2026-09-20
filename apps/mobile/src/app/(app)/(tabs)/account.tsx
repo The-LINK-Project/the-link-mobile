@@ -9,7 +9,6 @@ import { Button, Card, ListRow, Screen, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { FIRST_LANGUAGE_LABELS } from "@/lib/firstLanguage/languages";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
-import { LOCALES, LOCALE_LABELS, useLocale } from "@/lib/i18n";
 import { colors, spacing } from "@/lib/theme";
 
 export default function AccountScreen() {
@@ -18,11 +17,8 @@ export default function AccountScreen() {
     const router = useRouter();
     const { user } = useUser();
     const { signOut } = useClerk();
-    const [locale, setLocale] = useLocale();
     const [firstLanguage, setFirstLanguage] = useFirstLanguage();
-    // One list at a time. Two open radio groups push everything below them off
-    // the screen, and the two languages are easy enough to confuse already.
-    const [openList, setOpenList] = useState<"app" | "first" | null>(null);
+    const [languageOpen, setLanguageOpen] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -87,47 +83,29 @@ export default function AccountScreen() {
                             onPress={() => router.push("/change-password")}
                         />
                     ) : null}
+                    {/* The one language setting. There used to be an "App language"
+                        row above it as well, which had stopped doing anything
+                        a learner could see: every main screen follows this
+                        language, so picking another there changed its own label
+                        and nothing else. The rest of the app now follows this
+                        choice too; see `useLocaleFollowsFirstLanguage`. */}
                     <ListRow
                         icon="language-outline"
-                        title={t("appLanguage")}
-                        value={LOCALE_LABELS[locale]}
-                        trailing="none"
-                        accessibilityState={{ expanded: openList === "app" }}
-                        onPress={() => setOpenList((open) => (open === "app" ? null : "app"))}
-                    />
-                    {openList === "app" ? (
-                        <View accessibilityRole="radiogroup" accessibilityLabel={t("appLanguage")}>
-                            {LOCALES.map((option) => (
-                                <ListRow
-                                    key={option}
-                                    title={LOCALE_LABELS[option]}
-                                    trailing="check"
-                                    inset
-                                    selected={option === locale}
-                                    accessibilityRole="radio"
-                                    onPress={() => {
-                                        void setLocale(option);
-                                        setOpenList(null);
-                                    }}
-                                />
-                            ))}
-                        </View>
-                    ) : null}
-                    <ListRow
-                        icon="chatbubble-ellipses-outline"
                         title={t("myLanguage")}
                         value={firstLanguage ? FIRST_LANGUAGE_LABELS[firstLanguage] : undefined}
-                        trailing="none"
-                        accessibilityState={{ expanded: openList === "first" }}
-                        onPress={() => setOpenList((open) => (open === "first" ? null : "first"))}
-                        last={openList !== "first"}
+                        // Says that a tap opens something here, which a bare
+                        // row did not: it looked like a label.
+                        trailing="expand"
+                        accessibilityState={{ expanded: languageOpen }}
+                        onPress={() => setLanguageOpen((open) => !open)}
+                        last={!languageOpen}
                     />
-                    {openList === "first" ? (
+                    {languageOpen ? (
                         <FirstLanguagePicker
                             value={firstLanguage}
                             onChange={(language) => {
                                 void setFirstLanguage(language);
-                                setOpenList(null);
+                                setLanguageOpen(false);
                             }}
                             label={t("myLanguage")}
                             inset
@@ -137,8 +115,11 @@ export default function AccountScreen() {
                 {/* Under the card, where a settings list explains its last row.
                     The hint stays on show rather than hiding inside the open
                     list, because it is also where a learner finds out that
-                    holding a word does anything at all. */}
-                <Text variant="caption">{t("myLanguageHint")}</Text>
+                    holding a word does anything at all. Not shown to a learner whose
+                    language is English, for whom it does nothing. */}
+                {firstLanguage === "en" ? null : (
+                    <Text variant="caption">{t("myLanguageHint")}</Text>
+                )}
             </View>
 
             <Card padded={false}>

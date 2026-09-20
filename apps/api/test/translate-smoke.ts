@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 
 import { readConfig } from "../src/config.js";
 import { createGeminiTranslator } from "../src/gemini.js";
-import { FIRST_LANGUAGE_NAMES, type FirstLanguage } from "../src/languages.js";
+import { FIRST_LANGUAGE_NAMES, type TranslationLanguage } from "../src/languages.js";
 import {
     checkTranslation,
     parseTranslateRequest,
@@ -30,14 +30,14 @@ const translator = createGeminiTranslator({
 console.log("Models:", config.translateModels.join(", "));
 console.log("Sentence:", SENTENCE);
 
-function request(word: string, language: FirstLanguage): TranslationRequest {
+function request(word: string, language: TranslationLanguage): TranslationRequest {
     const parsed = parseTranslateRequest({ word, context: SENTENCE, language });
     if (!parsed.ok) throw new Error(parsed.error);
     assert.equal(parsed.value.context, SENTENCE, "the sentence should carry the word");
     return parsed.value;
 }
 
-const asked: [string, FirstLanguage][] = [
+const asked: [string, TranslationLanguage][] = [
     ["platform", "bn"],
     ["platform", "ta"],
     ["platform", "zh"],

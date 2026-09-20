@@ -2,7 +2,9 @@ import {
     FIRST_LANGUAGES,
     FIRST_LANGUAGE_ENGLISH_NAMES,
     FIRST_LANGUAGE_LABELS,
+    TRANSLATION_LANGUAGES,
     isFirstLanguage,
+    isTranslationLanguage,
     suggestFirstLanguage,
 } from "../languages";
 
@@ -31,14 +33,28 @@ it("names every language it offers, in its own script and in English", () => {
     }
 });
 
-it("accepts only the twelve codes", () => {
+it("accepts only the codes it offers", () => {
     expect(isFirstLanguage("bn")).toBe(true);
     expect(isFirstLanguage("zh")).toBe(true);
-    // English is not a first language here: there would be nothing to translate to.
-    expect(isFirstLanguage("en")).toBe(false);
     expect(isFirstLanguage("xx")).toBe(false);
     expect(isFirstLanguage(undefined)).toBe(false);
     expect(isFirstLanguage({ language: "bn" })).toBe(false);
+});
+
+it("offers English as a first language, but never as one to translate into", () => {
+    expect(isFirstLanguage("en")).toBe(true);
+    expect(FIRST_LANGUAGES[FIRST_LANGUAGES.length - 1]).toBe("en");
+    // There is nothing to put an English word into, and the tutor explains
+    // English from another language.
+    expect(isTranslationLanguage("en")).toBe(false);
+    expect(TRANSLATION_LANGUAGES).toHaveLength(FIRST_LANGUAGES.length - 1);
+    expect(TRANSLATION_LANGUAGES).not.toContain("en");
+});
+
+it("never guesses English from the phone, which is in English whoever owns it", () => {
+    mockApp.locale = "en";
+    device("en-SG");
+    expect(suggestFirstLanguage()).toBeNull();
 });
 
 it("suggests the language the learner already chose for the app", () => {

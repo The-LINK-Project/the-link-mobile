@@ -4,7 +4,13 @@
  * This is not the app's locale list. The app is written in seven languages, but
  * a learner holding a finger on an English word wants that word in whatever
  * they actually grew up speaking, which on a Singapore worksite is a wider set.
- * English is missing on purpose: there would be nothing to translate to.
+ *
+ * English is on the list, last. A learner who reads English best, or a
+ * volunteer trying the app out, had no honest answer without it and was made
+ * to claim a language they do not read. It is a first language and nothing
+ * else: there is nothing to translate an English word into, and the speaking
+ * tutor explains English from another language, so both of those work from
+ * `TRANSLATION_LANGUAGES`, which leaves it out.
  *
  * Codes keep the app's historical locale codes where one exists, so a learner
  * running the app in Burmese and reading Burmese in the bubble sees one code in
@@ -28,9 +34,21 @@ export const FIRST_LANGUAGES = [
     "zh",
     "th",
     "vi",
+    "en",
 ] as const;
 
 export type FirstLanguage = (typeof FIRST_LANGUAGES)[number];
+
+/** A language English can be translated into and explained from. */
+export type TranslationLanguage = Exclude<FirstLanguage, "en">;
+
+export const TRANSLATION_LANGUAGES = FIRST_LANGUAGES.filter(
+    (language): language is TranslationLanguage => language !== "en",
+);
+
+export function isTranslationLanguage(value: unknown): value is TranslationLanguage {
+    return isFirstLanguage(value) && value !== "en";
+}
 
 /** What each language calls itself. A learner finds their own name fastest. */
 export const FIRST_LANGUAGE_LABELS: Record<FirstLanguage, string> = {
@@ -46,6 +64,7 @@ export const FIRST_LANGUAGE_LABELS: Record<FirstLanguage, string> = {
     zh: "中文",
     th: "ไทย",
     vi: "Tiếng Việt",
+    en: "English",
 };
 
 /** For English copy, logs and the account screen's secondary line. */
@@ -62,6 +81,7 @@ export const FIRST_LANGUAGE_ENGLISH_NAMES: Record<FirstLanguage, string> = {
     zh: "Chinese (Simplified)",
     th: "Thai",
     vi: "Vietnamese",
+    en: "English",
 };
 
 /**
@@ -147,6 +167,14 @@ export const FIRST_LANGUAGE_ONBOARDING_COPY: Record<
         continue: "Tiếp tục",
         changeLater: "Bạn có thể thay đổi điều này sau trong Tài khoản.",
     },
+    en: {
+        title: "What is your language?",
+        // Not the usual promise: there is no other language to show a held
+        // English word in.
+        body: "Choose the language you know best. The app will explain each lesson in it.",
+        continue: "Continue",
+        changeLater: "You can change this later in Account.",
+    },
 };
 
 export function isFirstLanguage(value: unknown): value is FirstLanguage {
@@ -161,9 +189,10 @@ export function isFirstLanguage(value: unknown): value is FirstLanguage {
  * Indonesian is "id" on modern devices and "in" on older ones, and "in" is also
  * our own code for it. The device's "fi" is deliberately absent: on a phone
  * that tag is Finnish, and offering a Finn Filipino would be worse than
- * offering nothing.
+ * offering nothing. English is absent too: most phones sold here are set to
+ * English whatever their owner reads, so it is only ever chosen, never guessed.
  */
-const DEVICE_LANGUAGES: Record<string, FirstLanguage> = {
+const DEVICE_LANGUAGES: Record<string, TranslationLanguage> = {
     bn: "bn",
     ta: "ta",
     hi: "hi",
@@ -181,7 +210,7 @@ const DEVICE_LANGUAGES: Record<string, FirstLanguage> = {
     vi: "vi",
 };
 
-function fromDeviceTag(tag: string | null | undefined): FirstLanguage | null {
+function fromDeviceTag(tag: string | null | undefined): TranslationLanguage | null {
     if (!tag) return null;
     const lower = tag.toLowerCase();
     // Every Chinese tag means the same bubble to us: we translate into
@@ -199,9 +228,9 @@ function fromDeviceTag(tag: string | null | undefined): FirstLanguage | null {
  * language list, which is usually right and costs the learner nothing when it
  * is not, since the screen still asks.
  */
-export function suggestFirstLanguage(): FirstLanguage | null {
+export function suggestFirstLanguage(): TranslationLanguage | null {
     const locale = getLocale();
-    if (locale !== "en" && isFirstLanguage(locale)) return locale;
+    if (isTranslationLanguage(locale)) return locale;
     try {
         for (const device of getLocales()) {
             const match = fromDeviceTag(device.languageCode) ?? fromDeviceTag(device.languageTag);

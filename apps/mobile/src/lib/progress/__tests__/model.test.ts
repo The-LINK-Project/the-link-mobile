@@ -87,6 +87,29 @@ describe("merging the phone's copy with the server's", () => {
         expect(merged.lessons.a.speaking).toMatchObject({ said: 2 });
         expect(merged.lessons.b.runs).toBe(4);
     });
+
+    it("settles two equally good results the same way from either side", () => {
+        const stamp = "2026-01-01T00:00:00.000Z";
+        const lesson = (bestFirstTry: number, total: number, said: number, of: number) => ({
+            lessons: {
+                a: {
+                    completedAt: stamp,
+                    runs: 1,
+                    bestFirstTry,
+                    total,
+                    speaking: { completedAt: stamp, said, total: of },
+                },
+            },
+        });
+        // Half right both times, but out of different totals. Without a rule for
+        // the tie each side kept its own copy, and they swapped on every sync.
+        const phone = lesson(3, 6, 1, 2);
+        const server = lesson(4, 8, 2, 4);
+        const merged = mergeProgress(phone, server);
+        expect(merged).toEqual(mergeProgress(server, phone));
+        expect(merged.lessons.a).toMatchObject({ bestFirstTry: 4, total: 8 });
+        expect(merged.lessons.a.speaking).toMatchObject({ said: 2, total: 4 });
+    });
 });
 
 describe("reading what was stored", () => {
@@ -137,15 +160,31 @@ describe("where a lesson stands", () => {
     const base: ProgressData = { ...emptyData(), runs: { "mrt-basics": run() } };
 
     it("is started only while a run that still fits is part-way through", () => {
+        const fresh = { finished: "none", run: null };
         expect(lessonStatus(base, "mrt-basics", "f")).toEqual({
-            kind: "started",
-            done: 2,
-            total: 4,
-            finishedBefore: false,
+            finished: "none",
+            run: { done: 2, total: 4 },
         });
         // The lesson was edited, or this is yesterday's daily mix.
-        expect(lessonStatus(base, "mrt-basics", "changed")).toEqual({ kind: "new" });
-        expect(lessonStatus(emptyData(), "mrt-basics", "f")).toEqual({ kind: "new" });
+        expect(lessonStatus(base, "mrt-basics", "changed")).toEqual(fresh);
+        expect(lessonStatus(emptyData(), "mrt-basics", "f")).toEqual(fresh);
+    });
+
+    it("keeps a finished lesson finished while it is being gone through again", () => {
+        const again: ProgressData = {
+            ...base,
+            progress: withSpeakingDone(
+                withLessonDone({ lessons: {} }, "mrt-basics", { firstTryCorrect: 9, total: 9 }),
+                "mrt-basics",
+                { said: 4, total: 4 },
+            ),
+        };
+        // Starting it again used to take the tick off Home and one lesson off
+        // the count of lessons done, as if the first run had never happened.
+        expect(lessonStatus(again, "mrt-basics", "f")).toEqual({
+            finished: "spoken",
+            run: { done: 2, total: 4 },
+        });
     });
 
     it("moves from learned to spoken", () => {
@@ -156,12 +195,12 @@ describe("where a lesson stands", () => {
                 total: 9,
             }),
         };
-        expect(lessonStatus(learned, "mrt-basics", "f").kind).toBe("learned");
+        expect(lessonStatus(learned, "mrt-basics", "f").finished).toBe("learned");
         const spoken = {
             ...learned,
             progress: withSpeakingDone(learned.progress, "mrt-basics", { said: 4, total: 4 }),
         };
-        expect(lessonStatus(spoken, "mrt-basics", "f").kind).toBe("spoken");
+        expect(lessonStatus(spoken, "mrt-basics", "f").finished).toBe("spoken");
     });
 
     it("offers the most recent unfinished thing to continue", () => {

@@ -16,7 +16,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
 
 import type { WordTranslation } from "./lookup";
 
@@ -32,14 +32,14 @@ export type CachedTranslation = {
  */
 export const TRANSLATION_CACHE_LIMIT = 400;
 
-const keyFor = (language: FirstLanguage) => `link.translate.v1.${language}`;
+const keyFor = (language: TranslationLanguage) => `link.translate.v1.${language}`;
 
-const memory = new Map<FirstLanguage, Map<string, CachedTranslation>>();
-const loads = new Map<FirstLanguage, Promise<void>>();
+const memory = new Map<TranslationLanguage, Map<string, CachedTranslation>>();
+const loads = new Map<TranslationLanguage, Promise<void>>();
 /** One write at a time, in order, so an older list can never land last. */
 let writes: Promise<void> = Promise.resolve();
 
-function entriesFor(language: FirstLanguage): Map<string, CachedTranslation> {
+function entriesFor(language: TranslationLanguage): Map<string, CachedTranslation> {
     let entries = memory.get(language);
     if (!entries) {
         entries = new Map();
@@ -100,7 +100,7 @@ function readStored(value: unknown): [string, CachedTranslation][] {
     return kept;
 }
 
-function load(language: FirstLanguage): Promise<void> {
+function load(language: TranslationLanguage): Promise<void> {
     let loading = loads.get(language);
     if (loading) return loading;
     loading = (async () => {
@@ -133,7 +133,7 @@ function capped(entries: Map<string, CachedTranslation>): Map<string, CachedTran
     return entries;
 }
 
-function persist(language: FirstLanguage) {
+function persist(language: TranslationLanguage) {
     const snapshot = JSON.stringify({
         version: 1,
         entries: [...entriesFor(language)],
@@ -152,7 +152,7 @@ export function flushTranslationCache(): Promise<void> {
 export async function readTranslationCache(
     word: string,
     context: string,
-    language: FirstLanguage,
+    language: TranslationLanguage,
 ): Promise<WordTranslation | null> {
     await load(language);
     const found = entriesFor(language).get(translationCacheKey(word, context));
@@ -167,7 +167,7 @@ export async function readTranslationCache(
 export function writeTranslationCache(
     word: string,
     context: string,
-    language: FirstLanguage,
+    language: TranslationLanguage,
     answer: CachedTranslation,
 ): void {
     const entries = entriesFor(language);

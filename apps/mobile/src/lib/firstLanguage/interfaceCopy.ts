@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-import i18n, { LOCALES, useTranslations } from "@/lib/i18n";
+import i18n, { getLocale, LOCALES, setLocale, useTranslations, type Locale } from "@/lib/i18n";
 
+import type { FirstLanguage } from "./languages";
 import { useFirstLanguage } from "./store";
 
 type InterfaceNamespace = "account" | "foundation" | "lessons" | "speaking";
@@ -34,7 +35,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "ఖాతా",
-            appLanguage: "యాప్ భాష",
             myLanguage: "నా భాష",
             myLanguageHint: "ఏదైనా ఇంగ్లీష్ పదాన్ని నొక్కి ఉంచి, ఈ భాషలో చూడండి.",
             signOut: "సైన్ అవుట్",
@@ -105,7 +105,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "അക്കൗണ്ട്",
-            appLanguage: "ആപ്പ് ഭാഷ",
             myLanguage: "എന്റെ ഭാഷ",
             myLanguageHint: "ഏതെങ്കിലും ഇംഗ്ലീഷ് വാക്കിൽ അമർത്തിപ്പിടിച്ച് ഈ ഭാഷയിൽ കാണുക.",
             signOut: "സൈൻ ഔട്ട്",
@@ -175,7 +174,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "Akaun",
-            appLanguage: "Bahasa aplikasi",
             myLanguage: "Bahasa saya",
             myLanguageHint:
                 "Tekan dan tahan mana-mana perkataan Inggeris untuk melihatnya dalam bahasa ini.",
@@ -245,7 +243,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "账户",
-            appLanguage: "应用语言",
             myLanguage: "我的语言",
             myLanguageHint: "长按任何英文单词，即可用此语言查看它。",
             signOut: "退出登录",
@@ -313,7 +310,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "บัญชี",
-            appLanguage: "ภาษาของแอป",
             myLanguage: "ภาษาของฉัน",
             myLanguageHint: "กดค้างที่คำภาษาอังกฤษเพื่อดูคำในภาษานี้",
             signOut: "ออกจากระบบ",
@@ -381,7 +377,6 @@ const EXTRA_INTERFACE_COPY: Record<
         },
         account: {
             title: "Tài khoản",
-            appLanguage: "Ngôn ngữ ứng dụng",
             myLanguage: "Ngôn ngữ của tôi",
             myLanguageHint: "Nhấn giữ bất kỳ từ tiếng Anh nào để xem bằng ngôn ngữ này.",
             signOut: "Đăng xuất",
@@ -434,6 +429,30 @@ const EXTRA_INTERFACE_COPY: Record<
         },
     },
 };
+
+/**
+ * The app catalogue that goes with a first language: its own where the app is
+ * written in it, and English for the six that only have the copy above.
+ */
+export function localeFor(language: FirstLanguage): Locale {
+    return (LOCALES as readonly string[]).includes(language) ? (language as Locale) : "en";
+}
+
+/**
+ * Keeps the app's locale in step with the learner's language.
+ *
+ * The locale still decides the screens this file does not cover (Privacy,
+ * About, Contact, the profile forms), and used to be a second setting under
+ * Account. The two drifted apart: a learner reading Home in Bengali would open
+ * Privacy in whatever the other setting said. Mounted once, signed in, so a
+ * choice arriving from the server moves the locale as well as one tapped here.
+ */
+export function useLocaleFollowsFirstLanguage() {
+    const [language] = useFirstLanguage();
+    useEffect(() => {
+        if (language && getLocale() !== localeFor(language)) void setLocale(localeFor(language));
+    }, [language]);
+}
 
 function isExtraInterfaceLanguage(value: string): value is ExtraInterfaceLanguage {
     return value in EXTRA_INTERFACE_COPY;

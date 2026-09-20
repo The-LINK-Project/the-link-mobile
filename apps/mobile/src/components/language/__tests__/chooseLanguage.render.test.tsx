@@ -50,7 +50,10 @@ it("waits for an answer before it lets the learner on", async () => {
     expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.title)).toBeTruthy();
     expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.body)).toBeTruthy();
     expect(screen.getByText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.changeLater)).toBeTruthy();
-    expect(screen.getByLabelText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.continue).props.accessibilityState.disabled).toBe(false);
+    expect(
+        screen.getByLabelText(FIRST_LANGUAGE_ONBOARDING_COPY.bn.continue).props.accessibilityState
+            .disabled,
+    ).toBe(false);
 });
 
 it("saves the answer on the phone, where the bubble can read it", async () => {

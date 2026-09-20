@@ -8,9 +8,14 @@ import {
     type FirstLanguage,
 } from "@/lib/firstLanguage/languages";
 
-type Props = {
-    value: FirstLanguage | null;
-    onChange: (language: FirstLanguage) => void;
+type Props<Language extends FirstLanguage> = {
+    value: Language | null;
+    onChange: (language: Language) => void;
+    /**
+     * Every first language unless told otherwise. The speaking tutor passes the
+     * shorter list it can teach from, which has no English in it.
+     */
+    languages?: readonly Language[];
     /** What a screen reader calls the group, usually the question being asked. */
     label: string;
     /** Indent the rows to line up with the titles of icon rows above them. */
@@ -18,7 +23,7 @@ type Props = {
 };
 
 /**
- * The twelve first languages as one radio list, used on the onboarding screen
+ * The first languages as one radio list, used on the onboarding screen
  * and again under Account so the learner meets the same list both times.
  *
  * Each language leads with its own name in its own script: somebody looking for
@@ -26,10 +31,16 @@ type Props = {
  * this is for read no English at all. The English name follows quietly, for the
  * learner running the app in English and for whoever is helping them.
  */
-export function FirstLanguagePicker({ value, onChange, label, inset = false }: Props) {
+export function FirstLanguagePicker<Language extends FirstLanguage = FirstLanguage>({
+    value,
+    onChange,
+    label,
+    inset = false,
+    languages = FIRST_LANGUAGES as readonly FirstLanguage[] as readonly Language[],
+}: Props<Language>) {
     return (
         <View accessibilityRole="radiogroup" accessibilityLabel={label}>
-            {FIRST_LANGUAGES.map((language, index) => {
+            {languages.map((language, index) => {
                 const own = FIRST_LANGUAGE_LABELS[language];
                 const english = FIRST_LANGUAGE_ENGLISH_NAMES[language];
                 return (
@@ -43,7 +54,7 @@ export function FirstLanguagePicker({ value, onChange, label, inset = false }: P
                         inset={inset}
                         selected={language === value}
                         accessibilityRole="radio"
-                        last={index === FIRST_LANGUAGES.length - 1}
+                        last={index === languages.length - 1}
                         onPress={() => onChange(language)}
                     />
                 );

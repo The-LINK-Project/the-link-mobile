@@ -6,8 +6,10 @@
  * reference back into content when a component needs to draw it.
  */
 
+import type { PictureKey } from "./icons";
 import type {
     DialogueChoiceExercise,
+    Exercise,
     Lesson,
     Localized,
     MeaningChoice,
@@ -54,6 +56,15 @@ export function picturableVocab(lesson: Lesson, ids: string[]): VocabItem[] {
     }
 
     return items.filter((item) => item.picture);
+}
+
+/**
+ * The picture to show beside an exercise's prompt: that of the first word it
+ * practises that has one. Undefined when none does, as for a sentence made
+ * only of words no single picture can carry.
+ */
+export function exercisePicture(lesson: Lesson, exercise: Exercise): PictureKey | undefined {
+    return vocabByIds(lesson, exercise.practises).find((item) => item.picture)?.picture;
 }
 
 /**

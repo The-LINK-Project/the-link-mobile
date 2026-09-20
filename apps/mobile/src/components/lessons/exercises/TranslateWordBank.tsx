@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { PromptCard } from "@/components/lessons/PromptCard";
 import { WordBank } from "@/components/lessons/WordBank";
-import { Card, Text } from "@/components/ui";
+import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
+import { exercisePicture } from "@/lib/lessons/lookup";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { TranslateWordBankExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
@@ -21,6 +23,7 @@ import { tokenIndices, type ExerciseProps } from "./shared";
  */
 export function TranslateWordBank({
     exercise,
+    lesson,
     draft,
     onDraftChange,
     result,
@@ -36,9 +39,9 @@ export function TranslateWordBank({
 
     return (
         <View style={styles.container}>
-            <Card>
+            <PromptCard picture={exercisePicture(lesson, exercise)}>
                 <Text variant="heading">{localized(exercise.prompt)}</Text>
-            </Card>
+            </PromptCard>
 
             <WordBank
                 tokens={tokens}

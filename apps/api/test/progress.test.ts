@@ -43,6 +43,30 @@ test("merging progress never takes anything away, in either order", () => {
     });
 });
 
+test("two equally good results merge the same way from either side", () => {
+    const stamp = "2026-01-01T00:00:00.000Z";
+    const lesson = (bestFirstTry: number, total: number, said: number, of: number): Progress => ({
+        lessons: {
+            a: {
+                completedAt: stamp,
+                runs: 1,
+                bestFirstTry,
+                total,
+                speaking: { completedAt: stamp, said, total: of },
+            },
+        },
+    });
+    // A perfect nine here and a perfect ten on the phone: the same lesson done in
+    // two languages. "Keep ours" left each side with its own copy, and the phone
+    // wrote its one back on every sync.
+    const stored = lesson(9, 9, 1, 2);
+    const sent = lesson(10, 10, 2, 4);
+    const merged = mergeProgress(stored, sent);
+    assert.deepEqual(merged, mergeProgress(sent, stored));
+    assert.equal(merged.lessons.a.total, 10);
+    assert.deepEqual(merged.lessons.a.speaking, { completedAt: stamp, said: 2, total: 4 });
+});
+
 test("a progress request with anything wrong in it is refused whole", () => {
     const now = Date.parse("2026-09-17T00:00:00.000Z");
     const lessons = (value: unknown) => ({ progress: { lessons: value } });

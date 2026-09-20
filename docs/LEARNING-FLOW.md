@@ -18,7 +18,11 @@ flowchart TD
     cont -- yes --> card[Continue card at the top] --> resume[Lesson or talk,<br/>at the saved place]
     cont -- no --> pick[Pick a lesson.<br/>'Start here' marks the next one]
 
-    pick --> words[1. Words<br/>see each word, its meaning,<br/>hear it as often as wanted]
+    pick --> before{Finished before?}
+    before -- yes --> was[Lesson done: best score, the words.<br/>Practise speaking, or go through it again]
+    was -- again --> ex
+    before -- no --> words
+    words[1. Words<br/>see each word, its meaning,<br/>hear it as often as wanted]
     words --> ex[2. Exercises<br/>taps only, no keyboard]
     back --> ex
     resume --> ex
@@ -80,11 +84,15 @@ What is deliberately not kept: the answer being built (an exercise comes back at
 
 Leaving a lesson asks no "are you sure?". The place is kept, so leaving costs nothing, and a dialog is one more thing to read.
 
-Two copies of a learner's progress are merged by taking, for each lesson, the latest date, the highest run count and the best result. Nothing is ever taken away, so it does not matter which phone syncs first. The rule is the same on the phone (`lib/progress/model.ts`) and on the server (`src/progress.ts`). Progress is kept per account, because a phone shared in a dormitory is common, and it is removed from both places when the account is deleted.
+Two copies of a learner's progress are merged by taking, for each lesson, the latest date, the highest run count and the best result. Two results with the same share right (nine of nine against ten of ten, which is one lesson done in two languages) are settled by the larger total, never by which side is merging, or the phone and the server would each keep their own and swap them on every sync. Nothing is ever taken away, so it does not matter which phone syncs first. The rule is the same on the phone (`lib/progress/model.ts`) and on the server (`src/progress.ts`). Progress is kept per account, because a phone shared in a dormitory is common, and it is removed from both places when the account is deleted.
 
 ## Edge cases that are handled
 
 - The phone closes the app mid-exercise, or mid-talk while a recording is being sent. The learner comes back to that exercise, or to that goal on the same try.
+- The learner answers the last exercise and leaves on its feedback, without pressing Finish. The lesson is finished by its last answer, so it is recorded; it used to wait for the button, and they came back to do that exercise again.
+- A finished lesson is opened again. It says it is done, with the best score and the words, and leaves going through it again as a choice. It does not open on its first question as if nothing had been kept.
+- A finished lesson is being gone through again. It is still finished: its tick stays on Home and it still counts towards the lessons done, with the bar showing how far the new run has got.
+- The learner changes their language part-way through a lesson. Their place and their answers stand. Only the exercises still ahead are chosen again: a translation exercise whose prompt would now fall back to English is dropped, one that has become possible is added at the end, and the score is out of what was actually queued.
 - The lesson was edited, or yesterday's daily mix is no longer today's. The saved run is discarded and not offered as something to continue.
 - A screen reader was switched on since the run was saved. The run held picture exercises it cannot do, so the lesson starts again.
 - No connection. Lessons work fully. Finished lessons sync the next time there is one. Speaking says the tutor could not answer and keeps the recording for another try.
