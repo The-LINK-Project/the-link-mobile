@@ -29,9 +29,13 @@ export function ContinueCard({
     const t = useFirstLanguageInterface("lessons");
     const lessonCopy = useHomeLessonCopy();
     const where =
-        point.kind === "talk"
-            ? t("continueTalk", { done: point.done, total: point.total })
-            : t("statusStarted", { done: point.done, total: point.total });
+        point.kind === "speak"
+            ? t("statusSpeakingLeft")
+            : point.kind === "talk"
+              ? t("continueTalk", { done: point.done, total: point.total })
+              : t("statusStarted", { done: point.done, total: point.total });
+    // With the exercises behind them and the talk ahead, the lesson is half done.
+    const share = point.kind === "speak" ? 0.5 : point.done / point.total;
 
     return (
         <Pressable
@@ -42,7 +46,7 @@ export function ContinueCard({
         >
             <View style={styles.icon}>
                 <Ionicons
-                    name={point.kind === "talk" ? "mic" : LESSON_ICONS[lesson.icon]}
+                    name={point.kind === "lesson" ? LESSON_ICONS[lesson.icon] : "mic"}
                     size={26}
                     color={colors.onPrimary}
                 />
@@ -55,9 +59,7 @@ export function ContinueCard({
                     {lessonCopy(lesson.title)}
                 </Text>
                 <View style={styles.track}>
-                    <View
-                        style={[styles.fill, { width: `${(point.done / point.total) * 100}%` }]}
-                    />
+                    <View style={[styles.fill, { width: `${share * 100}%` }]} />
                 </View>
                 <Text variant="caption" color={colors.onPrimary}>
                     {where}

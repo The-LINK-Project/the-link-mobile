@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
+import { LessonStages } from "@/components/lessons/LessonStages";
 import { Badge, Button, Card, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { localized, useFirstLanguageLocalized } from "@/lib/lessons/localized";
@@ -15,14 +16,21 @@ import { colors, spacing } from "@/lib/theme";
  * streak or gem economy: those are engagement mechanics for a consumer app with
  * daily habits to build, and they are not what this audience needs from a
  * five-minute lesson taken between shifts.
+ *
+ * For a lesson with a talk, this is the end of the first stage and not of the
+ * lesson, and it must not congratulate the learner on a lesson they have half
+ * done: "Lesson done!" here is exactly what let the talk pass for an extra.
  */
 export function LessonSummary({
     lesson,
     summary,
+    speakingLeft,
     onRetry,
 }: {
     lesson: Lesson;
     summary: SessionSummary;
+    /** The talk with the tutor is still to come before the lesson is done. */
+    speakingLeft: boolean;
     onRetry: () => void;
 }) {
     const t = useFirstLanguageInterface("lessons");
@@ -36,12 +44,20 @@ export function LessonSummary({
                 congratulations panel that could belong to any product. */}
             <View style={styles.hero}>
                 <Text variant="label">{localized(lesson.title, "en")}</Text>
-                <Text variant="title">{t("summaryTitle")}</Text>
+                <Text variant="title">
+                    {speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
+                </Text>
                 <Text variant="caption">
                     {perfect
                         ? t("summaryPerfect")
                         : t("summaryReviewed", { count: summary.reviewed })}
                 </Text>
+                {speakingLeft ? (
+                    <View style={styles.stages}>
+                        <LessonStages learn="done" speak="current" size="lg" />
+                        <Text variant="bodyStrong">{t("summarySpeakNext")}</Text>
+                    </View>
+                ) : null}
             </View>
 
             <Card>
@@ -107,20 +123,38 @@ export function LessonSummary({
  * lesson ends in a closed app. What to do next is now always in view, and the
  * page above it can be read or not.
  *
- * Saying the sentences aloud is the point of the lesson, so it leads. Skipping
- * stays one tap away for a learner on a crowded train who cannot speak out loud
- * right now.
+ * Saying the sentences aloud is the second half of the lesson, so it leads.
+ * A learner on a crowded train who cannot speak out loud right now can put it
+ * off, and the lesson waits for them, in progress, until they come back to it.
  */
 export function LessonSummaryActions({
+    speakingLeft,
     onDone,
     onSpeak,
 }: {
+    /** The talk with the tutor is still to come before the lesson is done. */
+    speakingLeft: boolean;
     onDone: () => void;
-    /** Present when this run taught something that can be practised aloud. */
+    /** Present when the lesson can be said aloud. */
     onSpeak?: () => void;
 }) {
     const t = useFirstLanguageInterface("lessons");
     if (!onSpeak) return <Button title={t("summaryDone")} size="lg" onPress={onDone} />;
+    // Gone through again with the talk already had: the lesson is done, and
+    // saying it once more is there for whoever wants it.
+    if (!speakingLeft) {
+        return (
+            <View style={styles.actions}>
+                <Button title={t("summaryDone")} size="lg" onPress={onDone} />
+                <Button
+                    title={t("summarySpeak")}
+                    variant="outline"
+                    icon={<Ionicons name="mic" size={20} color={colors.foreground} />}
+                    onPress={onSpeak}
+                />
+            </View>
+        );
+    }
     return (
         <View style={styles.actions}>
             <Button
@@ -129,7 +163,7 @@ export function LessonSummaryActions({
                 icon={<Ionicons name="mic" size={20} color={colors.onPrimary} />}
                 onPress={onSpeak}
             />
-            <Button title={t("summarySkipSpeaking")} variant="ghost" onPress={onDone} />
+            <Button title={t("summarySpeakLater")} variant="ghost" onPress={onDone} />
         </View>
     );
 }
@@ -137,6 +171,7 @@ export function LessonSummaryActions({
 const styles = StyleSheet.create({
     container: { gap: spacing.xl, paddingBottom: spacing.xl },
     hero: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+    stages: { gap: spacing.sm, paddingTop: spacing.md },
     section: { gap: spacing.sm },
     terms: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
     phrase: {

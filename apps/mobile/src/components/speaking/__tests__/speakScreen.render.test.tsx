@@ -202,6 +202,23 @@ describe("speaking practice", () => {
         expect((tutorTurn.mock.calls[0][0] as TutorTurnRequest).language).toBe("th");
     });
 
+    it("does not carry on a talk in a language the learner has since changed from", async () => {
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        await act(() => setFirstLanguage("bn"));
+        const user = userEvent.setup();
+        const view = render(<SpeakScreen />);
+        await user.press(await screen.findByText(label("start")));
+        await screen.findByText(OPENING.reply);
+        view.unmount();
+
+        // It used to reopen mid-talk with the tutor still speaking Bengali.
+        await act(() => setFirstLanguage("ta"));
+        render(<SpeakScreen />);
+        expect(await screen.findByText("தொடங்கு")).toBeTruthy();
+        expect(screen.queryByText(OPENING.reply)).toBeNull();
+    });
+
     it("keeps every language the tutor teaches from in a collapsed dropdown", async () => {
         await act(() => setFirstLanguage("hi"));
         withScreenReader(false);

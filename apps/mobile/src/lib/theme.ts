@@ -24,6 +24,9 @@ export const colors = {
     successSoft: "#dcfce7",
     warning: "#946300",
     warningSoft: "#fef9c3",
+    // Fills only (a bar, a dot), never text: yellow this bright cannot carry
+    // small type on white. Words in yellow places use `warning`.
+    warningFill: "#eab308",
     destructive: "#ca3214",
     destructiveSoft: "#fee2e2",
 

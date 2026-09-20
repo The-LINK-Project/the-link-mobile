@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { colors, radius, spacing } from "@/lib/theme";
@@ -15,10 +16,18 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
     accent: { bg: colors.accentSoft, fg: "#0e6b7b" },
 };
 
-export function Badge({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
+type Props = {
+    label: string;
+    tone?: Tone;
+    /** Says the same thing as the colour, for a learner who cannot tell the colours apart. */
+    icon?: React.ComponentProps<typeof Ionicons>["name"];
+};
+
+export function Badge({ label, tone = "neutral", icon }: Props) {
     const palette = TONES[tone];
     return (
         <View style={[styles.badge, { backgroundColor: palette.bg }]}>
+            {icon ? <Ionicons name={icon} size={14} color={palette.fg} /> : null}
             <Text variant="caption" color={palette.fg} style={styles.text}>
                 {label}
             </Text>
@@ -29,6 +38,9 @@ export function Badge({ label, tone = "neutral" }: { label: string; tone?: Tone 
 const styles = StyleSheet.create({
     badge: {
         alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.xs,
         // Long labels (Tamil, Bengali) wrap inside the pill instead of
         // pushing it off-screen
         flexShrink: 1,
@@ -37,5 +49,5 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs,
     },
-    text: { fontWeight: "600", lineHeight: 18 },
+    text: { fontWeight: "600", lineHeight: 18, flexShrink: 1 },
 });

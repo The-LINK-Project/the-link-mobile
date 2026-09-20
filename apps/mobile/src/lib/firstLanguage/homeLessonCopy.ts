@@ -163,6 +163,40 @@ const HOME_LESSON_COPY: Record<ExtraLessonLanguage, Record<string, string>> = {
         "A quick practice with words from every lesson. New every day.":
             "Luyện nhanh các từ trong mọi bài học. Nội dung mới mỗi ngày.",
     },
+    fr: {
+        "Taking the MRT": "Prendre le MRT",
+        "Find the right platform, top up your card, and get off at the right stop.":
+            "Trouvez le bon quai, rechargez votre carte et descendez au bon arrêt.",
+        "Buying food": "Acheter à manger",
+        "Order at a food stall, ask the price, and say how you want it.":
+            "Commandez à un stand de nourriture, demandez le prix et dites comment vous le voulez.",
+        "Seeing a doctor": "Voir un médecin",
+        "Say what is wrong, ask for an MC, and understand how to take your medicine.":
+            "Dites ce qui ne va pas, demandez un certificat médical (MC) et comprenez comment prendre vos médicaments.",
+        "At work": "Au travail",
+        "Ask your supervisor to say it again, say when something is not safe, and ask for a day off.":
+            "Demandez à votre superviseur de répéter, dites quand quelque chose n'est pas sûr et demandez un jour de congé.",
+        "Daily mix": "Mélange du jour",
+        "A quick practice with words from every lesson. New every day.":
+            "Un entraînement rapide avec les mots de toutes les leçons. Nouveau chaque jour.",
+    },
+    es: {
+        "Taking the MRT": "Viajar en el MRT",
+        "Find the right platform, top up your card, and get off at the right stop.":
+            "Encuentra el andén correcto, recarga tu tarjeta y bájate en la parada correcta.",
+        "Buying food": "Comprar comida",
+        "Order at a food stall, ask the price, and say how you want it.":
+            "Pide en un puesto de comida, pregunta el precio y di cómo lo quieres.",
+        "Seeing a doctor": "Ir al médico",
+        "Say what is wrong, ask for an MC, and understand how to take your medicine.":
+            "Di qué te pasa, pide un certificado médico (MC) y entiende cómo tomar tu medicina.",
+        "At work": "En el trabajo",
+        "Ask your supervisor to say it again, say when something is not safe, and ask for a day off.":
+            "Pide a tu supervisor que lo repita, avisa cuando algo no es seguro y pide un día libre.",
+        "Daily mix": "Mezcla diaria",
+        "A quick practice with words from every lesson. New every day.":
+            "Una práctica rápida con palabras de todas las lecciones. Nueva cada día.",
+    },
 };
 
 function hasExtraCopy(language: FirstLanguage): language is ExtraLessonLanguage {

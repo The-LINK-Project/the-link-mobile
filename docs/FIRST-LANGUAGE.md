@@ -39,6 +39,8 @@ Codes keep the app's historical locale codes where one exists (`bu` Burmese,
 | zh   | Chinese (Simplified) | 中文                    |
 | th   | Thai                 | ไทย                     |
 | vi   | Vietnamese           | Tiếng Việt              |
+| fr   | French               | Français                |
+| es   | Spanish              | Español                 |
 | en   | English              | English                 |
 
 English is last, and is a first language only. A learner who reads English best
@@ -122,7 +124,7 @@ and context; neither the context text nor the learner's id is stored with them.
 ### `lib/firstLanguage/languages.ts`
 
 ```ts
-export const FIRST_LANGUAGES: readonly [...];          // the thirteen codes, table order
+export const FIRST_LANGUAGES: readonly [...];          // the fifteen codes, table order
 export const TRANSLATION_LANGUAGES: readonly [...];    // the same, without "en"
 export type FirstLanguage = (typeof FIRST_LANGUAGES)[number];
 export const FIRST_LANGUAGE_LABELS: Record<FirstLanguage, string>;        // endonyms

@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
 import { LessonWords } from "@/components/lessons/LessonIntro";
+import { LessonStages } from "@/components/lessons/LessonStages";
 import { LessonHero } from "@/components/lessons/LessonVisual";
 import { Badge, Button, Card, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
@@ -11,35 +12,61 @@ import type { LessonRecord } from "@/lib/progress/model";
 import { colors, radius, spacing } from "@/lib/theme";
 
 /**
- * A finished lesson, opened again.
+ * A lesson whose exercises are finished, opened again.
  *
  * It used to open on its first question, exactly as it did the first time, and
  * a learner who had done every exercise was left wondering whether any of it
- * had been kept. So it says that the lesson is done and how it went, keeps the
- * words there to look over, and leaves going through it again as a choice.
+ * had been kept. So it says what is done and how it went, keeps the words there
+ * to look over, and leaves going through it again as a choice.
+ *
+ * With the talk still to do (`speakingLeft`) the lesson is not done, and this
+ * says so: what is finished is the first of two stages, and the second is next.
  */
-export function LessonDone({ lesson, record }: { lesson: Lesson; record: LessonRecord }) {
+export function LessonDone({
+    lesson,
+    record,
+    speakingLeft,
+}: {
+    lesson: Lesson;
+    record: LessonRecord;
+    /** The lesson has a talk with the tutor, and it has not been had yet. */
+    speakingLeft: boolean;
+}) {
     const t = useFirstLanguageInterface("lessons");
+    const twoStages = speakingLeft || record.speaking !== undefined;
 
     return (
         <View style={styles.container}>
             <View style={styles.hero}>
                 <Text variant="label">{localized(lesson.title, "en")}</Text>
                 <View style={styles.title}>
-                    <View style={styles.tick}>
-                        <Ionicons name="checkmark" size={20} color={colors.white} />
+                    <View style={[styles.tick, speakingLeft && styles.tickProgress]}>
+                        <Ionicons
+                            name={speakingLeft ? "ellipsis-horizontal" : "checkmark"}
+                            size={20}
+                            color={colors.white}
+                        />
                     </View>
                     <Text variant="title" style={styles.titleText}>
-                        {t("summaryTitle")}
+                        {speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
                     </Text>
                 </View>
+                {speakingLeft ? <Text variant="caption">{t("summarySpeakNext")}</Text> : null}
                 <LessonHero lesson={lesson} />
                 <View style={styles.badges}>
-                    <Badge
-                        label={record.speaking ? t("statusSpoken") : t("statusLearned")}
-                        tone="success"
-                    />
+                    {speakingLeft ? (
+                        <Badge label={t("statusInProgress")} tone="warning" icon="time" />
+                    ) : (
+                        <Badge label={t("statusDone")} tone="success" icon="checkmark-circle" />
+                    )}
                 </View>
+                {twoStages ? (
+                    <LessonStages
+                        learn="done"
+                        speak={speakingLeft ? "current" : "done"}
+                        size="lg"
+                    />
+                ) : null}
             </View>
 
             <Card>
@@ -94,6 +121,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         backgroundColor: colors.success,
     },
+    tickProgress: { backgroundColor: colors.warningFill },
     badges: { flexDirection: "row" },
     section: { gap: spacing.sm },
     actions: { gap: spacing.sm },

@@ -41,19 +41,19 @@ const choose = (url: string, body: unknown) =>
     });
 
 test("every translation language has an English name and a script its translations must use", () => {
-    assert.equal(FIRST_LANGUAGES.length, 13);
+    assert.equal(FIRST_LANGUAGES.length, 15);
     assert.ok(isFirstLanguage("bn"));
     assert.equal(isFirstLanguage(null), false);
     // English can be a learner's first language, but there would be nothing to
     // translate an English word into.
     assert.ok(isFirstLanguage("en"));
     assert.equal(isTranslationLanguage("en"), false);
-    assert.equal(TRANSLATION_LANGUAGES.length, 12);
+    assert.equal(TRANSLATION_LANGUAGES.length, 14);
 
     for (const language of TRANSLATION_LANGUAGES) assert.ok(FIRST_LANGUAGE_NAMES[language]);
     assert.deepEqual(
         TRANSLATION_LANGUAGES.filter((language) => FIRST_LANGUAGE_SCRIPTS[language] === null),
-        ["fi", "in", "ms", "vi"],
+        ["fi", "in", "ms", "vi", "fr", "es"],
     );
     // A script name the regular expression engine does not know would make
     // every translation into that language fail its check.
@@ -75,7 +75,7 @@ test("a choice is refused unless it names a language and says when it was made",
         {},
         [],
         { language: "bn" },
-        { language: "fr", updatedAt: good.updatedAt },
+        { language: "de", updatedAt: good.updatedAt },
         { language: "BN", updatedAt: good.updatedAt },
         { ...good, updatedAt: "yesterday" },
         { ...good, updatedAt: 1760000000000 },

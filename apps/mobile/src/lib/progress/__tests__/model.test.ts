@@ -2,6 +2,7 @@ import {
     continuePoint,
     doneToday,
     emptyData,
+    lessonStage,
     lessonStatus,
     mergeProgress,
     readData,
@@ -158,56 +159,70 @@ describe("reading what was stored", () => {
 
 describe("where a lesson stands", () => {
     const base: ProgressData = { ...emptyData(), runs: { "mrt-basics": run() } };
+    const mrt = { id: "mrt-basics", fingerprint: "f", speakable: true };
+    const learned: ProgressData = {
+        ...emptyData(),
+        progress: withLessonDone({ lessons: {} }, "mrt-basics", { firstTryCorrect: 9, total: 9 }),
+    };
+    const talk = (results: string[], phase = "ready") => ({
+        context: { goals: [{}, {}, {}, {}] },
+        state: { phase, messages: [{ id: "m1" }], results, goalCount: 4, goalIndex: 0 },
+        savedAt: "2026-09-17T12:00:00.000Z",
+    });
+    const talking = (results: string[], phase?: string): ProgressData =>
+        ({ ...learned, talks: { "mrt-basics": talk(results, phase) } }) as unknown as ProgressData;
 
     it("is started only while a run that still fits is part-way through", () => {
-        const fresh = { finished: "none", run: null };
-        expect(lessonStatus(base, "mrt-basics", "f")).toEqual({
-            finished: "none",
-            run: { done: 2, total: 4 },
-        });
+        const fresh = { finished: "none", run: null, talk: null };
+        expect(lessonStatus(base, mrt)).toEqual({ ...fresh, run: { done: 2, total: 4 } });
         // The lesson was edited, or this is yesterday's daily mix.
-        expect(lessonStatus(base, "mrt-basics", "changed")).toEqual(fresh);
-        expect(lessonStatus(emptyData(), "mrt-basics", "f")).toEqual(fresh);
+        expect(lessonStatus(base, { ...mrt, fingerprint: "changed" })).toEqual(fresh);
+        expect(lessonStatus(emptyData(), mrt)).toEqual(fresh);
+        expect(lessonStage(lessonStatus(base, mrt))).toBe("progress");
+        expect(lessonStage(lessonStatus(emptyData(), mrt))).toBe("new");
     });
 
     it("keeps a finished lesson finished while it is being gone through again", () => {
         const again: ProgressData = {
             ...base,
-            progress: withSpeakingDone(
-                withLessonDone({ lessons: {} }, "mrt-basics", { firstTryCorrect: 9, total: 9 }),
-                "mrt-basics",
-                { said: 4, total: 4 },
-            ),
+            progress: withSpeakingDone(learned.progress, "mrt-basics", { said: 4, total: 4 }),
         };
         // Starting it again used to take the tick off Home and one lesson off
         // the count of lessons done, as if the first run had never happened.
-        expect(lessonStatus(again, "mrt-basics", "f")).toEqual({
-            finished: "spoken",
-            run: { done: 2, total: 4 },
-        });
+        const status = lessonStatus(again, mrt);
+        expect(status).toEqual({ finished: "done", run: { done: 2, total: 4 }, talk: null });
+        expect(lessonStage(status)).toBe("done");
     });
 
-    it("moves from learned to spoken", () => {
-        const learned = {
-            ...emptyData(),
-            progress: withLessonDone({ lessons: {} }, "mrt-basics", {
-                firstTryCorrect: 9,
-                total: 9,
-            }),
-        };
-        expect(lessonStatus(learned, "mrt-basics", "f").finished).toBe("learned");
+    it("is not done until it has been said aloud", () => {
+        // The exercises are the first of two stages. Marking the lesson done
+        // here is what let the talk with the tutor pass for an optional extra.
+        const status = lessonStatus(learned, mrt);
+        expect(status.finished).toBe("learned");
+        expect(lessonStage(status)).toBe("progress");
+
         const spoken = {
             ...learned,
             progress: withSpeakingDone(learned.progress, "mrt-basics", { said: 4, total: 4 }),
         };
-        expect(lessonStatus(spoken, "mrt-basics", "f").finished).toBe("spoken");
+        expect(lessonStatus(spoken, mrt).finished).toBe("done");
+        expect(lessonStage(lessonStatus(spoken, mrt))).toBe("done");
+    });
+
+    it("is done by its exercises alone when there is nothing to say aloud", () => {
+        const silent = { ...mrt, speakable: false };
+        expect(lessonStatus(learned, silent).finished).toBe("done");
+        expect(continuePoint(learned, [silent])).toBeNull();
+    });
+
+    it("shows how far a talk in flight has got", () => {
+        expect(lessonStatus(talking(["said"]), mrt).talk).toEqual({ done: 1, total: 4 });
+        // A talk that is over is not something to come back to.
+        expect(lessonStatus(talking(["said"], "finished"), mrt).talk).toBeNull();
     });
 
     it("offers the most recent unfinished thing to continue", () => {
-        const lessons = [
-            { id: "mrt-basics", fingerprint: "f" },
-            { id: "hawker-food", fingerprint: "f" },
-        ];
+        const lessons = [mrt, { id: "hawker-food", fingerprint: "f", speakable: true }];
         expect(continuePoint(emptyData(), lessons)).toBeNull();
         expect(continuePoint(base, lessons)).toEqual({
             kind: "lesson",
@@ -226,6 +241,22 @@ describe("where a lesson stands", () => {
         expect(continuePoint(withLater, lessons)?.lessonId).toBe("hawker-food");
         // A run for a lesson that no longer exists is not offered.
         expect(continuePoint(withLater, [lessons[0]])?.lessonId).toBe("mrt-basics");
+    });
+
+    it("offers the talk a half-done lesson is waiting for", () => {
+        expect(continuePoint(learned, [mrt])).toEqual({ kind: "speak", lessonId: "mrt-basics" });
+        // Once begun, it is the talk itself that is carried on with.
+        expect(continuePoint(talking(["said"]), [mrt])).toEqual({
+            kind: "talk",
+            lessonId: "mrt-basics",
+            done: 1,
+            total: 4,
+        });
+        const spoken = {
+            ...learned,
+            progress: withSpeakingDone(learned.progress, "mrt-basics", { said: 4, total: 4 }),
+        };
+        expect(continuePoint(spoken, [mrt])).toBeNull();
     });
 });
 
