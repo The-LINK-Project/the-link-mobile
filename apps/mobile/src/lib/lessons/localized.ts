@@ -19,8 +19,8 @@ function isTranslated(language: string): language is Exclude<LearnerLanguage, "e
  * locales, so anything else falls back to English rather than showing an empty
  * string — the same policy `lib/i18n` uses for UI copy.
  *
- * Pure, and takes the locale explicitly. Components should use `useLocalized`
- * instead; this form is for grading, tests and anything outside React.
+ * Pure, and takes the locale explicitly. Components should use
+ * `useFirstLanguageLocalized` instead; this form is for grading, tests and anything outside React.
  */
 export function localized(
     value: Localized,
@@ -34,24 +34,15 @@ export function localized(
 }
 
 /**
- * Resolver bound to the current locale, which re-renders on a language change.
- *
- * Components must use this rather than calling `localized` with
- * `getLocale()`. Reading the locale at call time gives the right answer once
- * and then goes stale: nothing tells React to render again when the learner
- * switches language, so a screen that shows only lesson content stays in the
- * old language until something unrelated happens to re-render it. That was a
- * real bug in the matching exercise, which had no other reason to re-render.
- */
-export function useLocalized() {
-    const [locale] = useLocale();
-    return (value: Localized) => localized(value, locale);
-}
-
-/**
  * Resolve explanations and directions in the language the learner said they
  * know best. This is deliberately separate from the app locale: English is
  * the subject of the lesson, while the first language is what explains it.
+ *
+ * Components must use this rather than calling `localized` with a language
+ * read at call time. That gives the right answer once and then goes stale:
+ * nothing tells React to render again when the learner switches language. That
+ * was a real bug in the matching exercise, which had no other reason to
+ * re-render.
  */
 export function useFirstLanguageLocalized() {
     const [firstLanguage] = useFirstLanguage();

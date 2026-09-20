@@ -14,6 +14,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { WordTranslationHost } from "@/components/translate/WordTranslationHost";
 import { Button, LoadingState, Text } from "@/components/ui";
 import { API_BASE_URL, useApiAuth } from "@/lib/api";
+import { useLocaleFollowsFirstLanguage } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageReady } from "@/lib/firstLanguage/store";
 import { useFirstLanguageSync } from "@/lib/firstLanguage/sync";
 import i18n, { useLocaleReady } from "@/lib/i18n";
@@ -40,6 +41,7 @@ function AppShell() {
     // phone is still looking for the answer.
     const firstLanguageReady = useFirstLanguageReady(userId);
     useFirstLanguageSync(ready && firstLanguageReady ? userId : null);
+    useLocaleFollowsFirstLanguage();
 
     useEffect(() => {
         if (localeReady && progressReady && firstLanguageReady) void SplashScreen.hideAsync();

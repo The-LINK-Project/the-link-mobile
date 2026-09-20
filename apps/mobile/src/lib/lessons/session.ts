@@ -18,6 +18,9 @@
  *   disagreeing with it. A learner returns to the start of the exercise they
  *   were on. A run is thrown away when the lesson's exercises have changed
  *   underneath it, which `fingerprint` detects.
+ * - A learner who changes their language between leaving a run and coming back
+ *   keeps their place. Only the exercises still ahead of them are chosen again,
+ *   for the language they read now.
  */
 
 import { useCallback, useMemo, useReducer } from "react";
@@ -112,36 +115,60 @@ export function snapshotOf(state: SessionState): RunSnapshot {
     };
 }
 
+function isRunLanguage(value: string): value is Locale | FirstLanguage {
+    return (
+        (LOCALES as readonly string[]).includes(value) ||
+        (FIRST_LANGUAGES as readonly string[]).includes(value)
+    );
+}
+
 /**
  * Pick a saved run back up, or null when it no longer fits: the lesson changed,
  * the run was already over, or a screen reader has been switched on since and
  * the queue holds picture exercises it cannot do.
+ *
+ * `language` is the one the learner reads now. When it is not the one the run
+ * was built for, what they have answered stands and the rest of the queue is
+ * chosen again: a translation exercise whose prompt would fall back to English
+ * is dropped, and one that has become possible is added at the end.
  */
 export function restoreSession(
     lesson: Lesson,
     saved: RunSnapshot,
     screenReader: boolean,
+    language: Locale | FirstLanguage = getFirstLanguage() ?? getLocale(),
 ): SessionState | null {
     if (saved.fingerprint !== fingerprint(lesson)) return null;
     if (saved.screenReader !== screenReader) return null;
-    if (
-        !(LOCALES as readonly string[]).includes(saved.locale) &&
-        !(FIRST_LANGUAGES as readonly string[]).includes(saved.locale)
-    )
-        return null;
+    if (!isRunLanguage(saved.locale)) return null;
     if (saved.position < 0 || saved.position >= saved.queue.length) return null;
-    const locale = saved.locale as Locale | FirstLanguage;
-    const known = new Set(
-        lesson.exercises
-            .filter((exercise) => appliesToLearner(exercise, locale, screenReader))
-            .map((exercise) => exercise.id),
-    );
-    if (!saved.queue.every((id) => known.has(id))) return null;
+    const exercises = new Map(lesson.exercises.map((exercise) => [exercise.id, exercise]));
+    const fits = (id: string, locale: Locale | FirstLanguage) => {
+        const exercise = exercises.get(id);
+        return exercise !== undefined && appliesToLearner(exercise, locale, screenReader);
+    };
+    if (!saved.queue.every((id) => fits(id, saved.locale as Locale | FirstLanguage))) return null;
+
+    let queue = saved.queue;
+    if (language !== saved.locale) {
+        const queued = new Set(saved.queue);
+        queue = [
+            ...saved.queue.slice(0, saved.position),
+            ...saved.queue.slice(saved.position).filter((id) => fits(id, language)),
+            ...buildQueue(
+                lesson.exercises.filter((exercise) => !queued.has(exercise.id)),
+                language,
+                screenReader,
+            ),
+        ];
+        // Nothing left that this learner can do: the run is over, not resumable.
+        if (saved.position >= queue.length) return null;
+    }
     return {
         lesson,
-        locale,
+        locale: language,
         screenReader,
-        queue: saved.queue,
+        queue,
         position: saved.position,
         phase: "answering",
         draft: null,
@@ -325,11 +352,13 @@ export type SessionSummary = {
 };
 
 export function summarize(state: SessionState): SessionSummary {
-    // Exercises that do not apply to this learner's language were never shown,
-    // so counting them would report a score out of a total they never saw.
-    const shown = state.lesson.exercises.filter((exercise) =>
-        appliesToLearner(exercise, state.locale, state.screenReader),
-    );
+    // The queue is the run: exercises that do not apply to this learner were
+    // never put on it, so counting them would report a score out of a total
+    // they never saw. Counting what is queued, rather than asking again what
+    // applies, also keeps the score honest for a learner who changed language
+    // part-way: every answer on record is for an exercise that is counted.
+    const queued = new Set(state.queue);
+    const shown = state.lesson.exercises.filter((exercise) => queued.has(exercise.id));
     const total = shown.length;
     const records = Object.values(state.records);
     const firstTryCorrect = records.filter((record) => record.firstTryCorrect).length;
@@ -371,7 +400,12 @@ export function useLessonSession(
         { lesson, locale, screenReader, saved },
         (initial) =>
             (initial.saved &&
-                restoreSession(initial.lesson, initial.saved, initial.screenReader)) ||
+                restoreSession(
+                    initial.lesson,
+                    initial.saved,
+                    initial.screenReader,
+                    initial.locale,
+                )) ||
             initSession(initial.lesson, initial.locale, initial.screenReader),
     );
 

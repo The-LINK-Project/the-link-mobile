@@ -15,7 +15,7 @@
  */
 
 import { ApiError, api } from "@/lib/api";
-import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
 
 import { readTranslationCache, translationCacheKey, writeTranslationCache } from "./cache";
 import { lookupGlossary } from "./glossary";
@@ -89,7 +89,7 @@ function readAnswer(value: unknown, word: string): WordTranslation | null {
 }
 
 async function askServer(
-    input: { word: string; context: string; language: FirstLanguage },
+    input: { word: string; context: string; language: TranslationLanguage },
     signal: AbortSignal,
 ): Promise<WordTranslation> {
     const { word, context, language } = input;
@@ -115,7 +115,7 @@ async function askServer(
 
 function share(
     key: string,
-    input: { word: string; context: string; language: FirstLanguage },
+    input: { word: string; context: string; language: TranslationLanguage },
 ): Pending {
     const existing = pending.get(key);
     if (existing) {
@@ -172,7 +172,7 @@ export function fitContext(word: string, context: string): string {
 export async function lookupTranslation(input: {
     word: string;
     context: string;
-    language: FirstLanguage;
+    language: TranslationLanguage;
     signal?: AbortSignal;
 }): Promise<WordTranslation> {
     const { word, language, signal } = input;

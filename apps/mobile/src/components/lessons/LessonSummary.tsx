@@ -16,16 +16,15 @@ import { colors, spacing } from "@/lib/theme";
  * daily habits to build, and they are not what this audience needs from a
  * five-minute lesson taken between shifts.
  */
-type Props = {
+export function LessonSummary({
+    lesson,
+    summary,
+    onRetry,
+}: {
     lesson: Lesson;
     summary: SessionSummary;
-    onDone: () => void;
     onRetry: () => void;
-    /** Present when this run taught something that can be practised aloud. */
-    onSpeak?: () => void;
-};
-
-export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone" | "onSpeak">) {
+}) {
     const t = useFirstLanguageInterface("lessons");
     const native = useFirstLanguageLocalized();
     const perfect = summary.reviewed === 0;
@@ -112,7 +111,14 @@ export function LessonSummary({ lesson, summary, onRetry }: Omit<Props, "onDone"
  * stays one tap away for a learner on a crowded train who cannot speak out loud
  * right now.
  */
-export function LessonSummaryActions({ onDone, onSpeak }: Pick<Props, "onDone" | "onSpeak">) {
+export function LessonSummaryActions({
+    onDone,
+    onSpeak,
+}: {
+    onDone: () => void;
+    /** Present when this run taught something that can be practised aloud. */
+    onSpeak?: () => void;
+}) {
     const t = useFirstLanguageInterface("lessons");
     if (!onSpeak) return <Button title={t("summaryDone")} size="lg" onPress={onDone} />;
     return (

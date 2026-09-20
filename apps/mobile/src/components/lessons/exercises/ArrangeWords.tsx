@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { PromptCard } from "@/components/lessons/PromptCard";
 import { WordBank } from "@/components/lessons/WordBank";
-import { Card, Text } from "@/components/ui";
+import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
-import { phraseById } from "@/lib/lessons/lookup";
+import { exercisePicture, phraseById } from "@/lib/lessons/lookup";
 import { spacing } from "@/lib/theme";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { ArrangeWordsExercise } from "@/lib/lessons/types";
@@ -46,9 +47,9 @@ export function ArrangeWords({
     return (
         <View style={styles.container}>
             {phrase ? (
-                <Card tone="muted">
+                <PromptCard tone="muted" picture={exercisePicture(lesson, exercise)}>
                     <Text variant="body">{localized(phrase.meaning)}</Text>
-                </Card>
+                </PromptCard>
             ) : null}
             <WordBank
                 tokens={tokens}

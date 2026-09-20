@@ -24,11 +24,11 @@ import type { Db } from "mongodb";
 import {
     FIRST_LANGUAGE_NAMES,
     FIRST_LANGUAGE_SCRIPTS,
-    isFirstLanguage,
-    type FirstLanguage,
+    isTranslationLanguage,
+    type TranslationLanguage,
 } from "./languages.js";
 
-export type TranslationRequest = { word: string; context: string; language: FirstLanguage };
+export type TranslationRequest = { word: string; context: string; language: TranslationLanguage };
 export type TranslatedPhrase = { text: string; translation: string };
 export type Translation = {
     word: string;
@@ -84,7 +84,7 @@ type Parsed = { ok: true; value: TranslationRequest } | { ok: false; error: stri
 export function parseTranslateRequest(body: unknown): Parsed {
     const fail = (error: string): Parsed => ({ ok: false, error });
     if (!isRecord(body)) return fail("Invalid request");
-    if (!isFirstLanguage(body.language)) return fail("Unsupported language");
+    if (!isTranslationLanguage(body.language)) return fail("Unsupported language");
 
     if (typeof body.word !== "string") return fail("Invalid word");
     const word = oneLine(body.word);
@@ -111,7 +111,7 @@ export function parseTranslateRequest(body: unknown): Parsed {
 
 // ------------------------------------------------------------------ prompt
 
-export function translationInstruction(language: FirstLanguage): string {
+export function translationInstruction(language: TranslationLanguage): string {
     const name = FIRST_LANGUAGE_NAMES[language];
     const script = FIRST_LANGUAGE_SCRIPTS[language];
     return [
@@ -192,7 +192,7 @@ export function checkTranslation(
 
 type TranslationRecord = {
     _id: string;
-    language: FirstLanguage;
+    language: TranslationLanguage;
     word: string;
     translation: string;
     phrase: TranslatedPhrase | null;

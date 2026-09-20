@@ -12,8 +12,12 @@ type Props = Omit<PressableProps, "style" | "children"> & {
     /** Secondary value shown before the chevron, e.g. the current language */
     value?: string;
     icon?: IconName;
-    /** Trailing affordance: navigate (chevron), pick (checkmark when selected), or none */
-    trailing?: "chevron" | "check" | "none";
+    /**
+     * Trailing affordance: navigate (chevron), pick (checkmark when selected),
+     * open a list underneath (an arrow that points down, then up while the list
+     * is open, read from `accessibilityState.expanded`), or none.
+     */
+    trailing?: "chevron" | "check" | "expand" | "none";
     selected?: boolean;
     tone?: "default" | "destructive";
     /** Hide the separator under the last row of a group */
@@ -76,6 +80,13 @@ export function ListRow({
             ) : null}
             {trailing === "chevron" ? (
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+            ) : null}
+            {trailing === "expand" ? (
+                <Ionicons
+                    name={accessibilityState?.expanded ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color={colors.muted}
+                />
             ) : null}
             {trailing === "check" ? (
                 <View style={styles.checkSlot}>

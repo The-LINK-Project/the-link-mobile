@@ -5,7 +5,8 @@ import type { Localized } from "@/lib/lessons/types";
 import type { FirstLanguage } from "./languages";
 import { useFirstLanguage } from "./store";
 
-type ExtraLessonLanguage = Exclude<FirstLanguage, "bn" | "ta" | "hi">;
+// English needs no copy of its own: the lessons are authored in it.
+type ExtraLessonLanguage = Exclude<FirstLanguage, "bn" | "ta" | "hi" | "en">;
 
 /** Home-card translations for languages not yet authored throughout the lessons. */
 const HOME_LESSON_COPY: Record<ExtraLessonLanguage, Record<string, string>> = {
@@ -165,7 +166,7 @@ const HOME_LESSON_COPY: Record<ExtraLessonLanguage, Record<string, string>> = {
 };
 
 function hasExtraCopy(language: FirstLanguage): language is ExtraLessonLanguage {
-    return language !== "bn" && language !== "ta" && language !== "hi";
+    return language in HOME_LESSON_COPY;
 }
 
 /** Resolve a Home lesson title or description in the learner's first language. */

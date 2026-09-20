@@ -4,7 +4,11 @@
  * This is not the app's locale list. The app is written in seven languages, but
  * a learner holding a finger on an English word wants that word in whatever
  * they actually grew up speaking, which on a Singapore worksite is a wider set.
- * English is missing on purpose: there would be nothing to translate to.
+ *
+ * English is on the list, last, so a learner who reads English best has an
+ * honest answer to give. It can be saved as a first language and nothing more:
+ * there is nothing to translate an English word into, so `POST /v1/translate`
+ * takes a `TranslationLanguage`, which leaves it out.
  *
  * Codes keep the app's historical locale codes where one exists, so the same
  * code means the same language on the phone and here. The list and its order
@@ -25,12 +29,20 @@ export const FIRST_LANGUAGES = [
     "zh",
     "th",
     "vi",
+    "en",
 ] as const;
 
 export type FirstLanguage = (typeof FIRST_LANGUAGES)[number];
 
+/** A language an English word can be translated into. */
+export type TranslationLanguage = Exclude<FirstLanguage, "en">;
+
+export const TRANSLATION_LANGUAGES = FIRST_LANGUAGES.filter(
+    (language): language is TranslationLanguage => language !== "en",
+);
+
 /** For the model's instructions and for logs. The learner never sees these. */
-export const FIRST_LANGUAGE_NAMES: Record<FirstLanguage, string> = {
+export const FIRST_LANGUAGE_NAMES: Record<TranslationLanguage, string> = {
     bn: "Bengali",
     ta: "Tamil",
     hi: "Hindi",
@@ -53,7 +65,7 @@ export const FIRST_LANGUAGE_NAMES: Record<FirstLanguage, string> = {
  * This is what lets the server check a translation instead of trusting it: a
  * model that answers in English, or romanises the word, is caught in code.
  */
-export const FIRST_LANGUAGE_SCRIPTS: Record<FirstLanguage, string | null> = {
+export const FIRST_LANGUAGE_SCRIPTS: Record<TranslationLanguage, string | null> = {
     bn: "Bengali",
     ta: "Tamil",
     hi: "Devanagari",
@@ -70,4 +82,8 @@ export const FIRST_LANGUAGE_SCRIPTS: Record<FirstLanguage, string | null> = {
 
 export function isFirstLanguage(value: unknown): value is FirstLanguage {
     return typeof value === "string" && (FIRST_LANGUAGES as readonly string[]).includes(value);
+}
+
+export function isTranslationLanguage(value: unknown): value is TranslationLanguage {
+    return isFirstLanguage(value) && value !== "en";
 }

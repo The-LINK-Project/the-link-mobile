@@ -416,4 +416,41 @@ describe("picking a run back up", () => {
             restoreSession(mrtBasics, { ...saved, queue: [...saved.queue, "ex-unknown"] }, false),
         ).toBeNull();
     });
+
+    const translations = mrtBasics.exercises
+        .filter((exercise) => exercise.type === "translateWordBank")
+        .map((exercise) => exercise.id);
+
+    it("keeps the learner's place when they change language, and drops what no longer fits", () => {
+        // Built for Bengali, so the translation exercises are in the queue.
+        const state = answerCorrectly(initSession(mrtBasics, "bn"));
+        expect(translations.length).toBeGreaterThan(0);
+        expect(state.queue).toEqual(expect.arrayContaining(translations));
+
+        // Back in English, a translation prompt would fall back to English and
+        // ask for the sentence already on screen.
+        const restored = restoreSession(mrtBasics, snapshotOf(state), false, "en");
+        expect(restored).toMatchObject({ locale: "en", position: 1, records: state.records });
+        expect(restored.queue[0]).toBe(state.queue[0]);
+        expect(restored.queue.filter((id: string) => translations.includes(id))).toEqual([]);
+        expect(restored.queue).toEqual(state.queue.filter((id) => !translations.includes(id)));
+    });
+
+    it("adds what has become possible in the new language, after what was already queued", () => {
+        const state = answerCorrectly(initSession(mrtBasics, "en"));
+        const restored = restoreSession(mrtBasics, snapshotOf(state), false, "bn");
+        expect(restored.queue.slice(0, state.queue.length)).toEqual(state.queue);
+        expect(restored.queue.slice(state.queue.length).sort()).toEqual([...translations].sort());
+    });
+
+    it("scores a run out of what was queued, so a language change cannot break the total", () => {
+        let state = initSession(mrtBasics, "bn");
+        state = until(state, (s) => s.phase === "finished", answerCorrectly);
+        // Read back as an English run, fewer exercises would "apply" than were
+        // answered, and a score of 9 out of 7 was thrown away by the progress
+        // reader as corrupt, taking the finished lesson with it.
+        const summary = summarize({ ...state, locale: "en" });
+        expect(summary.total).toBe(state.queue.length);
+        expect(summary.firstTryCorrect).toBeLessThanOrEqual(summary.total);
+    });
 });

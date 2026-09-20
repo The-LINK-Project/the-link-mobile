@@ -1,7 +1,7 @@
 import { isClerkAPIResponseError, useAuth } from "@clerk/expo";
 import { useLayoutEffect, useState } from "react";
 
-import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import type { FirstLanguage, TranslationLanguage } from "@/lib/firstLanguage/languages";
 import type { Progress } from "@/lib/progress/model";
 
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
@@ -191,7 +191,7 @@ export type TranslateRequest = {
     word: string;
     /** The sentence the word was held in, so "top up" is not translated as "top". */
     context?: string;
-    language: FirstLanguage;
+    language: TranslationLanguage;
 };
 
 export type TranslateResponse = {
@@ -203,7 +203,7 @@ export type TranslateResponse = {
 
 /** One turn of speaking practice. Mirrors `TurnRequest` in the API. */
 export type TutorTurnRequest = {
-    language: FirstLanguage;
+    language: TranslationLanguage;
     scene: string;
     words: string[];
     phrases: string[];

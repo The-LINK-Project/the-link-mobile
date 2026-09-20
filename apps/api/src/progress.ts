@@ -95,12 +95,27 @@ export function parseProgress(
 }
 
 const later = (a: string, b: string) => (Date.parse(a) >= Date.parse(b) ? a : b);
-const share = (part: number, whole: number) => part / Math.max(whole, 1);
+
+/**
+ * The better of two results, each `got` out of `total`. Equal shares are
+ * settled by the numbers themselves and never by which side was passed first.
+ * Left to "keep ours", a perfect run of nine here and a perfect run of ten on
+ * the phone (the same lesson in two languages) each stayed where they were, and
+ * the phone wrote its copy back on every sync for ever. Same rule as `better`
+ * in the app's `lib/progress/model.ts`.
+ */
+function better<T>(a: T, b: T, score: (value: T) => { got: number; total: number }): T {
+    const [x, y] = [score(a), score(b)];
+    const share = x.got / Math.max(x.total, 1) - y.got / Math.max(y.total, 1);
+    if (share !== 0) return share > 0 ? a : b;
+    if (x.total !== y.total) return x.total > y.total ? a : b;
+    return x.got >= y.got ? a : b;
+}
 
 function mergeSpeaking(a?: SpeakingRecord, b?: SpeakingRecord): SpeakingRecord | undefined {
     if (!a || !b) return a ?? b;
-    const best = share(b.said, b.total) > share(a.said, a.total) ? b : a;
-    return { ...best, completedAt: later(a.completedAt, b.completedAt) };
+    const best = better(a, b, (talk) => ({ got: talk.said, total: talk.total }));
+    return { said: best.said, total: best.total, completedAt: later(a.completedAt, b.completedAt) };
 }
 
 export function mergeProgress(a: Progress, b: Progress): Progress {
@@ -111,10 +126,10 @@ export function mergeProgress(a: Progress, b: Progress): Progress {
             lessons[id] = theirs;
             continue;
         }
-        const best =
-            share(theirs.bestFirstTry, theirs.total) > share(ours.bestFirstTry, ours.total)
-                ? theirs
-                : ours;
+        const best = better(ours, theirs, (lesson) => ({
+            got: lesson.bestFirstTry,
+            total: lesson.total,
+        }));
         const speaking = mergeSpeaking(ours.speaking, theirs.speaking);
         lessons[id] = {
             completedAt: later(ours.completedAt, theirs.completedAt),

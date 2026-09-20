@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { AccessibilityInfo } from "react-native";
 
+import { isTranslationLanguage } from "@/lib/firstLanguage/languages";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
 
 /**
@@ -41,15 +42,15 @@ const getScreenReader = () => screenReader;
 /**
  * True when a held word should answer.
  *
- * Off until the learner has a first language, because there is nothing to
- * translate into. Off under a screen reader, because TalkBack and VoiceOver
+ * Off until the learner has a first language, and off when that language is
+ * English, because there is nothing to translate into. Off under a screen reader, because TalkBack and VoiceOver
  * have their own meaning for touch-and-hold, and read text by the paragraph,
  * which word-sized pieces must not get in the way of.
  */
 export function useHoldToTranslate(): boolean {
     const [language] = useFirstLanguage();
     const reading = useSyncExternalStore(subscribe, getScreenReader, getScreenReader);
-    return language !== null && !reading;
+    return isTranslationLanguage(language) && !reading;
 }
 
 /** Test seam: pretend a screen reader was switched on or off. */

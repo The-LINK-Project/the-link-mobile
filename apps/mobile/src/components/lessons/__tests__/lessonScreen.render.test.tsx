@@ -17,9 +17,10 @@ import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguag
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import { picturableVocab } from "@/lib/lessons/lookup";
+import { buildQueue, fingerprint } from "@/lib/lessons/session";
 import { seededShuffle } from "@/lib/lessons/shuffle";
 import type { SelectPictureExercise } from "@/lib/lessons/types";
-import { getProgressData, saveRun } from "@/lib/progress/store";
+import { completeLesson, getProgressData, saveRun } from "@/lib/progress/store";
 
 jest.mock("expo-router", () => ({
     useLocalSearchParams: () => ({ id: "mrt-basics" }),
@@ -164,9 +165,68 @@ describe("opening a lesson", () => {
 
         await waitFor(() => expect(screen.getByText("Words in this lesson")).toBeTruthy());
     });
+
+    it("says a finished lesson is done rather than starting it again", async () => {
+        withScreenReader(false);
+        completeLesson("mrt-basics", { firstTryCorrect: 7, total: 9 });
+        const user = userEvent.setup();
+        render(<LessonScreen />);
+
+        // It used to open on the first question, as if nothing had been kept.
+        await waitFor(() => expect(screen.getByText("Lesson done!")).toBeTruthy());
+        expect(screen.getByText("7 of 9")).toBeTruthy();
+        expect(screen.queryByText("Start")).toBeNull();
+        expect(screen.queryByText("Check")).toBeNull();
+        // The words are still there to look over.
+        expect(screen.getByText(mrtBasics.vocab[0].term)).toBeTruthy();
+
+        // Going through it again is a choice, and skips the word list.
+        await user.press(screen.getByText("Practise again"));
+        await waitFor(() => expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy());
+    });
 });
 
 describe("a lesson run", () => {
+    it("is finished by its last answer, without waiting for Continue", async () => {
+        withScreenReader(false);
+        const picture = mrtBasics.exercises.find((item) => item.type === "selectPicture")!.id;
+        const others = buildQueue(mrtBasics.exercises, "en").filter((id) => id !== picture);
+        saveRun("mrt-basics", {
+            fingerprint: fingerprint(mrtBasics),
+            locale: "en",
+            screenReader: false,
+            // Everything else answered; the picture exercise is the last one.
+            queue: [...others, picture],
+            position: others.length,
+            records: Object.fromEntries(
+                others.map((id) => [id, { attempts: 1, firstTryCorrect: true }]),
+            ),
+            requeued: [],
+        });
+        const user = userEvent.setup();
+        const view = render(<LessonScreen />);
+
+        await waitFor(() => expect(screen.getByLabelText("Picture 1 of 3")).toBeTruthy());
+        await user.press(screen.getByLabelText(answerTileLabel()));
+        await user.press(screen.getByText("Check"));
+
+        // A learner who closes the app on this feedback has done every
+        // exercise. The lesson used to stay unfinished until Continue was
+        // pressed, with the kept run still pointing at this last exercise.
+        expect(getProgressData().progress.lessons["mrt-basics"]).toMatchObject({
+            runs: 1,
+            bestFirstTry: others.length + 1,
+            total: others.length + 1,
+        });
+        expect(getProgressData().runs["mrt-basics"]).toBeUndefined();
+
+        // Pressing Continue afterwards must not count the lesson twice.
+        await user.press(screen.getByText("Finish"));
+        await waitFor(() => expect(screen.getByText("Lesson done!")).toBeTruthy());
+        expect(getProgressData().progress.lessons["mrt-basics"].runs).toBe(1);
+        view.unmount();
+    });
+
     it("opens on the picture exercise", async () => {
         withScreenReader(false);
         await startLesson();

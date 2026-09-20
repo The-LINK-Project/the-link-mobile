@@ -11,10 +11,14 @@ app were built against, so change them here first if one has to move.
    change it later under Account.
 2. Anywhere in the app, **holding a finger on an English word** opens a small
    LINK-styled bubble next to the word with that word in their first language.
-3. The first language is separate from the **app language** (the existing
-   `lib/i18n` locale, which decides what language the buttons and headings are
-   written in). A learner may run the app in English and still see Bengali in
-   the bubble.
+3. The first language is the only language setting. The **app locale**
+   (`lib/i18n`, which the screens without first-language copy still read:
+   Privacy, About, Contact, the profile forms) follows it rather than being
+   chosen separately: the first language itself where the app is written in it,
+   English otherwise (`useLocaleFollowsFirstLanguage`). Account used to offer
+   an "App language" row as well. Once Home, Account, lessons and speaking all
+   followed the first language, that row changed nothing a learner could see,
+   and the two settings could disagree from one screen to the next.
 
 ## First languages
 
@@ -35,8 +39,16 @@ Codes keep the app's historical locale codes where one exists (`bu` Burmese,
 | zh   | Chinese (Simplified) | 中文                    |
 | th   | Thai                 | ไทย                     |
 | vi   | Vietnamese           | Tiếng Việt              |
+| en   | English              | English                 |
 
-English is not a first language here: there would be nothing to translate to.
+English is last, and is a first language only. A learner who reads English best
+needs an honest answer to give, but there is nothing to translate an English
+word into and the tutor explains English from another language. So it can be
+saved (`PUT /v1/me/first-language`), is refused by `POST /v1/translate`, is not
+offered as a tutor language, switches hold-to-translate off, and is never
+pre-selected from the phone's language, which is English on most phones sold
+here whoever owns them. Code that translates or tutors works from
+`TRANSLATION_LANGUAGES` / `TranslationLanguage`, which leave it out.
 
 ## API contract (`apps/api`)
 
@@ -110,7 +122,8 @@ and context; neither the context text nor the learner's id is stored with them.
 ### `lib/firstLanguage/languages.ts`
 
 ```ts
-export const FIRST_LANGUAGES: readonly [...];          // the twelve codes, table order
+export const FIRST_LANGUAGES: readonly [...];          // the thirteen codes, table order
+export const TRANSLATION_LANGUAGES: readonly [...];    // the same, without "en"
 export type FirstLanguage = (typeof FIRST_LANGUAGES)[number];
 export const FIRST_LANGUAGE_LABELS: Record<FirstLanguage, string>;        // endonyms
 export const FIRST_LANGUAGE_ENGLISH_NAMES: Record<FirstLanguage, string>;
@@ -197,7 +210,6 @@ bubble. Exports `WordTranslationHost`.
 
 | key              | English                                           |
 | ---------------- | ------------------------------------------------- |
-| `appLanguage`    | App language                                      |
 | `myLanguage`     | My language                                       |
 | `myLanguageHint` | Hold any English word to see it in this language. |
 

@@ -6,7 +6,9 @@ import {
     FIRST_LANGUAGES,
     FIRST_LANGUAGE_NAMES,
     FIRST_LANGUAGE_SCRIPTS,
+    TRANSLATION_LANGUAGES,
     isFirstLanguage,
+    isTranslationLanguage,
 } from "../src/languages.js";
 import { parseFirstLanguageChoice } from "../src/users.js";
 import { fakeDb, listen } from "./helpers.js";
@@ -38,16 +40,19 @@ const choose = (url: string, body: unknown) =>
         body: JSON.stringify(body),
     });
 
-test("every first language has an English name and a script its translations must use", () => {
-    assert.equal(FIRST_LANGUAGES.length, 12);
+test("every translation language has an English name and a script its translations must use", () => {
+    assert.equal(FIRST_LANGUAGES.length, 13);
     assert.ok(isFirstLanguage("bn"));
-    // English is not one of them: there would be nothing to translate to.
-    assert.equal(isFirstLanguage("en"), false);
     assert.equal(isFirstLanguage(null), false);
+    // English can be a learner's first language, but there would be nothing to
+    // translate an English word into.
+    assert.ok(isFirstLanguage("en"));
+    assert.equal(isTranslationLanguage("en"), false);
+    assert.equal(TRANSLATION_LANGUAGES.length, 12);
 
-    for (const language of FIRST_LANGUAGES) assert.ok(FIRST_LANGUAGE_NAMES[language]);
+    for (const language of TRANSLATION_LANGUAGES) assert.ok(FIRST_LANGUAGE_NAMES[language]);
     assert.deepEqual(
-        FIRST_LANGUAGES.filter((language) => FIRST_LANGUAGE_SCRIPTS[language] === null),
+        TRANSLATION_LANGUAGES.filter((language) => FIRST_LANGUAGE_SCRIPTS[language] === null),
         ["fi", "in", "ms", "vi"],
     );
     // A script name the regular expression engine does not know would make
@@ -62,13 +67,15 @@ test("a choice is refused unless it names a language and says when it was made",
     const now = Date.parse("2026-09-17T00:00:00.000Z");
     const good = { language: "bn", updatedAt: "2026-09-10T10:00:00.000Z" };
     assert.equal(parseFirstLanguageChoice(good, now).ok, true);
+    // English is a fair answer to "which language do you read best?".
+    assert.equal(parseFirstLanguageChoice({ ...good, language: "en" }, now).ok, true);
 
     for (const bad of [
         undefined,
         {},
         [],
         { language: "bn" },
-        { language: "en", updatedAt: good.updatedAt },
+        { language: "fr", updatedAt: good.updatedAt },
         { language: "BN", updatedAt: good.updatedAt },
         { ...good, updatedAt: "yesterday" },
         { ...good, updatedAt: 1760000000000 },

@@ -140,7 +140,7 @@ export const clinicVisit: Lesson = {
                 ta: "மருத்துவரைப் பார்க்க நிச்சயித்த நேரம்",
                 hi: "डॉक्टर से मिलने का तय समय",
             },
-            picture: "calendar",
+            picture: "appointment",
             reviewed: false,
         },
         {

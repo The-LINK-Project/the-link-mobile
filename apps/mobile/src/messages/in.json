@@ -50,7 +50,6 @@
       "passwordMinLength": "Pakai paling sedikit 8 huruf atau angka.",
       "genericError": "Ada yang salah. Silakan coba lagi.",
       "username": "Nama pengguna",
-      "appLanguage": "Bahasa aplikasi",
       "myLanguage": "Bahasa saya",
       "myLanguageHint": "Tekan dan tahan kata bahasa Inggris apa saja untuk melihatnya dalam bahasa ini."
     },

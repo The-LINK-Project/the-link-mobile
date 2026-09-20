@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseRenderer } from "@/components/lessons/ExerciseRenderer";
 import { SELF_GRADING } from "@/components/lessons/exercises/shared";
+import { LessonDone, LessonDoneActions } from "@/components/lessons/LessonDone";
 import { LessonFooter } from "@/components/lessons/LessonFooter";
 import { LessonIntro } from "@/components/lessons/LessonIntro";
 import { LessonProgress } from "@/components/lessons/LessonProgress";
@@ -16,9 +17,9 @@ import { getLesson } from "@/lib/lessons/data";
 import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { restoreSession, snapshotOf, useLessonSession } from "@/lib/lessons/session";
-import type { SavedRun } from "@/lib/progress/model";
+import type { LessonRecord, SavedRun } from "@/lib/progress/model";
 import { completeLesson, getProgressData, saveRun, setResume } from "@/lib/progress/store";
-import { practiceLanguages, runToParams } from "@/lib/speaking/context";
+import { canPractiseSpeaking, practiceLanguages, runToParams } from "@/lib/speaking/context";
 import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 import { useScreenReader } from "@/lib/useScreenReader";
 
@@ -64,6 +65,8 @@ export default function LessonScreen() {
 /**
  * Words first, then the exercises. A learner coming back to a run they had
  * started goes straight to where they were: they have met the words already.
+ * One coming back to a lesson they have finished is told so, and is not dropped
+ * into its first question as though nothing had been kept.
  */
 function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader: boolean }) {
     const t = useFirstLanguageInterface("lessons");
@@ -76,12 +79,22 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
         const run = getProgressData().runs[lessonId];
         return run && restoreSession(lesson, run, screenReader) ? run : undefined;
     });
+    // Read once as well, or finishing the lesson here would swap the summary
+    // for this screen's "done" view the moment the result was recorded. The
+    // daily mix is new every morning, so yesterday's finish says nothing about
+    // today's. A record with no exercises in it came from speaking alone.
+    const [record] = useState<LessonRecord | undefined>(() => {
+        const found = getProgressData().progress.lessons[lessonId];
+        return lessonId !== DAILY_MIX_ID && found && found.total > 0 ? found : undefined;
+    });
     // The daily mix draws on every lesson's words, far too many to list, and
     // all of them already met in the lesson they came from.
     const [started, setStarted] = useState(saved !== undefined || lessonId === DAILY_MIX_ID);
 
     if (started)
         return <LessonRunner lessonId={lessonId} screenReader={screenReader} saved={saved} />;
+
+    const canSpeak = canPractiseSpeaking(lesson);
 
     return (
         <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -98,10 +111,21 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
                 </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <LessonIntro lesson={lesson} />
+                {record ? (
+                    <LessonDone lesson={lesson} record={record} />
+                ) : (
+                    <LessonIntro lesson={lesson} />
+                )}
             </ScrollView>
             <View style={[styles.introFooter, { paddingBottom: insets.bottom + spacing.lg }]}>
-                <Button title={t("introStart")} size="lg" onPress={() => setStarted(true)} />
+                {record ? (
+                    <LessonDoneActions
+                        onAgain={() => setStarted(true)}
+                        onSpeak={canSpeak ? () => router.replace(`/speak/${lesson.id}`) : undefined}
+                    />
+                ) : (
+                    <Button title={t("introStart")} size="lg" onPress={() => setStarted(true)} />
+                )}
             </View>
         </View>
     );
@@ -140,7 +164,13 @@ function LessonRunner({
     // at any moment without telling it, so there is no later to save in.
     const recorded = useRef(false);
     useEffect(() => {
-        if (state.phase === "finished") {
+        const snapshot = snapshotOf(state);
+        // The lesson is finished by its last answer, not by pressing Continue
+        // under it. Waiting for that press lost the lesson for a learner who
+        // answered everything and then closed the app on the feedback: the run
+        // kept on the phone still pointed at the last exercise, and they came
+        // back to do it again. An empty run is over before it starts.
+        if (snapshot.position >= snapshot.queue.length) {
             if (recorded.current) return;
             recorded.current = true;
             completeLesson(lessonId, {
@@ -150,12 +180,8 @@ function LessonRunner({
             return;
         }
         recorded.current = false;
-        const snapshot = snapshotOf(state);
         // Nothing answered yet: there is no place to keep.
         if (snapshot.position === 0) return;
-        // The last answer of a run is its end, not a place to come back to;
-        // the finished branch above records it a moment later.
-        if (snapshot.position >= snapshot.queue.length) return;
         saveRun(lessonId, snapshot, `/lesson/${lessonId}`);
     }, [state, lessonId, summary.firstTryCorrect, summary.total]);
 

@@ -15,7 +15,7 @@
 import { listLessons } from "@/lib/lessons/data";
 import { hasTranslation, localized } from "@/lib/lessons/localized";
 import type { LearnerLanguage, Localized } from "@/lib/lessons/types";
-import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
 
 import type { WordTranslation } from "./lookup";
 
@@ -36,7 +36,9 @@ let glossary: Glossary | null = null;
  * derived, for the same reason `lessons/localized` lists it: adding a language
  * to the lessons should be one deliberate edit.
  */
-function authored(language: FirstLanguage): language is Extract<LearnerLanguage, FirstLanguage> {
+function authored(
+    language: TranslationLanguage,
+): language is Extract<LearnerLanguage, TranslationLanguage> {
     return language === "bn" || language === "ta" || language === "hi";
 }
 
@@ -92,7 +94,10 @@ function containsRun(haystack: string[], needle: string[]): boolean {
  * A trailing "s" is forgiven only when the singular is itself a taught word, so
  * "fares" finds "fare" while "less" is never mistaken for a plural of "les".
  */
-function meaningOf(word: string, language: Extract<LearnerLanguage, FirstLanguage>): string | null {
+function meaningOf(
+    word: string,
+    language: Extract<LearnerLanguage, TranslationLanguage>,
+): string | null {
     const { terms } = index();
     const direct = terms.get(word);
     const singular = !direct && word.length > 2 && word.endsWith("s") ? word.slice(0, -1) : null;
@@ -114,7 +119,7 @@ function meaningOf(word: string, language: Extract<LearnerLanguage, FirstLanguag
 function expressionAround(
     word: string,
     context: string,
-    language: Extract<LearnerLanguage, FirstLanguage>,
+    language: Extract<LearnerLanguage, TranslationLanguage>,
 ): { text: string; translation: string } | null {
     const sentence = wordsOf(context);
     if (sentence.length === 0) return null;
@@ -146,7 +151,7 @@ function expressionAround(
 export function lookupGlossary(
     word: string,
     context: string,
-    language: FirstLanguage,
+    language: TranslationLanguage,
 ): WordTranslation | null {
     if (!authored(language)) return null;
     const held = wordsOf(word)[0];

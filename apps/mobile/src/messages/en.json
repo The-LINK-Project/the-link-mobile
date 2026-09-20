@@ -32,7 +32,6 @@
     },
     "account": {
       "title": "Account",
-      "appLanguage": "App language",
       "myLanguage": "My language",
       "myLanguageHint": "Hold any English word to see it in this language.",
       "signOut": "Sign out",

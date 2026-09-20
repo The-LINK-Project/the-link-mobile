@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 import { Text } from "@/components/ui";
-import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
 import { useTranslations } from "@/lib/i18n";
 import { useSpeech } from "@/lib/lessons/speech";
 import { lookupTranslation, type WordTranslation } from "@/lib/translate/lookup";
@@ -28,7 +28,7 @@ type Lookup =
 
 type Props = {
     popup: Popup;
-    language: FirstLanguage;
+    language: TranslationLanguage;
     /** Where the finger came down, measured against `frame`. */
     anchor: { x: number; y: number; lineHeight: number };
     frame: { width: number; height: number };

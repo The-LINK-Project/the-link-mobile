@@ -10,10 +10,9 @@ import { ErrorState, Screen, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { getDailyMix, getLesson, listLessons } from "@/lib/lessons/data";
 import { fingerprint } from "@/lib/lessons/session";
-import type { Lesson } from "@/lib/lessons/types";
 import { continuePoint, doneToday, lessonStatus } from "@/lib/progress/model";
 import { takeResume, useProgressData } from "@/lib/progress/store";
-import { practiceLanguages, runFromParams } from "@/lib/speaking/context";
+import { canPractiseSpeaking } from "@/lib/speaking/context";
 import { useMe } from "@/lib/queries";
 import { colors, radius, spacing } from "@/lib/theme";
 
@@ -22,10 +21,6 @@ function resumeTarget(href: string | null): Href | null {
     const match = href?.match(/^\/(lesson|speak)\/([a-z0-9-]+)$/);
     if (!match || !getLesson(match[2])) return null;
     return href as Href;
-}
-
-function canSpeak(lesson: Lesson): boolean {
-    return practiceLanguages(lesson, runFromParams(lesson, {})).length > 0;
 }
 
 // Home is the learner's map: what they left unfinished, what is done, and what
@@ -61,9 +56,10 @@ export default function HomeScreen() {
     const continuing = point ? all.find((lesson) => lesson.id === point.lessonId) : undefined;
 
     const statuses = lessons.map((lesson) => lessonStatus(data, lesson.id, fingerprint(lesson)));
-    const done = statuses.filter((s) => s.kind === "learned" || s.kind === "spoken").length;
+    // Going through a finished lesson again does not un-finish it.
+    const done = statuses.filter((status) => status.finished !== "none").length;
     // Pointing at a new lesson while another is half done is two instructions.
-    const nextIndex = point ? -1 : statuses.findIndex((status) => status.kind === "new");
+    const nextIndex = point ? -1 : statuses.findIndex((status) => status.finished === "none");
 
     const mixStatus = lessonStatus(data, mix.id, fingerprint(mix));
     const mixDone = doneToday(data.progress.lessons[mix.id]);
@@ -126,7 +122,7 @@ export default function HomeScreen() {
                     <View style={styles.lessons}>
                         {lessons.map((lesson, index) => {
                             const status = statuses[index];
-                            const finished = status.kind === "learned" || status.kind === "spoken";
+                            const finished = status.finished !== "none";
                             return (
                                 <LessonCard
                                     key={lesson.id}
@@ -134,7 +130,7 @@ export default function HomeScreen() {
                                     status={status}
                                     next={index === nextIndex}
                                     onSpeak={
-                                        finished && canSpeak(lesson)
+                                        finished && canPractiseSpeaking(lesson)
                                             ? () => router.push(`/speak/${lesson.id}`)
                                             : undefined
                                     }
@@ -151,7 +147,7 @@ export default function HomeScreen() {
                             lesson={mix}
                             // The mix is new again every morning, so yesterday's
                             // tick must not sit on today's exercises.
-                            status={mixStatus.kind === "started" ? mixStatus : { kind: "new" }}
+                            status={{ finished: "none", run: mixStatus.run }}
                             doneLabel={mixDone ? l("mixDoneToday") : undefined}
                         />
                     </View>

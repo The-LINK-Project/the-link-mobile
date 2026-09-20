@@ -25,16 +25,6 @@ import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
  */
 export function LessonIntro({ lesson }: { lesson: Lesson }) {
     const t = useFirstLanguageInterface("lessons");
-    const native = useFirstLanguageLocalized();
-    const { speak, speaking } = useSpeech();
-    const [current, setCurrent] = useState<string | null>(null);
-
-    const words = lesson.vocab;
-
-    const say = (item: VocabItem) => {
-        setCurrent(item.id);
-        void speak(item.term);
-    };
 
     return (
         <View style={styles.container}>
@@ -47,37 +37,53 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
                 </Text>
                 <Text variant="caption">{t("introBody")}</Text>
             </View>
+            <LessonWords lesson={lesson} />
+        </View>
+    );
+}
 
-            <View style={styles.words}>
-                {words.map((item) => {
-                    const playing = speaking && current === item.id;
-                    return (
-                        <Pressable
-                            key={item.id}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${item.term}. ${native(item.meaning)}`}
-                            accessibilityHint={t("tapToListen")}
-                            onPress={() => say(item)}
-                            style={({ pressed }) => [styles.word, pressed && styles.pressed]}
-                        >
-                            {item.picture ? <VocabularyVisual picture={item.picture} /> : null}
-                            <View style={styles.wordText}>
-                                <Text variant="subheading">{item.term}</Text>
-                                <Text variant="caption" style={styles.meaning}>
-                                    {native(item.meaning)}
-                                </Text>
-                            </View>
-                            <View style={[styles.speaker, playing && styles.speakerOn]}>
-                                <Ionicons
-                                    name={playing ? "volume-high" : "volume-medium-outline"}
-                                    size={24}
-                                    color={playing ? colors.white : colors.primaryDark}
-                                />
-                            </View>
-                        </Pressable>
-                    );
-                })}
-            </View>
+/** Every word of the lesson with its picture and meaning. Tap one to hear it. */
+export function LessonWords({ lesson }: { lesson: Lesson }) {
+    const t = useFirstLanguageInterface("lessons");
+    const native = useFirstLanguageLocalized();
+    const { speak, speaking } = useSpeech();
+    const [current, setCurrent] = useState<string | null>(null);
+
+    const say = (item: VocabItem) => {
+        setCurrent(item.id);
+        void speak(item.term);
+    };
+
+    return (
+        <View style={styles.words}>
+            {lesson.vocab.map((item) => {
+                const playing = speaking && current === item.id;
+                return (
+                    <Pressable
+                        key={item.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.term}. ${native(item.meaning)}`}
+                        accessibilityHint={t("tapToListen")}
+                        onPress={() => say(item)}
+                        style={({ pressed }) => [styles.word, pressed && styles.pressed]}
+                    >
+                        {item.picture ? <VocabularyVisual picture={item.picture} /> : null}
+                        <View style={styles.wordText}>
+                            <Text variant="subheading">{item.term}</Text>
+                            <Text variant="caption" style={styles.meaning}>
+                                {native(item.meaning)}
+                            </Text>
+                        </View>
+                        <View style={[styles.speaker, playing && styles.speakerOn]}>
+                            <Ionicons
+                                name={playing ? "volume-high" : "volume-medium-outline"}
+                                size={24}
+                                color={playing ? colors.white : colors.primaryDark}
+                            />
+                        </View>
+                    </Pressable>
+                );
+            })}
         </View>
     );
 }

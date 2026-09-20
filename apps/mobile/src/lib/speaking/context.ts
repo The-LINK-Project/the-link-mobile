@@ -9,11 +9,7 @@
  */
 
 import type { TutorTurnRequest } from "@/lib/api";
-import {
-    FIRST_LANGUAGES,
-    FIRST_LANGUAGE_LABELS,
-    type FirstLanguage,
-} from "@/lib/firstLanguage/languages";
+import { TRANSLATION_LANGUAGES } from "@/lib/firstLanguage/languages";
 import { localized } from "@/lib/lessons/localized";
 import { phraseById, vocabByIds } from "@/lib/lessons/lookup";
 import type { Lesson, Localized, SpeakingGoal } from "@/lib/lessons/types";
@@ -23,12 +19,10 @@ export type TutorLanguage = TutorTurnRequest["language"];
 /**
  * Languages the tutor teaches from. Each is written in a script of its own,
  * which is what lets the server pick out every English word and check it. A
- * language written in Latin letters could not be checked that way.
+ * language written in Latin letters could not be checked that way. English is
+ * not one of them: the tutor explains English from another language.
  */
-export const TUTOR_LANGUAGES: readonly TutorLanguage[] = FIRST_LANGUAGES;
-
-/** Each language by its own name, since the learner may not read English. */
-export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguage, string> = FIRST_LANGUAGE_LABELS;
+export const TUTOR_LANGUAGES: readonly TutorLanguage[] = TRANSLATION_LANGUAGES;
 
 /** What a finished run covered. */
 export type PractisedRun = { vocabIds: string[]; phraseIds: string[] };
@@ -84,7 +78,7 @@ export function buildSpeakingContext(
                 // fallback; Gemini is instructed to set it up and explain it
                 // in the selected language without inventing other English.
                 ask: hasAuthoredTutorCopy(language)
-                    ? localized(content.meaning, language as FirstLanguage)
+                    ? localized(content.meaning, language)
                     : content.target,
             },
         ];
@@ -108,6 +102,11 @@ export function buildSpeakingContext(
 
 export function practiceLanguages(lesson: Lesson, run: PractisedRun): TutorLanguage[] {
     return TUTOR_LANGUAGES.filter((language) => buildSpeakingContext(lesson, run, language));
+}
+
+/** Whether a finished lesson has anything to say aloud, taking every exercise as done. */
+export function canPractiseSpeaking(lesson: Lesson): boolean {
+    return practiceLanguages(lesson, runFromParams(lesson, {})).length > 0;
 }
 
 /** Route params can only carry strings. */

@@ -7,7 +7,8 @@ import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import {
     FIRST_LANGUAGE_ENGLISH_NAMES,
     FIRST_LANGUAGE_LABELS,
-    type FirstLanguage,
+    TRANSLATION_LANGUAGES,
+    type TranslationLanguage,
 } from "@/lib/firstLanguage/languages";
 import { spacing } from "@/lib/theme";
 
@@ -15,8 +16,8 @@ type Props = {
     title: string;
     /** The English the learner will be asked to say. */
     targets: string[];
-    language: FirstLanguage | null;
-    onLanguageChange: (language: FirstLanguage) => void;
+    language: TranslationLanguage | null;
+    onLanguageChange: (language: TranslationLanguage) => void;
     micBlocked: boolean;
 };
 
@@ -46,6 +47,7 @@ export function SpeakingIntro({ title, targets, language, onLanguageChange, micB
                         title={languageLabel}
                         value={languageEnglish === languageLabel ? undefined : languageEnglish}
                         accessibilityLabel={`${t("language")}. ${languageLabel}`}
+                        trailing="expand"
                         accessibilityState={{ expanded: languageOpen }}
                         last={!languageOpen}
                         onPress={() => setLanguageOpen((open) => !open)}
@@ -53,6 +55,7 @@ export function SpeakingIntro({ title, targets, language, onLanguageChange, micB
                     {languageOpen ? (
                         <FirstLanguagePicker
                             value={language}
+                            languages={TRANSLATION_LANGUAGES}
                             label={t("language")}
                             onChange={(next) => {
                                 onLanguageChange(next);

@@ -13,6 +13,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { isTranslationLanguage } from "@/lib/firstLanguage/languages";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
 import {
     clearWordTouch,
@@ -182,7 +183,9 @@ function BubbleLayer({ onTouchInside }: { onTouchInside: (event: GestureResponde
         };
     }, [open]);
 
-    if (!popup || !language) return null;
+    // English words are not held for a learner whose language is English, so
+    // no bubble is ever asked for; this is the same rule, for the types.
+    if (!popup || !isTranslationLanguage(language)) return null;
 
     // The finger's position is given against the window; the bubble is laid
     // out against this view.
