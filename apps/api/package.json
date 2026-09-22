@@ -4,14 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": ">=20.19.4"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "tsx watch --env-file=.env src/local.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "smoke:live": "tsx --env-file=.env test/live-smoke.ts"
+    "smoke:live": "tsx --env-file=.env test/live-smoke.ts",
+    "smoke:tutor": "tsx --env-file=.env test/tutor-smoke.ts",
+    "smoke:translate": "tsx --env-file=.env test/translate-smoke.ts",
+    "eval:tutor": "tsx --env-file=.env test/tutor-eval.ts"
   },
   "dependencies": {
     "@clerk/backend": "3.17.1",
