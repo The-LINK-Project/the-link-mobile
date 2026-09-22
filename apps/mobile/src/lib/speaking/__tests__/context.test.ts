@@ -1,4 +1,5 @@
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
+import { localized } from "@/lib/lessons/localized";
 
 import {
     buildSpeakingContext,
@@ -9,6 +10,9 @@ import {
 } from "../context";
 
 const wholeLesson = runFromParams(mrtBasics, {});
+
+/** Tutor languages the API cannot tell from English by their letters alone. */
+const LATIN_SCRIPT = new Set(["fi", "in", "ms", "vi", "fr", "es"]);
 
 /** Same tokenising as the API's word rule: any run of Latin letters is English. */
 function englishWords(text: string): string[] {
@@ -32,6 +36,15 @@ describe("speaking practice context", () => {
 
         expect(platform.target).toBe("Which platform for Jurong East?");
         expect(platform.ask).toBe(phrase.meaning.ta);
+    });
+
+    it("asks in the learner's language when the lesson is not authored in it", () => {
+        const context = buildSpeakingContext(mrtBasics, wholeLesson, "te")!;
+        const platform = context.goals.find((goal) => goal.id === "say-platform")!;
+        const phrase = mrtBasics.phrases.find((item) => item.id === "p-which-platform")!;
+
+        expect(platform.ask).toBe(localized(phrase.meaning, "te"));
+        expect(platform.ask).not.toBe(phrase.meaning.en);
     });
 
     it("has nothing to practise when the run taught none of the goals", () => {
@@ -70,7 +83,12 @@ describe("speaking practice context", () => {
 
             expect(context.goals).toHaveLength(4);
             for (const goal of context.goals) {
-                const used = englishWords([goal.target, ...goal.keywords, goal.ask].join(" "));
+                // The API cannot tell a Latin-script language's own words from
+                // English, so there it checks the target and keywords only.
+                const checked = LATIN_SCRIPT.has(language)
+                    ? [goal.target, ...goal.keywords]
+                    : [goal.target, ...goal.keywords, goal.ask];
+                const used = englishWords(checked.join(" "));
                 expect(used.filter((word) => !allowed.has(word.toLowerCase()))).toEqual([]);
             }
         },

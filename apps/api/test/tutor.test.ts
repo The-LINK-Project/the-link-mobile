@@ -7,6 +7,7 @@ import type { Db } from "mongodb";
 import { createApp } from "../src/app.js";
 import { readConfig } from "../src/config.js";
 import { speechChunks } from "../src/gemini.js";
+import { TRANSLATION_LANGUAGES } from "../src/languages.js";
 import {
     allowedWords,
     decideOutcome,
@@ -166,6 +167,31 @@ test("Hindi is checked like Bengali and Tamil, since Devanagari keeps English vi
     );
     assert.deepEqual(findViolations("बहुत good! फिर से try कीजिए।", allowed), ["good", "try"]);
     assert.match(fallbackReply({ ...hindi, audio: RECORDING }, "retry"), /फिर से/);
+});
+
+test("the tutor teaches from every language a word can be translated into", () => {
+    assert.deepEqual([...TUTOR_LANGUAGES], [...TRANSLATION_LANGUAGES]);
+});
+
+test("a goal's meaning may be in a Latin-script language", () => {
+    // The phone sends each goal's meaning in the learner's language. In French
+    // every word of it looks like English to the regex, so only the English
+    // parts of the goal are held to the lesson's words.
+    const french = { ...OPENING.goals[0], ask: "Quel quai pour Jurong East ? Demandez le quai." };
+    assert.equal(valid({ ...OPENING, language: "fr", goals: [french] }).goals[0].ask, french.ask);
+    assert.equal(
+        rejection({
+            ...OPENING,
+            language: "fr",
+            goals: [{ ...french, keywords: ["platform", "ticket"] }],
+        }),
+        "A goal uses English the lesson did not teach",
+    );
+    // A language with its own script still has its meaning checked.
+    assert.equal(
+        rejection({ ...OPENING, language: "te", goals: [french] }),
+        "A goal uses English the lesson did not teach",
+    );
 });
 
 test("turn requests are checked before any model is called", () => {
