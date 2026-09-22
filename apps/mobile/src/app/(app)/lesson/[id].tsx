@@ -14,8 +14,8 @@ import { LessonSummary, LessonSummaryActions } from "@/components/lessons/Lesson
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { getLesson } from "@/lib/lessons/data";
-import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
+import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
 import { restoreSession, snapshotOf, useLessonSession } from "@/lib/lessons/session";
 import type { LessonRecord, SavedRun } from "@/lib/progress/model";
 import { completeLesson, getProgressData, saveRun, setResume } from "@/lib/progress/store";
