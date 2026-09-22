@@ -17,7 +17,7 @@ it("lists every language in its own script, with the English name alongside", ()
     expect(screen.getByLabelText("Your language")).toBeTruthy();
     expect(screen.getAllByRole("radio")).toHaveLength(FIRST_LANGUAGES.length);
     expect(screen.getByLabelText("বাংলা, Bengali")).toBeTruthy();
-    // Filipino is called Filipino in both languages, so it is not said twice.
+    // Filipino is called Filipino in both languages: shown in both columns, said once.
     expect(screen.getByLabelText("Filipino")).toBeTruthy();
 });
 

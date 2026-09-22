@@ -1,8 +1,8 @@
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui";
-import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { Lesson } from "@/lib/lessons/types";
 import type { ContinuePoint } from "@/lib/progress/model";
@@ -27,7 +27,7 @@ export function ContinueCard({
     onPress: () => void;
 }) {
     const t = useFirstLanguageInterface("lessons");
-    const lessonCopy = useHomeLessonCopy();
+    const localized = useFirstLanguageLocalized();
     const where =
         point.kind === "speak"
             ? t("statusSpeakingLeft")
@@ -40,7 +40,7 @@ export function ContinueCard({
     return (
         <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${t("continueTitle")}. ${lessonCopy(lesson.title)}. ${where}`}
+            accessibilityLabel={`${t("continueTitle")}. ${localized(lesson.title)}. ${where}`}
             onPress={onPress}
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         >
@@ -56,7 +56,7 @@ export function ContinueCard({
                     {t("continueTitle")}
                 </Text>
                 <Text variant="subheading" color={colors.onPrimary}>
-                    {lessonCopy(lesson.title)}
+                    {localized(lesson.title)}
                 </Text>
                 <View style={styles.track}>
                     <View style={[styles.fill, { width: `${share * 100}%` }]} />

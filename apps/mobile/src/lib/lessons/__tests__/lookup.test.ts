@@ -47,8 +47,10 @@ describe("choiceText", () => {
     it("follows the learner's language, falling back to English", () => {
         const choice: MeaningChoice = { id: "c", vocabId: "v-top-up" };
         expect(localized(choiceText(mrtBasics, choice), "bn")).toBe("কার্ডে টাকা ভরা");
-        // Burmese has no lesson content authored yet.
-        expect(localized(choiceText(mrtBasics, choice), "bu")).toBe("add money to your card");
+        expect(localized(choiceText(mrtBasics, choice), "bu")).toBe("ကတ်ထဲသို့ ငွေဖြည့်ခြင်း");
+        // A distractor written for this test alone has no translation anywhere.
+        const unknown: MeaningChoice = { id: "u", label: { en: "Walk to the next station" } };
+        expect(localized(choiceText(mrtBasics, unknown), "bu")).toBe("Walk to the next station");
     });
 });
 

@@ -115,8 +115,14 @@ describe("buildQueue", () => {
     });
 
     it("leaves out translation for a language the prompt has no words in", () => {
-        // Burmese ships as an app language but has no lesson content yet.
-        expect(buildQueue(mrtBasics.exercises, "bu")).not.toContain("ex-4-translate");
+        // Every first language has this prompt now, so make one that none has.
+        const exercises = mrtBasics.exercises.map((exercise) =>
+            exercise.id === "ex-4-translate" && exercise.type === "translateWordBank"
+                ? { ...exercise, prompt: { en: "Which way is out?" } }
+                : exercise,
+        );
+        expect(buildQueue(exercises, "bu")).not.toContain("ex-4-translate");
+        expect(buildQueue(mrtBasics.exercises, "bu")).toContain("ex-4-translate");
     });
 
     it("avoids showing the same exercise type twice in a row", () => {

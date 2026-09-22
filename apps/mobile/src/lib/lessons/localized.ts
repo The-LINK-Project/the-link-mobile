@@ -1,5 +1,6 @@
 import { useLocale, type Locale } from "@/lib/i18n";
 import type { FirstLanguage } from "@/lib/firstLanguage/languages";
+import { isContentLanguage, LESSON_CONTENT_COPY } from "@/lib/firstLanguage/lessonContentCopy";
 import { useFirstLanguage } from "@/lib/firstLanguage/store";
 
 import type { LearnerLanguage, Localized } from "./types";
@@ -15,8 +16,9 @@ function isTranslated(language: string): language is Exclude<LearnerLanguage, "e
 /**
  * Resolve lesson content into one language.
  *
- * Lesson content is authored in English, Bengali, Tamil and Hindi. The app ships six
- * locales, so anything else falls back to English rather than showing an empty
+ * Lesson content is authored in English, Bengali, Tamil and Hindi. The other
+ * first languages are served from `LESSON_CONTENT_COPY`, keyed by the English.
+ * Anything still missing falls back to English rather than showing an empty
  * string — the same policy `lib/i18n` uses for UI copy.
  *
  * Pure, and takes the locale explicitly. Components should use
@@ -28,6 +30,10 @@ export function localized(
 ): string {
     if (isTranslated(language)) {
         const translated = value[language];
+        if (translated) return translated;
+    }
+    if (isContentLanguage(language)) {
+        const translated = LESSON_CONTENT_COPY[language][value.en];
         if (translated) return translated;
     }
     return value.en;
@@ -68,5 +74,6 @@ export function hasTranslation(
     language: Locale | LearnerLanguage | FirstLanguage,
 ): boolean {
     // English is the fallback, so it is never a translation of itself.
-    return isTranslated(language) && Boolean(value[language]);
+    if (isTranslated(language)) return Boolean(value[language]);
+    return isContentLanguage(language) && Boolean(LESSON_CONTENT_COPY[language][value.en]);
 }

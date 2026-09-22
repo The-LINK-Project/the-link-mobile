@@ -47,9 +47,10 @@ export function FirstLanguagePicker<Language extends FirstLanguage = FirstLangua
                     <ListRow
                         key={language}
                         title={own}
-                        // Filipino calls itself what English calls it, and a
-                        // name repeated beside itself only reads as noise.
-                        value={english === own ? undefined : english}
+                        // Filipino calls itself what English calls it. The
+                        // repeat is kept so every row has the same two
+                        // columns; a lone title left the row looking unfinished.
+                        value={english}
                         trailing="check"
                         inset={inset}
                         selected={language === value}

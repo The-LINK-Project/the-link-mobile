@@ -1,9 +1,9 @@
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Text } from "@/components/ui";
-import { useHomeLessonCopy } from "@/lib/firstLanguage/homeLessonCopy";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { LessonIcon } from "@/lib/lessons/icons";
 import type { Lesson } from "@/lib/lessons/types";
@@ -52,7 +52,7 @@ type Props = {
  */
 export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }: Props) {
     const t = useFirstLanguageInterface("lessons");
-    const lessonCopy = useHomeLessonCopy();
+    const localized = useFirstLanguageLocalized();
     const router = useRouter();
     const { run, talk } = status;
     // Said by `doneLabel` for the daily mix, which is new again every morning.
@@ -92,10 +92,10 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
         >
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={[lessonCopy(lesson.title), stageLabel, detail]
+                accessibilityLabel={[localized(lesson.title), stageLabel, detail]
                     .filter(Boolean)
                     .join(". ")}
-                accessibilityHint={lessonCopy(lesson.goal)}
+                accessibilityHint={localized(lesson.goal)}
                 onPress={() => router.push(`/lesson/${lesson.id}`)}
                 style={({ pressed }) => [styles.main, pressed && styles.pressed]}
             >
@@ -118,9 +118,9 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                 </View>
 
                 <View style={styles.body}>
-                    <Text variant="subheading">{lessonCopy(lesson.title)}</Text>
+                    <Text variant="subheading">{localized(lesson.title)}</Text>
                     <Text variant="caption" style={styles.description}>
-                        {lessonCopy(lesson.goal)}
+                        {localized(lesson.goal)}
                     </Text>
 
                     <View style={styles.meta}>
@@ -177,7 +177,7 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
             {onSpeak ? (
                 <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${t("summarySpeak")}. ${lessonCopy(lesson.title)}`}
+                    accessibilityLabel={`${t("summarySpeak")}. ${localized(lesson.title)}`}
                     onPress={onSpeak}
                     style={({ pressed }) => [
                         styles.speak,

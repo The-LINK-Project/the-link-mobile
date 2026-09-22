@@ -48,7 +48,9 @@ export function ListRow({
     return (
         <Pressable
             accessibilityRole={accessibilityRole}
-            accessibilityLabel={value ? `${title}, ${value}` : title}
+            // A value that only repeats the title (Filipino, Filipino) is shown
+            // for the eye but not read out twice.
+            accessibilityLabel={value && value !== title ? `${title}, ${value}` : title}
             accessibilityState={{
                 disabled: !!disabled,
                 ...(accessibilityRole === "radio" ? { checked: selected } : { selected }),
