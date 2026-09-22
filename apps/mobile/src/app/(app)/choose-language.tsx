@@ -71,7 +71,7 @@ export default function ChooseLanguageScreen() {
                 </Card>
             </ScrollView>
 
-            {/* Pinned, like the way forward in a lesson: with thirteen languages
+            {/* Pinned, like the way forward in a lesson: with fifteen languages
                 on a small phone the button would otherwise be off the screen. */}
             <View style={styles.footer}>
                 <Button

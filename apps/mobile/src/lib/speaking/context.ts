@@ -52,10 +52,6 @@ function wasTaught(goal: SpeakingGoal, run: PractisedRun): boolean {
         : run.vocabIds.includes(goal.vocabId);
 }
 
-function hasAuthoredTutorCopy(language: TutorLanguage): language is "bn" | "ta" | "hi" {
-    return language === "bn" || language === "ta" || language === "hi";
-}
-
 /** Null when nothing in this run can be practised aloud in `language`. */
 export function buildSpeakingContext(
     lesson: Lesson,
@@ -75,13 +71,12 @@ export function buildSpeakingContext(
                 id: goal.id,
                 target: content.target,
                 keywords: goal.keywords,
-                // Bengali, Tamil and Hindi have authored lesson explanations.
-                // For every other language, the target itself is the safe
-                // fallback; Gemini is instructed to set it up and explain it
-                // in the selected language without inventing other English.
-                ask: hasAuthoredTutorCopy(language)
-                    ? localized(content.meaning, language)
-                    : content.target,
+                // Every tutor language has the meaning in that language: three
+                // are authored in the lesson and the rest come from the lesson
+                // copy table, which a test keeps complete. Sending the English
+                // target here instead would hand the learner the answer as the
+                // question, and as the tutor's line of last resort.
+                ask: localized(content.meaning, language),
             },
         ];
     });

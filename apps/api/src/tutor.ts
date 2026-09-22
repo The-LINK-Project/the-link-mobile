@@ -158,8 +158,10 @@ const LATIN_WORD = /[A-Za-z]+(?:['’][A-Za-z]+)*/g;
 /**
  * English words in a piece of text.
  *
- * Every tutor language is written in a script of its own, so any run of Latin
- * letters is English. That is what makes the rule checkable at all.
+ * Where a tutor language is written in a script of its own, any run of Latin
+ * letters is English, and that is what makes the rule checkable at all. For
+ * the languages in `LATIN_SCRIPT_LANGUAGES` this picks up their own words
+ * too, so callers skip the check for text that may be in the language.
  */
 export function englishWords(text: string): string[] {
     return text.match(LATIN_WORD) ?? [];
@@ -284,10 +286,16 @@ export function parseTurnRequest(body: unknown): Parsed {
 
     // Goals are the one place lesson content reaches the reply unmodified (as
     // the fallback line), so they have to pass the same rule as the model.
+    // `ask` is written in the learner's language; in a Latin-script language
+    // its every word would look like English, so there only the English is
+    // checked, the same allowance `runTurn` makes for the model's replies.
     const allowed = allowedWords({ words, phrases, names });
+    const latin = LATIN_SCRIPT_LANGUAGES.has(language);
     for (const goal of goals) {
-        const english = [goal.target, ...goal.keywords, goal.ask].join(" ");
-        if (findViolations(english, allowed).length > 0) {
+        const english = latin
+            ? [goal.target, ...goal.keywords]
+            : [goal.target, ...goal.keywords, goal.ask];
+        if (findViolations(english.join(" "), allowed).length > 0) {
             return fail("A goal uses English the lesson did not teach");
         }
     }
@@ -366,8 +374,12 @@ export function systemInstruction(request: TurnRequest, allowed: Set<string>): s
         "- English appears only as the words and sentences the learner is practising, written in English letters.",
         `- HARD RULE: the only English words you may ever write are: ${[...allowed].sort().join(", ")}.`,
         `- Every other English word is forbidden, including common ones such as "okay", "good", "yes", "no", "please", "sorry", "try", "again", "say", "very" and "next". Say those in ${name}.`,
-        `- Never write ${name} in English letters. Write amounts as digits or in ${name}.`,
-        `- When you use one of the learner's English words or sentences, write it in English letters, not in ${script}.`,
+        ...(LATIN_SCRIPT_LANGUAGES.has(request.language)
+            ? [`- Write amounts as digits or in ${name}.`]
+            : [
+                  `- Never write ${name} in English letters. Write amounts as digits or in ${name}.`,
+                  `- When you use one of the learner's English words or sentences, write it in English letters, not in ${script}.`,
+              ]),
         "- Spell the lesson's English exactly as it is given, including capital letters, so names and letters are read out correctly.",
         "- The learner hears each reply once, so keep it easy to follow: usually two to four short sentences.",
         "",

@@ -41,7 +41,11 @@ export function LessonStages({
     const t = useFirstLanguageInterface("lessons");
     return (
         // Read out by whatever holds it, which already says where the lesson stands.
-        <View style={styles.row} importantForAccessibility="no-hide-descendants">
+        <View
+            style={styles.row}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+        >
             <Stage state={learn} icon="book" label={t("stageLearn")} size={size} />
             <View style={[styles.link, learn === "done" && styles.linkDone]} />
             <Stage state={speak} icon="mic" label={t("stageSpeak")} size={size} />
