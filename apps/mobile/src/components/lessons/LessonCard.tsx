@@ -43,8 +43,10 @@ type Props = {
  *
  * Where the lesson stands is one of three things, and each looks like nothing
  * else: not started is an empty outline, in progress is yellow, done is a
- * white card with a green tick and a faint lattice of diamonds behind it, the
- * way a certificate has a pattern in its paper. The app's own colour is green,
+ * white card with a green tick. Both of the last two have a faint lattice of
+ * diamonds behind them in their colour, the way a certificate has a pattern
+ * in its paper, so a card that has been touched looks different from one
+ * that has not even before the colour is read. The app's own colour is green,
  * and a finished lesson used to be a paler shade of the buttons around it,
  * which nobody could tell apart at a glance. Every colour is said again by a
  * picture and by words, for a learner who cannot tell the colours apart or
@@ -93,7 +95,8 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                 next && stage === "new" && styles.cardNext,
             ]}
         >
-            {stage === "done" ? <DoneLattice /> : null}
+            {stage === "done" ? <Lattice color={colors.success} /> : null}
+            {stage === "progress" ? <Lattice color={colors.warningFill} /> : null}
             <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={[localized(lesson.title), stageLabel, detail]
@@ -215,12 +218,13 @@ const LATTICE_STEP = 26;
 const DIAMOND = 5;
 
 /**
- * The pattern behind a finished lesson: small diamonds in staggered rows, so
- * faint they read as texture rather than as something to look at. Drawn with
- * views because the app has no vector library, and sized to the card so it
- * is the same on any phone. It is decoration, hidden from screen readers.
+ * The pattern behind a lesson that has been started or finished: small
+ * diamonds in staggered rows, so faint they read as texture rather than as
+ * something to look at, in the colour of the stage. Drawn with views because
+ * the app has no vector library, and sized to the card so it is the same on
+ * any phone. It is decoration, hidden from screen readers.
  */
-function DoneLattice() {
+function Lattice({ color }: { color: string }) {
     const [size, setSize] = useState({ width: 0, height: 0 });
     const cols = Math.ceil(size.width / LATTICE_STEP) + 1;
     const rows = Math.ceil(size.height / LATTICE_STEP) + 1;
@@ -242,7 +246,7 @@ function DoneLattice() {
                     style={[styles.latticeRow, row % 2 === 1 && styles.latticeRowShifted]}
                 >
                     {Array.from({ length: cols }, (_, col) => (
-                        <View key={col} style={styles.diamond} />
+                        <View key={col} style={[styles.diamond, { backgroundColor: color }]} />
                     ))}
                 </View>
             ))}
@@ -293,7 +297,6 @@ const styles = StyleSheet.create({
     diamond: {
         width: DIAMOND,
         height: DIAMOND,
-        backgroundColor: colors.success,
         opacity: 0.16,
         transform: [{ rotate: "45deg" }],
     },
