@@ -25,9 +25,5 @@
   },
   "devDependencies": {
     "prettier": "3.9.6"
-  },
-  "dependencies": {
-    "expo-haptics": "~57.0.3",
-    "expo-speech": "~57.0.3"
   }
 }
