@@ -14,9 +14,16 @@ export async function database() {
             .then(async () => {
                 const db = client.db(config.dbName);
                 await db.collection("users").createIndex({ clerkId: 1 }, { unique: true });
+                await db.collection("progress").createIndex({ clerkId: 1 }, { unique: true });
                 await db
                     .collection("rate_limits")
                     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+                // Cached translations are keyed by their own hash, so no index
+                // is needed to read one. This only stops the collection growing
+                // forever, and lets a better model's answers take over in time.
+                await db
+                    .collection("translations")
+                    .createIndex({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
                 return client;
             })
             .catch(async (error) => {

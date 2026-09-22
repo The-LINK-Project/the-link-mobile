@@ -4,7 +4,22 @@ import { Webhook } from "svix";
 import type { Db } from "mongodb";
 import { readConfig } from "./config.js";
 import { database } from "./database.js";
-import { deleteMobileUser, syncUser, type Identity } from "./users.js";
+import { createGeminiTranslator, tutorFromConfig } from "./gemini.js";
+import { deleteProgress, parseProgress, readProgress, saveProgress } from "./progress.js";
+import {
+    cachedTranslation,
+    parseTranslateRequest,
+    translateWord,
+    type Translator,
+} from "./translate.js";
+import { parseTurnRequest, runTurn, type TutorModel } from "./tutor.js";
+import {
+    deleteMobileUser,
+    parseFirstLanguageChoice,
+    saveFirstLanguage,
+    syncUser,
+    type Identity,
+} from "./users.js";
 
 type Authenticated = { userId: string; sessionId: string };
 type Dependencies = {
@@ -13,6 +28,8 @@ type Dependencies = {
     getIdentity: (id: string) => Promise<Identity>;
     deleteIdentity: (id: string) => Promise<unknown>;
     verifyEvent: (body: string, headers: Record<string, string>) => unknown;
+    tutor: () => TutorModel;
+    translator: () => Translator;
 };
 
 class HttpError extends Error {
@@ -26,6 +43,11 @@ class HttpError extends Error {
 
 const WEBHOOK_EVENTS = ["user.created", "user.updated", "user.deleted"];
 const REQUESTS_PER_MINUTE = 60;
+// Each tutor turn is several model calls, so it has a much smaller budget of its own.
+const TUTOR_TURNS_PER_MINUTE = 12;
+// Holding words is quick and repetitive, and most holds are answered from the
+// cache, so this is only here to bound what one learner can cost in model calls.
+const TRANSLATIONS_PER_MINUTE = 30;
 
 // One Clerk client per process; the config does not change at runtime.
 let clerkClient: ReturnType<typeof createClerkClient> | undefined;
@@ -40,9 +62,28 @@ function clerk() {
     return clerkClient;
 }
 
+// Built once per configuration, so what the tutor learns about quotas, and its
+// speech sign-in, carry over from one turn to the next.
+let tutorCache: { settings: string; tutor: TutorModel } | undefined;
+// The translator keeps its own quota tracker, for the same reason.
+let translatorCache: { settings: string; translator: Translator } | undefined;
+
 function statusOf(error: unknown): number | undefined {
     const status = (error as { status?: unknown }).status;
     return typeof status === "number" ? status : undefined;
+}
+
+/** Counts one request in the current minute for `key` and returns the running total. */
+async function countRequest(db: Db, key: string): Promise<number> {
+    const window = Math.floor(Date.now() / 60000);
+    const record = await db
+        .collection<{ _id: string; count: number; expiresAt: Date }>("rate_limits")
+        .findOneAndUpdate(
+            { _id: `${key}:${window}` },
+            { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((window + 2) * 60000) } },
+            { upsert: true, returnDocument: "after" },
+        );
+    return record?.count ?? 0;
 }
 
 const defaults: Dependencies = {
@@ -78,6 +119,41 @@ const defaults: Dependencies = {
         if (!secret) throw new HttpError(503, "Webhook is not configured");
         return new Webhook(secret).verify(body, headers);
     },
+    tutor() {
+        const config = readConfig();
+        if (!config.geminiApiKey) throw new HttpError(503, "Speaking practice is not configured");
+        const settings = JSON.stringify([
+            config.geminiApiKey,
+            config.tutorModels,
+            config.speechModels,
+            config.speechCredentials,
+            config.cloudSpeechModels,
+        ]);
+        if (tutorCache?.settings === settings) return tutorCache.tutor;
+        try {
+            const tutor = tutorFromConfig({ ...config, geminiApiKey: config.geminiApiKey });
+            tutorCache = { settings, tutor };
+            return tutor;
+        } catch (error) {
+            console.error("Speaking practice is misconfigured", {
+                message: (error as Error).message,
+            });
+            throw new HttpError(503, "Speaking practice is not configured");
+        }
+    },
+    translator() {
+        const config = readConfig();
+        if (!config.geminiApiKey) throw new HttpError(503, "Translation is not configured");
+        const settings = JSON.stringify([config.geminiApiKey, config.translateModels]);
+        if (translatorCache?.settings === settings) return translatorCache.translator;
+        console.info("Translation models", { text: config.translateModels });
+        const translator = createGeminiTranslator({
+            apiKey: config.geminiApiKey,
+            models: config.translateModels,
+        });
+        translatorCache = { settings, translator };
+        return translator;
+    },
 };
 
 export function createApp(overrides: Partial<Dependencies> = {}) {
@@ -94,7 +170,7 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
                 "Access-Control-Allow-Origin": origin,
                 Vary: "Origin",
                 "Access-Control-Allow-Headers": "Authorization, Content-Type",
-                "Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             });
         }
         if (req.method === "OPTIONS") {
@@ -140,6 +216,9 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             // Ignore web-only identities. A shared Clerk deletion must clean
             // up a mobile record when one exists, but never manufacture one.
             if (existing) await deleteMobileUser(db, event.data.id);
+            // Progress can exist without a profile row, if the profile sync
+            // never succeeded. It is still theirs, and still has to go.
+            else await deleteProgress(db, event.data.id);
         } else if (existing && !("deletedAt" in existing)) {
             // Only sync existing mobile members; web-only sign-ups do not
             // populate the mobile database. Re-fetch the identity so
@@ -166,20 +245,19 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             if (error instanceof HttpError) throw error;
             const status = statusOf(error);
             if (status && status >= 500) throw new HttpError(503, "Sign-in service unavailable");
-            throw new HttpError(401, "Authentication required");
+            // A rejected token carries a Clerk verification `reason`, and a
+            // rejected session a 4xx status. Anything else is the server failing
+            // to reach Clerk at all (network, DNS, TLS), which is not the
+            // learner's fault: a 401 here would sign them out of the app.
+            const rejected =
+                status !== undefined ||
+                (typeof error === "object" && error !== null && "reason" in error);
+            if (rejected) throw new HttpError(401, "Authentication required");
+            throw new HttpError(503, "Sign-in service unavailable");
         }
         res.locals.userId = auth.userId;
 
-        const db = await dep.db();
-        const window = Math.floor(Date.now() / 60000);
-        const limit = await db
-            .collection<{ _id: string; count: number; expiresAt: Date }>("rate_limits")
-            .findOneAndUpdate(
-                { _id: `${auth.userId}:${window}` },
-                { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((window + 2) * 60000) } },
-                { upsert: true, returnDocument: "after" },
-            );
-        if ((limit?.count ?? 0) > REQUESTS_PER_MINUTE) {
+        if ((await countRequest(await dep.db(), auth.userId)) > REQUESTS_PER_MINUTE) {
             res.set("Retry-After", "60");
             throw new HttpError(429, "Please wait a minute and try again");
         }
@@ -207,6 +285,90 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
                 message: (error as Error).message,
             });
             res.status(202).json({ success: true, cleanupPending: true });
+        }
+    });
+
+    /**
+     * A learner whose account is being deleted must not have progress written
+     * back by a phone that has not heard yet. The tombstone is the record of that.
+     */
+    async function requireMember(db: Db, userId: string) {
+        const user = await db.collection("users").findOne({ clerkId: userId });
+        if (user && "deletedAt" in user) throw new HttpError(401, "Account deleted");
+    }
+
+    app.put("/v1/me/first-language", express.json({ limit: "4kb" }), async (req, res) => {
+        const parsed = parseFirstLanguageChoice(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        const saved = await saveFirstLanguage(db, userId, parsed.value);
+        // Only if a tombstone landed between the check and the write.
+        if (!saved) throw new HttpError(401, "Account deleted");
+        res.json({
+            firstLanguage: saved.firstLanguage,
+            firstLanguageUpdatedAt: saved.firstLanguageUpdatedAt.toISOString(),
+        });
+    });
+
+    app.get("/v1/progress", async (_req, res) => {
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        res.json({ progress: await readProgress(db, userId) });
+    });
+
+    app.put("/v1/progress", express.json({ limit: "256kb" }), async (req, res) => {
+        const parsed = parseProgress(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        await requireMember(db, userId);
+        res.json({ progress: await saveProgress(db, userId, parsed.value) });
+    });
+
+    app.post("/v1/tutor/turn", express.json({ limit: "3mb" }), async (req, res) => {
+        const userId = res.locals.userId as string;
+        if ((await countRequest(await dep.db(), `tutor:${userId}`)) > TUTOR_TURNS_PER_MINUTE) {
+            res.set("Retry-After", "60");
+            throw new HttpError(429, "Please wait a minute and try again");
+        }
+        const parsed = parseTurnRequest(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+
+        const tutor = dep.tutor();
+        try {
+            res.json(await runTurn(parsed.value, tutor));
+        } catch (error) {
+            // Only the reason is logged: the request carries what the learner said.
+            console.error("Tutor turn failed", { message: (error as Error).message });
+            throw new HttpError(503, "The tutor is not available right now");
+        }
+    });
+
+    app.post("/v1/translate", express.json({ limit: "8kb" }), async (req, res) => {
+        const parsed = parseTranslateRequest(req.body);
+        if (!parsed.ok) throw new HttpError(400, parsed.error);
+
+        const db = await dep.db();
+        const userId = res.locals.userId as string;
+        // A learner is holding a finger on a word while this runs. The count
+        // and the cache are two trips to the database that do not depend on
+        // each other, so they go out together. The cache read never throws.
+        const lookup = cachedTranslation(db, parsed.value);
+        if ((await countRequest(db, `translate:${userId}`)) > TRANSLATIONS_PER_MINUTE) {
+            res.set("Retry-After", "60");
+            throw new HttpError(429, "Please wait a minute and try again");
+        }
+
+        const translator = dep.translator();
+        try {
+            res.json(await translateWord(db, parsed.value, translator, lookup));
+        } catch (error) {
+            // Only the reason is logged: the request carries what the learner reads.
+            console.error("Translation failed", { message: (error as Error).message });
+            throw new HttpError(503, "Translation is not available right now");
         }
     });
 

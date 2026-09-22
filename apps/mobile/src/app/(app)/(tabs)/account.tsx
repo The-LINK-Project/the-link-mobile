@@ -4,18 +4,21 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { FirstLanguagePicker } from "@/components/language/FirstLanguagePicker";
 import { Button, Card, ListRow, Screen, Text } from "@/components/ui";
-import { LOCALES, LOCALE_LABELS, useLocale, useTranslations } from "@/lib/i18n";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { FIRST_LANGUAGE_LABELS } from "@/lib/firstLanguage/languages";
+import { useFirstLanguage } from "@/lib/firstLanguage/store";
 import { colors, spacing } from "@/lib/theme";
 
 export default function AccountScreen() {
-    const t = useTranslations("mobile.account");
-    const f = useTranslations("mobile.foundation");
+    const t = useFirstLanguageInterface("account");
+    const f = useFirstLanguageInterface("foundation");
     const router = useRouter();
     const { user } = useUser();
     const { signOut } = useClerk();
-    const [locale, setLocale] = useLocale();
-    const [languagesOpen, setLanguagesOpen] = useState(false);
+    const [firstLanguage, setFirstLanguage] = useFirstLanguage();
+    const [languageOpen, setLanguageOpen] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -51,11 +54,14 @@ export default function AccountScreen() {
                     />
                 ) : null}
                 <View style={styles.identityText}>
-                    <Text variant="heading" numberOfLines={1}>
+                    {/* A learner's own name and email are theirs. Holding a
+                        finger on them must not send them anywhere to be
+                        translated, so they are marked as not translatable. */}
+                    <Text variant="heading" numberOfLines={1} translatable={false}>
                         {displayName}
                     </Text>
                     {email && email !== displayName ? (
-                        <Text variant="caption" numberOfLines={1}>
+                        <Text variant="caption" numberOfLines={1} translatable={false}>
                             {email}
                         </Text>
                     ) : null}
@@ -63,48 +69,58 @@ export default function AccountScreen() {
             </View>
             <Text variant="caption">{f("sharedAccount")}</Text>
 
-            <Card padded={false}>
-                <ListRow
-                    icon="person-outline"
-                    title={t("editProfile")}
-                    onPress={() => router.push("/edit-profile")}
-                />
-                {user?.passwordEnabled ? (
+            <View style={styles.group}>
+                <Card padded={false}>
                     <ListRow
-                        icon="key-outline"
-                        title={t("changePassword")}
-                        onPress={() => router.push("/change-password")}
+                        icon="person-outline"
+                        title={t("editProfile")}
+                        onPress={() => router.push("/edit-profile")}
                     />
-                ) : null}
-                <ListRow
-                    icon="language-outline"
-                    title={t("language")}
-                    value={LOCALE_LABELS[locale]}
-                    trailing="none"
-                    accessibilityState={{ expanded: languagesOpen }}
-                    onPress={() => setLanguagesOpen((open) => !open)}
-                    last={!languagesOpen}
-                />
-                {languagesOpen ? (
-                    <View accessibilityRole="radiogroup" accessibilityLabel={t("language")}>
-                        {LOCALES.map((option, index) => (
-                            <ListRow
-                                key={option}
-                                title={LOCALE_LABELS[option]}
-                                trailing="check"
-                                inset
-                                selected={option === locale}
-                                accessibilityRole="radio"
-                                last={index === LOCALES.length - 1}
-                                onPress={() => {
-                                    void setLocale(option);
-                                    setLanguagesOpen(false);
-                                }}
-                            />
-                        ))}
-                    </View>
-                ) : null}
-            </Card>
+                    {user?.passwordEnabled ? (
+                        <ListRow
+                            icon="key-outline"
+                            title={t("changePassword")}
+                            onPress={() => router.push("/change-password")}
+                        />
+                    ) : null}
+                    {/* The one language setting. There used to be an "App language"
+                        row above it as well, which had stopped doing anything
+                        a learner could see: every main screen follows this
+                        language, so picking another there changed its own label
+                        and nothing else. The rest of the app now follows this
+                        choice too; see `useLocaleFollowsFirstLanguage`. */}
+                    <ListRow
+                        icon="language-outline"
+                        title={t("myLanguage")}
+                        value={firstLanguage ? FIRST_LANGUAGE_LABELS[firstLanguage] : undefined}
+                        // Says that a tap opens something here, which a bare
+                        // row did not: it looked like a label.
+                        trailing="expand"
+                        accessibilityState={{ expanded: languageOpen }}
+                        onPress={() => setLanguageOpen((open) => !open)}
+                        last={!languageOpen}
+                    />
+                    {languageOpen ? (
+                        <FirstLanguagePicker
+                            value={firstLanguage}
+                            onChange={(language) => {
+                                void setFirstLanguage(language);
+                                setLanguageOpen(false);
+                            }}
+                            label={t("myLanguage")}
+                            inset
+                        />
+                    ) : null}
+                </Card>
+                {/* Under the card, where a settings list explains its last row.
+                    The hint stays on show rather than hiding inside the open
+                    list, because it is also where a learner finds out that
+                    holding a word does anything at all. Not shown to a learner whose
+                    language is English, for whom it does nothing. */}
+                {firstLanguage === "en" ? null : (
+                    <Text variant="caption">{t("myLanguageHint")}</Text>
+                )}
+            </View>
 
             <Card padded={false}>
                 <ListRow
@@ -154,6 +170,7 @@ const styles = StyleSheet.create({
     content: { gap: spacing.lg, paddingTop: spacing.xl },
     identity: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
     identityText: { flex: 1, gap: spacing.xs },
+    group: { gap: spacing.sm },
     avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.mutedSurface },
     actions: { gap: spacing.sm, marginTop: spacing.sm },
     delete: { alignSelf: "center" },
