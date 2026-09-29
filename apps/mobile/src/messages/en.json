@@ -28,7 +28,9 @@
       "resetPassword": "Save new password",
       "backToSignIn": "Back to sign in",
       "username": "Username",
-      "usernameHint": "4 to 64 letters, numbers, _ or -"
+      "usernameHint": "4 to 64 letters, numbers, _ or -",
+      "privacyNotice": "By creating an account, you agree to our {policy}.",
+      "privacyPolicy": "Privacy Policy"
     },
     "account": {
       "title": "Account",
@@ -89,6 +91,7 @@
       "aiBody": "When you hold an English word, the word and its sentence are sent to Google's Gemini AI for translation. In speaking practice, your voice is sent to Gemini so the tutor can hear you.",
       "deleteTitle": "Deleting your account",
       "deleteBody": "Deleting your account removes your login and starts removing your data in the app and on the website. The app keeps only a hidden account ID and the date, so old data cannot come back.",
+      "fullPolicy": "Read the full privacy policy",
       "contactHint": "Go to Contact us in Account to ask the LINK team about your data."
     },
     "lessons": {
