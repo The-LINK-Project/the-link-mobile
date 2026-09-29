@@ -28,7 +28,9 @@
       "resetPassword": "I-save ang bagong password",
       "backToSignIn": "Bumalik sa sign in",
       "username": "Username",
-      "usernameHint": "4 hanggang 64 na letra, numero, _ o -"
+      "usernameHint": "4 hanggang 64 na letra, numero, _ o -",
+      "privacyNotice": "Sa paggawa ng account, sumasang-ayon ka sa aming {policy}.",
+      "privacyPolicy": "Patakaran sa Privacy"
     },
     "account": {
       "title": "Account",
@@ -89,6 +91,7 @@
       "aiBody": "Kapag pinindot mo nang matagal ang isang salitang Ingles, ipinapadala ang salita at ang pangungusap nito sa Gemini AI ng Google para isalin. Sa speaking practice, ipinapadala ang iyong boses sa Gemini para marinig ka ng tutor.",
       "deleteTitle": "Pagbura ng iyong account",
       "deleteBody": "Ang pagbura ng account ay nagtatanggal ng iyong login at nagsisimulang magbura ng iyong data sa app at sa website. Isang nakatagong account ID at petsa lang ang itinatago ng app, para hindi na bumalik ang lumang data.",
+      "fullPolicy": "Basahin ang buong patakaran sa privacy",
       "contactHint": "Pumunta sa Makipag-ugnayan sa amin sa Account para magtanong sa LINK team tungkol sa iyong data."
     },
     "lessons": {
