@@ -135,10 +135,15 @@ export function LessonCard({ lesson, status, next = false, doneLabel, onSpeak }:
                         style={({ pressed: down }) => [
                             styles.speak,
                             speakOwed ? styles.speakOwed : styles.speakAgain,
-                            down && (speakOwed ? styles.speakOwedPressed : styles.speakAgainPressed),
+                            down &&
+                                (speakOwed ? styles.speakOwedPressed : styles.speakAgainPressed),
                         ]}
                     >
-                        <Ionicons name="mic" size={20} color={speakOwed ? SPEAK_OWED_TEXT : STAGE_COLORS.next.text} />
+                        <Ionicons
+                            name="mic"
+                            size={20}
+                            color={speakOwed ? SPEAK_OWED_TEXT : STAGE_COLORS.next.text}
+                        />
                         <Text
                             variant="label"
                             color={speakOwed ? SPEAK_OWED_TEXT : STAGE_COLORS.next.text}

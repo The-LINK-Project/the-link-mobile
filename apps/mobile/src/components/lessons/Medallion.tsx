@@ -84,7 +84,12 @@ export function Medallion({
             <View
                 style={[
                     styles.coin,
-                    { width: s.coin, height: s.coin, borderRadius: s.coin / 2, backgroundColor: hue.dark },
+                    {
+                        width: s.coin,
+                        height: s.coin,
+                        borderRadius: s.coin / 2,
+                        backgroundColor: hue.dark,
+                    },
                 ]}
             >
                 <View
@@ -99,7 +104,9 @@ export function Medallion({
                         },
                     ]}
                 >
-                    {children ?? <Ionicons name={LESSON_ICONS[icon]} size={s.icon} color={colors.white} />}
+                    {children ?? (
+                        <Ionicons name={LESSON_ICONS[icon]} size={s.icon} color={colors.white} />
+                    )}
                 </View>
             </View>
             {done ? (
@@ -147,8 +154,12 @@ function Ring({
                 <View style={[circle, styles.absolute, { borderColor: color }]} />
             ) : angle > 0 ? (
                 <>
-                    <View style={[styles.window, { left: size / 2, width: size / 2, height: size }]}>
-                        <View style={[half(Math.min(angle, 180) - 180), { marginLeft: -size / 2 }]} />
+                    <View
+                        style={[styles.window, { left: size / 2, width: size / 2, height: size }]}
+                    >
+                        <View
+                            style={[half(Math.min(angle, 180) - 180), { marginLeft: -size / 2 }]}
+                        />
                     </View>
                     {angle > 180 ? (
                         <View style={[styles.window, { left: 0, width: size / 2, height: size }]}>
