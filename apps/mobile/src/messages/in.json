@@ -28,7 +28,9 @@
       "resetPassword": "Simpan kata sandi baru",
       "backToSignIn": "Kembali ke halaman masuk",
       "username": "Nama pengguna",
-      "usernameHint": "4 sampai 64 huruf, angka, _ atau -"
+      "usernameHint": "4 sampai 64 huruf, angka, _ atau -",
+      "privacyNotice": "Dengan membuat akun, Anda menyetujui {policy} kami.",
+      "privacyPolicy": "Kebijakan Privasi"
     },
     "account": {
       "title": "Akun",
@@ -89,6 +91,7 @@
       "aiBody": "Saat Anda menekan lama kata bahasa Inggris, kata dan kalimatnya dikirim ke Gemini AI milik Google untuk diterjemahkan. Dalam latihan berbicara, suara Anda dikirim ke Gemini agar tutor dapat mendengar Anda.",
       "deleteTitle": "Menghapus akun Anda",
       "deleteBody": "Menghapus akun akan menghapus login Anda dan mulai menghapus data Anda di aplikasi dan situs web. Aplikasi hanya menyimpan ID akun tersembunyi dan tanggalnya, agar data lama tidak bisa kembali.",
+      "fullPolicy": "Baca kebijakan privasi lengkap",
       "contactHint": "Buka Hubungi kami di Akun untuk bertanya kepada tim LINK tentang data Anda."
     },
     "lessons": {

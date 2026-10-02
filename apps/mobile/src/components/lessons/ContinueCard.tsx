@@ -44,7 +44,11 @@ export function ContinueCard({
     // with the exercises behind them and the talk ahead, the lesson is half done.
     const half = canPractiseSpeaking(lesson) ? 0.5 : 1;
     const whole =
-        point.kind === "speak" ? half : point.kind === "talk" ? half + (1 - half) * share : half * share;
+        point.kind === "speak"
+            ? half
+            : point.kind === "talk"
+              ? half + (1 - half) * share
+              : half * share;
 
     return (
         <Pressable
@@ -54,7 +58,12 @@ export function ContinueCard({
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         >
             <View style={styles.icon}>
-                <Medallion icon={lesson.icon} fraction={Math.max(whole, 0.05)} done={false} size="sm">
+                <Medallion
+                    icon={lesson.icon}
+                    fraction={Math.max(whole, 0.05)}
+                    done={false}
+                    size="sm"
+                >
                     {point.kind === "lesson" ? undefined : (
                         <Ionicons name="mic" size={24} color={colors.white} />
                     )}

@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { GoogleButton } from "@/components/auth/GoogleButton";
+import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { USERNAME_PATTERN, useGoogleSignIn, useProfileAttributes } from "@/lib/clerkSettings";
@@ -236,6 +237,7 @@ export default function SignUpScreen() {
                                 <GoogleButton title={t("continueWithGoogle")} onError={setError} />
                             </>
                         ) : null}
+                        <PrivacyNotice onError={setError} />
 
                         <View style={styles.footer}>
                             <Text variant="caption">{t("haveAccount")}</Text>
