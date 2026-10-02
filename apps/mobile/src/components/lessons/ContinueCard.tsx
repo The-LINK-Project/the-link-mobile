@@ -6,9 +6,13 @@ import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { Lesson } from "@/lib/lessons/types";
 import type { ContinuePoint } from "@/lib/progress/model";
-import { colors, radius, shadow, spacing } from "@/lib/theme";
+import { canPractiseSpeaking } from "@/lib/speaking/context";
+import { colors, radius, spacing } from "@/lib/theme";
 
-import { LESSON_ICONS } from "./LessonCard";
+import { Medallion } from "./Medallion";
+
+/** How far the card sinks when pressed: its lower edge is this much heavier. */
+const LIP = 3;
 
 /**
  * The one thing at the top of Home when something was left unfinished.
@@ -34,8 +38,13 @@ export function ContinueCard({
             : point.kind === "talk"
               ? t("continueTalk", { done: point.done, total: point.total })
               : t("statusStarted", { done: point.done, total: point.total });
-    // With the exercises behind them and the talk ahead, the lesson is half done.
+    // How far through the stage in hand, for the bar.
     const share = point.kind === "speak" ? 0.5 : point.done / point.total;
+    // How far through the whole lesson, for the ring, the same as on its card:
+    // with the exercises behind them and the talk ahead, the lesson is half done.
+    const half = canPractiseSpeaking(lesson) ? 0.5 : 1;
+    const whole =
+        point.kind === "speak" ? half : point.kind === "talk" ? half + (1 - half) * share : half * share;
 
     return (
         <Pressable
@@ -45,11 +54,11 @@ export function ContinueCard({
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
         >
             <View style={styles.icon}>
-                <Ionicons
-                    name={point.kind === "lesson" ? LESSON_ICONS[lesson.icon] : "mic"}
-                    size={26}
-                    color={colors.onPrimary}
-                />
+                <Medallion icon={lesson.icon} fraction={Math.max(whole, 0.05)} done={false} size="sm">
+                    {point.kind === "lesson" ? undefined : (
+                        <Ionicons name="mic" size={24} color={colors.white} />
+                    )}
+                </Medallion>
             </View>
             <View style={styles.body}>
                 <Text variant="label" color={colors.onPrimary}>
@@ -73,24 +82,21 @@ export function ContinueCard({
 }
 
 const styles = StyleSheet.create({
+    // A key, like the lesson cards below it, in the app's own green.
     card: {
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.md,
         padding: spacing.lg,
         borderRadius: radius.lg,
+        borderWidth: 2,
+        borderBottomWidth: 2 + LIP,
+        borderColor: colors.primaryDark,
         backgroundColor: colors.primary,
-        ...shadow.raised,
     },
-    pressed: { opacity: 0.9 },
-    icon: {
-        width: 52,
-        height: 52,
-        borderRadius: radius.md,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: colors.primarySoft,
-    },
+    // The lower edge gives way and the card moves down by as much.
+    pressed: { borderBottomWidth: 2, marginTop: LIP },
+    icon: { borderRadius: radius.full, backgroundColor: colors.surface },
     body: { flex: 1, gap: spacing.xs },
     track: {
         height: 8,
@@ -107,5 +113,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: colors.primaryDark,
+        borderBottomWidth: 4,
+        borderBottomColor: colors.onPrimary,
     },
 });
