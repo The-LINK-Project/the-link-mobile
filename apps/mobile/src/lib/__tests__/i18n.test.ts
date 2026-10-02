@@ -57,7 +57,7 @@ test.each(LOCALES.filter((locale) => locale !== "en"))(
 test.each(LOCALES)(
     "%s keeps one place for the Privacy Policy link in the sign-up notice",
     (locale) => {
-        // Sign-up splits the notice at {policy} to make that part a link; without
+        // PrivacyNotice splits the notice at {policy} to make that part a link; without
         // exactly one slot the link would vanish or appear twice.
         const notice = i18n.t("mobile.auth.privacyNotice", { locale, policy: "\u0000" });
         expect(notice.split("\u0000")).toHaveLength(2);

@@ -1,21 +1,16 @@
 import { useSignUp } from "@clerk/expo";
 import { Link } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { GoogleButton } from "@/components/auth/GoogleButton";
+import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { USERNAME_PATTERN, useGoogleSignIn, useProfileAttributes } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
-import { PRIVACY_POLICY_URL } from "@/lib/links";
 import { colors, spacing } from "@/lib/theme";
-
-// Stands in for the link inside the translated notice, so each language can
-// put "Privacy Policy" wherever its word order needs it.
-const POLICY_SLOT = "\u0000";
 
 export default function SignUpScreen() {
     const t = useTranslations("mobile.auth");
@@ -115,17 +110,6 @@ export default function SignUpScreen() {
             setBusy(false);
         }
     }, [canVerify, code, signUp, t]);
-
-    // Told before the account exists how its data is used (Singapore's PDPA)
-    const [beforePolicy, afterPolicy = ""] = t("privacyNotice", { policy: POLICY_SLOT }).split(
-        POLICY_SLOT,
-    );
-    const openPolicy = () => {
-        setError(null);
-        void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL).catch(() =>
-            setError(t("genericError")),
-        );
-    };
 
     return (
         <Screen edges={["top", "bottom", "left", "right"]}>
@@ -241,19 +225,6 @@ export default function SignUpScreen() {
                                 disabled={!canSubmit}
                                 onPress={handleSignUp}
                             />
-                            <Text variant="caption" center>
-                                {beforePolicy}
-                                <Text
-                                    variant="caption"
-                                    color={colors.primaryDark}
-                                    accessibilityRole="link"
-                                    onPress={openPolicy}
-                                    style={styles.link}
-                                >
-                                    {t("privacyPolicy")}
-                                </Text>
-                                {afterPolicy}
-                            </Text>
                         </View>
 
                         {googleEnabled ? (
@@ -266,6 +237,7 @@ export default function SignUpScreen() {
                                 <GoogleButton title={t("continueWithGoogle")} onError={setError} />
                             </>
                         ) : null}
+                        <PrivacyNotice onError={setError} />
 
                         <View style={styles.footer}>
                             <Text variant="caption">{t("haveAccount")}</Text>
@@ -291,7 +263,6 @@ const styles = StyleSheet.create({
         gap: spacing.md,
         marginVertical: spacing.lg,
     },
-    link: { textDecorationLine: "underline" },
     divider: { flex: 1, height: 1, backgroundColor: colors.border },
     footer: {
         flexDirection: "row",
