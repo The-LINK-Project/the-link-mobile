@@ -1,4 +1,5 @@
 import { ClerkProvider, useAuth, useClerk } from "@clerk/expo";
+import { resourceCache } from "@clerk/expo/resource-cache";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
@@ -98,9 +99,10 @@ function Accounts({ onRetry }: { onRetry: () => void }) {
     const { isLoaded, userId } = useAuth();
     const clerk = useClerk();
 
-    // Offline, Clerk stays in "loading" rather than failing, so also give up
-    // waiting after a while. Clerk keeps loading underneath; if it succeeds
-    // later the app proceeds on its own.
+    // Offline with nothing cached yet (a first launch), Clerk stays in
+    // "loading" rather than failing, so also give up waiting after a while.
+    // Clerk keeps loading underneath; if it succeeds later the app proceeds
+    // on its own.
     const [timedOut, setTimedOut] = useState(false);
     // Clerk's status stays "error" while a reload is in flight, so track the
     // attempt ourselves to show progress. A successful load unmounts this
@@ -153,6 +155,12 @@ export default function RootLayout() {
                         key={attempt}
                         publishableKey={publishableKey}
                         tokenCache={tokenCache}
+                        // Lessons, progress and the language choice all live on
+                        // the phone, but without this Clerk never finishes
+                        // loading offline, and a learner with no data could not
+                        // open the app at all. It keeps Clerk's last environment,
+                        // client and session in SecureStore to start from.
+                        __experimental_resourceCache={resourceCache}
                     >
                         <Accounts onRetry={retry} />
                     </ClerkProvider>
