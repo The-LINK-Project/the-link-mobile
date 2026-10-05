@@ -293,3 +293,49 @@ test("webhook rejects unsigned input and does not create mobile profiles for web
         await close();
     }
 });
+
+test("a first profile written as the account is deleted is taken back out", async () => {
+    const fake = fakeDb();
+    let lookups = 0;
+    const app = createApp({
+        db: async () => fake.db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+        // The identity is read, then the account is deleted before the row lands.
+        getIdentity: async (id) => {
+            if (++lookups === 1) return identity(id);
+            throw Object.assign(new Error("Not Found"), { status: 404 });
+        },
+    });
+    const { url, close } = await listen(app);
+    const me = () => fetch(url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+    try {
+        assert.equal((await me()).status, 401);
+        const row = fake.users.get("user_a");
+        assert.ok(row?.deletedAt);
+        assert.equal(row?.email, undefined);
+    } finally {
+        await close();
+    }
+
+    // An existing member is not looked up twice on every visit.
+    const members = fakeDb();
+    let calls = 0;
+    const steady = createApp({
+        db: async () => members.db,
+        authenticate: async () => ({ userId: "user_b", sessionId: "sess" }),
+        getIdentity: async (id) => {
+            calls++;
+            return identity(id);
+        },
+    });
+    const server = await listen(steady);
+    try {
+        const visit = () =>
+            fetch(server.url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+        assert.equal((await visit()).status, 200);
+        assert.equal((await visit()).status, 200);
+        assert.equal(calls, 3);
+    } finally {
+        await server.close();
+    }
+});

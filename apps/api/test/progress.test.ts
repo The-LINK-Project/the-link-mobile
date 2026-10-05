@@ -1,7 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../src/app.js";
-import { mergeProgress, parseProgress, type Progress } from "../src/progress.js";
+import {
+    mergeProgress,
+    parseProgress,
+    readProgress,
+    saveProgress,
+    type Progress,
+} from "../src/progress.js";
 import { deleteMobileUser } from "../src/users.js";
 import { fakeDb, listen } from "./helpers.js";
 import type { Db } from "mongodb";
@@ -183,6 +189,77 @@ test("a progress write that crosses an account deletion does not bring the progr
         });
         assert.equal(res.status, 401);
         assert.equal(fake.progress.has("user_a"), false);
+    } finally {
+        await close();
+    }
+});
+
+test("two phones saving at once both keep their lesson", async () => {
+    const fake = fakeDb();
+    const progress = fake.db.collection("progress");
+    const db = fake.db as unknown as Db;
+    // The other phone's save lands after this one has read, and before it writes.
+    let crossed = false;
+    const racing = {
+        collection(name: string) {
+            if (name !== "progress") return fake.db.collection(name);
+            return {
+                ...progress,
+                async findOne(filter: { clerkId: string }) {
+                    const found = await progress.findOne(filter);
+                    if (!crossed) {
+                        crossed = true;
+                        await saveProgress(db, filter.clerkId, {
+                            lessons: { "hawker-food": record("2026-09-11T10:00:00.000Z", 3) },
+                        });
+                    }
+                    return found;
+                },
+            };
+        },
+    } as unknown as Db;
+    const saved = await saveProgress(racing, "user_a", {
+        lessons: { "mrt-basics": record("2026-09-10T10:00:00.000Z", 9) },
+    });
+    assert.deepEqual(Object.keys(saved.lessons).sort(), ["hawker-food", "mrt-basics"]);
+    assert.deepEqual(Object.keys((await readProgress(db, "user_a")).lessons).sort(), [
+        "hawker-food",
+        "mrt-basics",
+    ]);
+});
+
+test("a database that fails after a progress write does not cost the learner their progress", async (t) => {
+    t.mock.method(console, "error", () => undefined);
+    const fake = fakeDb();
+    const users = fake.db.collection("users");
+    let lookups = 0;
+    const db = {
+        collection(name: string) {
+            if (name !== "users") return fake.db.collection(name);
+            return {
+                ...users,
+                async findOne(filter: { clerkId: string }) {
+                    if (++lookups === 2) throw new Error("connection reset");
+                    return users.findOne(filter);
+                },
+            };
+        },
+    } as unknown as Db;
+    const app = createApp({
+        db: async () => db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+    });
+    const { url, close } = await listen(app);
+    try {
+        const res = await fetch(url + "/v1/progress", {
+            method: "PUT",
+            headers: { Authorization: "Bearer x", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                progress: { lessons: { "mrt-basics": record("2026-09-10T10:00:00.000Z", 9) } },
+            }),
+        });
+        assert.equal(res.status, 500);
+        assert.equal(fake.progress.has("user_a"), true);
     } finally {
         await close();
     }

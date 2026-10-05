@@ -288,9 +288,24 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
     });
 
     app.get("/v1/me", async (_req, res) => {
-        const identity = await dep.getIdentity(res.locals.userId);
-        const record = await syncUser(await dep.db(), identity);
+        const userId = res.locals.userId as string;
+        const db = await dep.db();
+        const { user: record, created } = await syncUser(db, await dep.getIdentity(userId));
         if (!record) throw new HttpError(401, "Account deleted");
+        if (created) {
+            // The account can be deleted between reading the identity and
+            // writing this first profile. Its webhook then found no row and,
+            // rightly for a website-only user, wrote nothing. Now that the row
+            // exists, look once more: the webhook comes after the deletion, so
+            // either it finds this row or this look finds the account gone.
+            try {
+                await dep.getIdentity(userId);
+            } catch (error) {
+                if (statusOf(error) !== 404) throw error;
+                await deleteMobileUser(db, userId);
+                throw new HttpError(401, "Account deleted");
+            }
+        }
         res.json({ user: { ...record, _id: String(record._id) } });
     });
 
@@ -315,9 +330,12 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
      * A learner whose account is being deleted must not have progress written
      * back by a phone that has not heard yet. The tombstone is the record of that.
      */
-    async function requireMember(db: Db, userId: string) {
+    async function isDeleted(db: Db, userId: string) {
         const user = await db.collection("users").findOne({ clerkId: userId });
-        if (user && "deletedAt" in user) throw new HttpError(401, "Account deleted");
+        return user !== null && "deletedAt" in user;
+    }
+    async function requireMember(db: Db, userId: string) {
+        if (await isDeleted(db, userId)) throw new HttpError(401, "Account deleted");
     }
 
     app.put("/v1/me/first-language", express.json({ limit: "4kb" }), async (req, res) => {
@@ -351,12 +369,11 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         const saved = await saveProgress(db, userId, parsed.value);
         // A deletion that landed between the check and the write cleared
         // progress before this put it back. The tombstone went down first, so
-        // a second look sees it, and takes the progress out again.
-        try {
-            await requireMember(db, userId);
-        } catch (error) {
+        // a second look sees it, and takes the progress out again. Only a
+        // tombstone does: a failed look must never cost a learner their progress.
+        if (await isDeleted(db, userId)) {
             await deleteProgress(db, userId);
-            throw error;
+            throw new HttpError(401, "Account deleted");
         }
         res.json({ progress: saved });
     });
