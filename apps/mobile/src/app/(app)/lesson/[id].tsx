@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseRenderer } from "@/components/lessons/ExerciseRenderer";
 import { SELF_GRADING } from "@/components/lessons/exercises/shared";
@@ -13,6 +13,7 @@ import { LessonProgress } from "@/components/lessons/LessonProgress";
 import { LessonSummary, LessonSummaryActions } from "@/components/lessons/LessonSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { goBack } from "@/lib/navigation";
 import { getLesson } from "@/lib/lessons/data";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
@@ -35,6 +36,7 @@ import { useScreenReader } from "@/lib/useScreenReader";
  * becomes a query and the rest of the screen is unchanged.
  */
 export default function LessonScreen() {
+    const t = useFirstLanguageInterface("lessons");
     const { id } = useLocalSearchParams<{ id: string }>();
     const lesson = getLesson(id);
     // Picture exercises are left out for screen-reader users, because the tiles
@@ -44,7 +46,7 @@ export default function LessonScreen() {
     if (!lesson) {
         return (
             <Screen>
-                <ErrorState message={`Lesson "${id}" was not found.`} />
+                <ErrorState message={t("lessonMissing")} />
             </Screen>
         );
     }
@@ -100,13 +102,13 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
     const speakingLeft = canSpeak && !record?.speaking;
 
     return (
-        <View style={[styles.root, { paddingTop: insets.top }]}>
+        <SafeAreaView edges={["top"]} style={styles.root}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t("quit")}
-                    onPress={() => router.back()}
+                    onPress={() => goBack(router)}
                     style={styles.close}
                     hitSlop={8}
                 >
@@ -130,7 +132,7 @@ function LessonFlow({ lessonId, screenReader }: { lessonId: string; screenReader
                     <Button title={t("introStart")} size="lg" onPress={() => setStarted(true)} />
                 )}
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -194,7 +196,7 @@ function LessonRunner({
 
     // No "are you sure?": the place is kept, so leaving costs nothing, and a
     // dialog of English-shaped choices is one more thing to read.
-    const leave = useCallback(() => router.back(), [router]);
+    const leave = useCallback(() => goBack(router), [router]);
 
     if (state.phase === "finished") {
         const run = {
@@ -208,7 +210,7 @@ function LessonRunner({
         const canSpeak = ownTalk || canPractiseSpeaking(lesson);
         const spoken = getProgressData().progress.lessons[lessonId]?.speaking !== undefined;
         return (
-            <View style={[styles.root, { paddingTop: insets.top }]}>
+            <SafeAreaView edges={["top"]} style={styles.root}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <ScrollView
                     contentContainerStyle={styles.content}
@@ -224,7 +226,7 @@ function LessonRunner({
                 <View style={[styles.introFooter, { paddingBottom: insets.bottom + spacing.lg }]}>
                     <LessonSummaryActions
                         speakingLeft={canSpeak && !spoken}
-                        onDone={() => router.back()}
+                        onDone={() => goBack(router)}
                         // Replaces the lesson rather than stacking on top of it,
                         // so finishing the practice goes straight home.
                         onSpeak={
@@ -241,7 +243,7 @@ function LessonRunner({
                         }
                     />
                 </View>
-            </View>
+            </SafeAreaView>
         );
     }
 
@@ -256,7 +258,7 @@ function LessonRunner({
     const selfGrading = SELF_GRADING.has(exercise.type);
 
     return (
-        <View style={[styles.root, { paddingTop: insets.top }]}>
+        <SafeAreaView edges={["top"]} style={styles.root}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={styles.header}>
@@ -301,7 +303,7 @@ function LessonRunner({
                     hideSubmit={selfGrading}
                 />
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 

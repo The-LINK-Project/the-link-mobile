@@ -52,7 +52,8 @@ export function RecordBar(props: Props) {
                     <View
                         style={styles.meter}
                         accessible
-                        accessibilityLiveRegion="polite"
+                        // Not a live region: its label changes every second, and
+                        // TalkBack reading it out would land in the recording.
                         accessibilityLabel={t("recording", { time: clock(props.durationMs) })}
                     >
                         <View style={styles.dot} />
