@@ -99,8 +99,9 @@ function Accounts({ onRetry }: { onRetry: () => void }) {
     const { isLoaded, userId } = useAuth();
     const clerk = useClerk();
 
-    // Offline with nothing cached yet (a first launch), Clerk stays in
-    // "loading" rather than failing, so also give up waiting after a while.
+    // With the resource cache, Clerk loads offline at once, from the cache or,
+    // on a first launch, signed out. A request that hangs rather than failing
+    // can still leave it "loading", so also give up waiting after a while.
     // Clerk keeps loading underneath; if it succeeds later the app proceeds
     // on its own.
     const [timedOut, setTimedOut] = useState(false);
