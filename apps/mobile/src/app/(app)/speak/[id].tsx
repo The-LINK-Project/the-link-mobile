@@ -4,7 +4,7 @@ import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LessonProgress } from "@/components/lessons/LessonProgress";
 import { ChatBubble } from "@/components/speaking/ChatBubble";
@@ -13,6 +13,7 @@ import { SpeakingIntro } from "@/components/speaking/SpeakingIntro";
 import { SpeakingSummary } from "@/components/speaking/SpeakingSummary";
 import { Button, ErrorState, LoadingState, Screen, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
+import { goBack } from "@/lib/navigation";
 import { getFirstLanguageChoice, useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useLocale } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
@@ -50,6 +51,7 @@ import { useScreenReader } from "@/lib/useScreenReader";
  */
 export default function SpeakScreen() {
     const t = useFirstLanguageInterface("speaking");
+    const tLessons = useFirstLanguageInterface("lessons");
     const { id, words, phrases } = useLocalSearchParams<{
         id: string;
         words?: string;
@@ -65,7 +67,7 @@ export default function SpeakScreen() {
     if (!lesson || !run) {
         return (
             <Screen>
-                <ErrorState message={`Lesson "${id}" was not found.`} />
+                <ErrorState message={tLessons("lessonMissing")} />
             </Screen>
         );
     }
@@ -174,10 +176,10 @@ function SpeakingFlow({
     const preview = buildSpeakingContext(lesson, run, language ?? languages[0]);
 
     return (
-        <View style={[styles.root, { paddingTop: insets.top }]}>
+        <SafeAreaView edges={["top"]} style={styles.root}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <CloseButton label={t("close")} onPress={() => router.back()} />
+                <CloseButton label={t("close")} onPress={() => goBack(router)} />
             </View>
             <ScrollView contentContainerStyle={styles.intro} showsVerticalScrollIndicator={false}>
                 <SpeakingIntro
@@ -199,7 +201,7 @@ function SpeakingFlow({
                     onPress={start}
                 />
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -284,7 +286,7 @@ function Conversation({
     useEffect(() => () => setResume(null), []);
 
     // The talk is kept, so leaving needs no warning.
-    const quit = useCallback(() => router.back(), [router]);
+    const quit = useCallback(() => goBack(router), [router]);
 
     const record = async () => {
         if (operation.current) return;
@@ -338,7 +340,7 @@ function Conversation({
                         target: goal.target,
                         result: state.results[index] ?? "helped",
                     }))}
-                    onDone={() => router.back()}
+                    onDone={() => goBack(router)}
                     onAgain={onAgain}
                 />
             </Screen>
@@ -359,7 +361,7 @@ function Conversation({
             : null;
 
     return (
-        <View style={[styles.root, { paddingTop: insets.top }]}>
+        <SafeAreaView edges={["top"]} style={styles.root}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={styles.header}>
@@ -457,7 +459,7 @@ function Conversation({
                     />
                 )}
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 

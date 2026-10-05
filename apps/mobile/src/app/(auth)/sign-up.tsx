@@ -213,6 +213,7 @@ export default function SignUpScreen() {
                                 textContentType="newPassword"
                                 onSubmitEditing={handleSignUp}
                             />
+                            <Text variant="caption">{t("passwordMinLength")}</Text>
                             {error ? (
                                 <Text variant="caption" color={colors.destructive}>
                                     {error}
