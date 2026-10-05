@@ -339,3 +339,28 @@ test("a first profile written as the account is deleted is taken back out", asyn
         await server.close();
     }
 });
+
+test("a first profile that could not be checked is not kept unchecked", async (t) => {
+    t.mock.method(console, "error", () => undefined);
+    const fake = fakeDb();
+    let lookups = 0;
+    const app = createApp({
+        db: async () => fake.db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+        getIdentity: async (id) => {
+            if (++lookups === 2) throw Object.assign(new Error("clerk down"), { status: 502 });
+            return identity(id);
+        },
+    });
+    const { url, close } = await listen(app);
+    const me = () => fetch(url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+    try {
+        assert.equal((await me()).status, 503);
+        assert.equal(fake.users.has("user_a"), false);
+        // The next visit is a first one again, so it is checked.
+        assert.equal((await me()).status, 200);
+        assert.equal(lookups, 4);
+    } finally {
+        await close();
+    }
+});

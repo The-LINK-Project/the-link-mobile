@@ -301,9 +301,17 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             try {
                 await dep.getIdentity(userId);
             } catch (error) {
-                if (statusOf(error) !== 404) throw error;
-                await deleteMobileUser(db, userId);
-                throw new HttpError(401, "Account deleted");
+                if (statusOf(error) === 404) {
+                    await deleteMobileUser(db, userId);
+                    throw new HttpError(401, "Account deleted");
+                }
+                // Unchecked, the row would never be checked again: the next
+                // sync updates it rather than creating it. Take it back out,
+                // so that sync is a first one too.
+                await db
+                    .collection("users")
+                    .deleteOne({ clerkId: userId, deletedAt: { $exists: false } });
+                throw error;
             }
         }
         res.json({ user: { ...record, _id: String(record._id) } });

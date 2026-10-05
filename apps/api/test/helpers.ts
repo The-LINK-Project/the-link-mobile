@@ -92,6 +92,10 @@ export function fakeDb() {
                 };
             }
             return {
+                async deleteOne(filter: { clerkId: string } & Document) {
+                    const record = users.get(filter.clerkId);
+                    if (record && matches(record, filter)) users.delete(filter.clerkId);
+                },
                 async findOne(filter: { clerkId: string }) {
                     const record = users.get(filter.clerkId);
                     return record && matches(record, filter) ? record : null;
