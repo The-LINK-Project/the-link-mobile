@@ -2,7 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../src/app.js";
 import { mergeProgress, parseProgress, type Progress } from "../src/progress.js";
+import { deleteMobileUser } from "../src/users.js";
 import { fakeDb, listen } from "./helpers.js";
+import type { Db } from "mongodb";
 
 const record = (completedAt: string, bestFirstTry: number, extra = {}) => ({
     completedAt,
@@ -145,6 +147,42 @@ test("progress is stored per learner, merged on write, and closed to a deleted a
         fake.users.set("user_b", { clerkId: "user_b", deletedAt: new Date() });
         assert.equal((await call("PUT", { progress: { lessons: first } })).status, 401);
         assert.equal(fake.progress.has("user_b"), false);
+    } finally {
+        await close();
+    }
+});
+
+test("a progress write that crosses an account deletion does not bring the progress back", async () => {
+    const fake = fakeDb();
+    const progress = fake.db.collection("progress");
+    // The deletion lands after the membership check, while the write is merging.
+    const db = {
+        collection(name: string) {
+            if (name !== "progress") return fake.db.collection(name);
+            return {
+                ...progress,
+                async findOne(filter: { clerkId: string }) {
+                    await deleteMobileUser(fake.db, filter.clerkId);
+                    return progress.findOne(filter);
+                },
+            };
+        },
+    } as unknown as Db;
+    const app = createApp({
+        db: async () => db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+    });
+    const { url, close } = await listen(app);
+    try {
+        const res = await fetch(url + "/v1/progress", {
+            method: "PUT",
+            headers: { Authorization: "Bearer x", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                progress: { lessons: { "mrt-basics": record("2026-09-10T10:00:00.000Z", 9) } },
+            }),
+        });
+        assert.equal(res.status, 401);
+        assert.equal(fake.progress.has("user_a"), false);
     } finally {
         await close();
     }
