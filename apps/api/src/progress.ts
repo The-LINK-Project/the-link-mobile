@@ -22,7 +22,13 @@ export type LessonRecord = {
     speaking?: SpeakingRecord;
 };
 export type Progress = { lessons: Record<string, LessonRecord> };
-type ProgressDocument = { clerkId: string; lessons: Progress["lessons"]; updatedAt: Date };
+type ProgressDocument = {
+    clerkId: string;
+    lessons: Progress["lessons"];
+    updatedAt: Date;
+    /** Counts writes, so a save can tell whether another landed since it read. */
+    version?: number;
+};
 
 const LESSON_ID = /^[a-z0-9-]{1,64}$/;
 /** Far more lessons than the app will ever ship; a bound, not a target. */
@@ -147,23 +153,44 @@ export async function readProgress(db: Db, clerkId: string): Promise<Progress> {
     return { lessons: found?.lessons ?? {} };
 }
 
+/** Far more than two phones saving at once will ever need. */
+const MAX_SAVE_TRIES = 5;
+
 /**
  * Merge the phone's copy into the stored one and return the result.
  *
- * Read, merge, write is not atomic, and does not need to be: the merge loses
- * nothing, so two writes crossing leave at worst a copy that the next sync from
- * either phone completes.
+ * The write only lands on the copy it was merged from. Two phones saving at
+ * once both read the same copy; the second write then matches nothing, and it
+ * reads again and merges again, so neither phone's lesson is lost. Without
+ * this, the lesson could be recovered only by the phone that took it syncing
+ * again, and not at all if that phone was lost.
  */
 export async function saveProgress(db: Db, clerkId: string, incoming: Progress): Promise<Progress> {
-    const merged = mergeProgress(await readProgress(db, clerkId), incoming);
-    await db
-        .collection<ProgressDocument>("progress")
-        .updateOne(
-            { clerkId },
-            { $set: { lessons: merged.lessons, updatedAt: new Date() } },
-            { upsert: true },
-        );
-    return merged;
+    const progress = db.collection<ProgressDocument>("progress");
+    for (let tries = 0; tries < MAX_SAVE_TRIES; tries++) {
+        const found = await progress.findOne({ clerkId });
+        const merged = mergeProgress({ lessons: found?.lessons ?? {} }, incoming);
+        const version = found?.version;
+        try {
+            // A copy that does not match upserts, and the unique clerkId turns
+            // that into a duplicate key: someone else wrote first.
+            await progress.updateOne(
+                { clerkId, version: version ?? { $exists: false } },
+                {
+                    $set: {
+                        lessons: merged.lessons,
+                        updatedAt: new Date(),
+                        version: (version ?? 0) + 1,
+                    },
+                },
+                { upsert: true },
+            );
+            return merged;
+        } catch (error) {
+            if ((error as { code?: number }).code !== 11000) throw error;
+        }
+    }
+    throw new Error("Progress kept changing while it was being saved");
 }
 
 export async function deleteProgress(db: Db, clerkId: string): Promise<void> {

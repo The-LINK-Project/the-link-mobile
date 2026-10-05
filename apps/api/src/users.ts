@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { Db, WithId } from "mongodb";
 import { isFirstLanguage, type FirstLanguage } from "./languages.js";
 import { deleteProgress } from "./progress.js";
 
@@ -38,21 +38,29 @@ export function profile(identity: Identity) {
         photo: identity.imageUrl,
     };
 }
-export async function syncUser(db: Db, identity: Identity) {
+/**
+ * Write the profile and return it, with whether this write created it. Null
+ * means a deletion tombstone refused the write.
+ */
+export async function syncUser(
+    db: Db,
+    identity: Identity,
+): Promise<{ user: WithId<MobileUser> | null; created: boolean }> {
     const users = db.collection<MobileUser>("users");
     const data = profile(identity);
     try {
-        return await users.findOneAndUpdate(
+        const result = await users.findOneAndUpdate(
             { clerkId: identity.id, deletedAt: { $exists: false } },
             { $set: { ...data, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
-            { upsert: true, returnDocument: "after" },
+            { upsert: true, returnDocument: "after", includeResultMetadata: true },
         );
+        return { user: result.value, created: !result.lastErrorObject?.updatedExisting };
     } catch (error) {
         // A deletion tombstone wins over an in-flight profile read or late webhook.
         if ((error as { code?: number }).code === 11000) {
             const existing = await users.findOne({ clerkId: identity.id });
-            if (existing?.deletedAt) return null;
-            if (existing) return existing;
+            if (existing?.deletedAt) return { user: null, created: false };
+            if (existing) return { user: existing, created: false };
         }
         throw error;
     }

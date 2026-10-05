@@ -50,10 +50,21 @@ export function fakeDb() {
                         return progress.get(filter.clerkId) ?? null;
                     },
                     async updateOne(
-                        filter: { clerkId: string },
+                        filter: { clerkId: string } & Document,
                         update: { $set: Record<string, unknown> },
                     ) {
-                        progress.set(filter.clerkId, { clerkId: filter.clerkId, ...update.$set });
+                        const current = progress.get(filter.clerkId);
+                        if (current && !matches(current, filter)) {
+                            // An upsert that matched nothing, on a unique clerkId.
+                            throw Object.assign(new Error("E11000 duplicate key"), {
+                                code: 11000,
+                            });
+                        }
+                        progress.set(filter.clerkId, {
+                            ...current,
+                            clerkId: filter.clerkId,
+                            ...update.$set,
+                        });
                     },
                     async deleteOne(filter: { clerkId: string }) {
                         progress.delete(filter.clerkId);
@@ -88,6 +99,7 @@ export function fakeDb() {
                 async findOneAndUpdate(
                     filter: { clerkId: string },
                     update: { $set?: Document; $setOnInsert?: Document },
+                    options?: { includeResultMetadata?: boolean },
                 ) {
                     const current = users.get(filter.clerkId);
                     if (current && !matches(current, filter)) {
@@ -102,7 +114,8 @@ export function fakeDb() {
                     };
                     const record = { ...base, ...update.$set };
                     users.set(filter.clerkId, record);
-                    return record;
+                    if (!options?.includeResultMetadata) return record;
+                    return { value: record, lastErrorObject: { updatedExisting: !!current } };
                 },
                 async updateOne(
                     filter: { clerkId: string },

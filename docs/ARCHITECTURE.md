@@ -134,13 +134,13 @@ Mobile DELETE /v1/me
 
 The mobile tombstone keeps only the opaque Clerk ID and deletion time. This prevents a late profile request or out-of-order webhook from restoring personal data. A deletion started from the app always writes this tombstone, even if the person never had a mobile profile row, because the request proves they used the mobile app. The deletion service also removes the learner's `progress` document and their first language, and refuses progress and first-language writes from an account that has a tombstone. The app removes its own copy from the phone. Future feature owners must extend the deletion service when they add new user-owned collections.
 
-Clerk events for people who have only used the website do not create records in the mobile database. `user.created` and `user.updated` synchronize only an existing mobile member; `user.deleted` cleans up only an existing mobile record.
+Clerk events for people who have only used the website do not create records in the mobile database. `user.created` and `user.updated` synchronize only an existing mobile member; `user.deleted` cleans up only an existing mobile record. Because of that, a deletion can cross a learner's very first profile sync: the webhook finds no row, and the sync writes one a moment later. So the first sync looks the identity up once more after writing, and tombstones the row if the account is gone. A progress write that crosses a deletion does the same: it looks for the tombstone after writing, and removes what it wrote.
 
 ## Failure behavior
 
 - If Clerk cannot finish loading in the app (offline, or a Clerk instance with Native API disabled), the app shows a "Sign-in service unavailable" screen with a retry button instead of staying on the splash screen.
 - Missing, invalid, expired, revoked, or deleted sessions receive HTTP 401. The app treats a 401 as a dead session and signs out.
-- A temporary Clerk backend failure, or the API failing to reach Clerk at all, receives HTTP 503. This distinction matters: reporting an unreachable Clerk as 401 signed learners out for a server-side fault.
+- A temporary Clerk backend failure, Clerk throttling the API, Clerk's signing keys failing to load, or the API failing to reach Clerk at all, receives HTTP 503. Setting `CLERK_JWT_KEY` lets the API check tokens without fetching those keys. This distinction matters: reporting an unreachable Clerk as 401 signed learners out for a server-side fault.
 - A recording whose level never rose above silence is not sent. Sent to the model, a silent clip comes back as invented words.
 - Requests over the per-user limit receive HTTP 429 with `Retry-After`.
 - If Clerk account deletion succeeds but immediate Mongo cleanup fails, the API returns HTTP 202 and relies on the signed Clerk webhook retry.
