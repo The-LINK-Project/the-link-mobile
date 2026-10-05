@@ -33,6 +33,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
         dbName: "link_mobile",
         secretKey,
         publishableKey,
+        // The instance's PEM public key (Clerk dashboard, API keys). Optional:
+        // with it, session tokens are checked without a call to Clerk.
+        jwtKey: optional("CLERK_JWT_KEY")?.replace(/\\n/g, "\n"),
         webhookSecret: env.CLERK_WEBHOOK_SIGNING_SECRET?.trim(),
         // Speaking practice is optional: without a key the rest of the API still runs.
         geminiApiKey: optional("GEMINI_API_KEY"),

@@ -14,6 +14,7 @@ import {
     fallbackReply,
     findViolations,
     MAX_ASIDES,
+    MAX_REPLY_CHARS,
     parseTurnRequest,
     readTranscript,
     restoreNames,
@@ -351,6 +352,16 @@ test("a model that keeps breaking the rule, or says nothing, is replaced by less
     const next = await runTurn(request, silent.model);
     assert.equal(next.reply, fallbackReply(request, "met"));
     assert.equal(silent.calls.rewrites.length, 0);
+});
+
+test("a runaway reply is replaced by lesson content before it is paid for as speech", async (t) => {
+    t.mock.method(console, "info", () => undefined);
+    const request = valid(learnerTurn(0, 1));
+    const { model, calls } = fakeModel({ reply: "খুব ভালো! ".repeat(MAX_REPLY_CHARS) });
+    const result = await runTurn(request, model);
+    assert.equal(result.reply, fallbackReply(request, "retry"));
+    assert.equal(calls.rewrites.length, 0);
+    assert.deepEqual(calls.spoken, [result.reply]);
 });
 
 test("names keep the lesson's capital letters, so MRT is read out as letters", async () => {

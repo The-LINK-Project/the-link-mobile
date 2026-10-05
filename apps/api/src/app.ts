@@ -48,6 +48,17 @@ const TUTOR_TURNS_PER_MINUTE = 12;
 // Holding words is quick and repetitive, and most holds are answered from the
 // cache, so this is only here to bound what one learner can cost in model calls.
 const TRANSLATIONS_PER_MINUTE = 30;
+/**
+ * Clerk verification reasons that mean the server could not check the token
+ * (its signing keys did not load, or our own keys are wrong), not that the
+ * token is bad. The learner did nothing wrong, so they must not be signed out.
+ */
+const VERIFIER_UNAVAILABLE = new Set([
+    "jwk-remote-failed-to-load",
+    "jwk-failed-to-resolve",
+    "jwk-local-missing",
+    "secret-key-invalid",
+]);
 
 // One Clerk client per process; the config does not change at runtime.
 let clerkClient: ReturnType<typeof createClerkClient> | undefined;
@@ -90,7 +101,13 @@ const defaults: Dependencies = {
     db: database,
     async authenticate(token) {
         const config = readConfig();
-        const claims = await verifyToken(token, { secretKey: config.secretKey });
+        // With the instance's public key set, verification is local. Without
+        // it, Clerk looks up the signing key over the network, and a forged
+        // token naming an unknown key costs a fresh lookup every time.
+        const claims = await verifyToken(token, {
+            secretKey: config.secretKey,
+            ...(config.jwtKey ? { jwtKey: config.jwtKey } : {}),
+        });
         // Native Clerk tokens can legitimately omit `azp`. Browser tokens carry
         // it, and must match our allowlist when they do (Clerk's manual JWT
         // guide explicitly says to skip this check when the claim is absent).
@@ -244,14 +261,20 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         } catch (error) {
             if (error instanceof HttpError) throw error;
             const status = statusOf(error);
-            if (status && status >= 500) throw new HttpError(503, "Sign-in service unavailable");
+            const reason = (error as { reason?: unknown } | null)?.reason;
+            // Clerk throttling us is not the learner's fault either.
+            if (
+                (status && status >= 500) ||
+                status === 429 ||
+                VERIFIER_UNAVAILABLE.has(reason as string)
+            ) {
+                throw new HttpError(503, "Sign-in service unavailable");
+            }
             // A rejected token carries a Clerk verification `reason`, and a
             // rejected session a 4xx status. Anything else is the server failing
             // to reach Clerk at all (network, DNS, TLS), which is not the
             // learner's fault: a 401 here would sign them out of the app.
-            const rejected =
-                status !== undefined ||
-                (typeof error === "object" && error !== null && "reason" in error);
+            const rejected = status !== undefined || reason !== undefined;
             if (rejected) throw new HttpError(401, "Authentication required");
             throw new HttpError(503, "Sign-in service unavailable");
         }
@@ -325,7 +348,17 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         const db = await dep.db();
         const userId = res.locals.userId as string;
         await requireMember(db, userId);
-        res.json({ progress: await saveProgress(db, userId, parsed.value) });
+        const saved = await saveProgress(db, userId, parsed.value);
+        // A deletion that landed between the check and the write cleared
+        // progress before this put it back. The tombstone went down first, so
+        // a second look sees it, and takes the progress out again.
+        try {
+            await requireMember(db, userId);
+        } catch (error) {
+            await deleteProgress(db, userId);
+            throw error;
+        }
+        res.json({ progress: saved });
     });
 
     app.post("/v1/tutor/turn", express.json({ limit: "3mb" }), async (req, res) => {
