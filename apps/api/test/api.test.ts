@@ -114,6 +114,38 @@ test("a server that cannot reach Clerk answers 503, so the app does not sign the
     }
 });
 
+test("Clerk throttling or failing to load its keys answers 503, so nobody is signed out for it", async () => {
+    const failures = [
+        Object.assign(new Error("Too Many Requests"), { status: 429 }),
+        Object.assign(new Error("JWKS failed"), { reason: "jwk-remote-failed-to-load" }),
+        Object.assign(new Error("bad secret"), { reason: "secret-key-invalid" }),
+    ];
+    for (const failure of failures) {
+        const app = createApp({
+            db: async () => fakeDb().db,
+            authenticate: async () => {
+                throw failure;
+            },
+        });
+        const { url, close } = await listen(app);
+        try {
+            const res = await fetch(url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+            assert.equal(res.status, 503, failure.message);
+        } finally {
+            await close();
+        }
+    }
+});
+
+test("the Clerk public key is optional, and newlines escaped for a dashboard env field work", () => {
+    assert.equal(readConfig(BASE_ENV).jwtKey, undefined);
+    const key = readConfig({
+        ...BASE_ENV,
+        CLERK_JWT_KEY: "-----BEGIN PUBLIC KEY-----\\nabc\\n-----END PUBLIC KEY-----",
+    }).jwtKey;
+    assert.equal(key, "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----");
+});
+
 test("upstream Clerk failures surface as 503, not 500", async () => {
     const app = createApp({
         db: async () => fakeDb().db,
@@ -257,6 +289,77 @@ test("webhook rejects unsigned input and does not create mobile profiles for web
             body: "x".repeat(300 * 1024),
         });
         assert.equal(huge.status, 413);
+    } finally {
+        await close();
+    }
+});
+
+test("a first profile written as the account is deleted is taken back out", async () => {
+    const fake = fakeDb();
+    let lookups = 0;
+    const app = createApp({
+        db: async () => fake.db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+        // The identity is read, then the account is deleted before the row lands.
+        getIdentity: async (id) => {
+            if (++lookups === 1) return identity(id);
+            throw Object.assign(new Error("Not Found"), { status: 404 });
+        },
+    });
+    const { url, close } = await listen(app);
+    const me = () => fetch(url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+    try {
+        assert.equal((await me()).status, 401);
+        const row = fake.users.get("user_a");
+        assert.ok(row?.deletedAt);
+        assert.equal(row?.email, undefined);
+    } finally {
+        await close();
+    }
+
+    // An existing member is not looked up twice on every visit.
+    const members = fakeDb();
+    let calls = 0;
+    const steady = createApp({
+        db: async () => members.db,
+        authenticate: async () => ({ userId: "user_b", sessionId: "sess" }),
+        getIdentity: async (id) => {
+            calls++;
+            return identity(id);
+        },
+    });
+    const server = await listen(steady);
+    try {
+        const visit = () =>
+            fetch(server.url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+        assert.equal((await visit()).status, 200);
+        assert.equal((await visit()).status, 200);
+        assert.equal(calls, 3);
+    } finally {
+        await server.close();
+    }
+});
+
+test("a first profile that could not be checked is not kept unchecked", async (t) => {
+    t.mock.method(console, "error", () => undefined);
+    const fake = fakeDb();
+    let lookups = 0;
+    const app = createApp({
+        db: async () => fake.db,
+        authenticate: async () => ({ userId: "user_a", sessionId: "sess" }),
+        getIdentity: async (id) => {
+            if (++lookups === 2) throw Object.assign(new Error("clerk down"), { status: 502 });
+            return identity(id);
+        },
+    });
+    const { url, close } = await listen(app);
+    const me = () => fetch(url + "/v1/me", { headers: { Authorization: "Bearer x" } });
+    try {
+        assert.equal((await me()).status, 503);
+        assert.equal(fake.users.has("user_a"), false);
+        // The next visit is a first one again, so it is checked.
+        assert.equal((await me()).status, 200);
+        assert.equal(lookups, 4);
     } finally {
         await close();
     }

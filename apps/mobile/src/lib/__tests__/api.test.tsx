@@ -156,3 +156,13 @@ describe("translating one held word", () => {
         await expect(request).rejects.toMatchObject({ name: "AbortError" });
     });
 });
+
+describe("API client token", () => {
+    it("asks Clerk for a token with options, so it never gets a stale cached one", async () => {
+        renderHook(() => useApiAuth());
+        const { request } = await startRequest();
+        expect(mockAuth.getToken).toHaveBeenCalledWith({});
+        respond({ user: { clerkId: "user_a" } });
+        await request;
+    });
+});

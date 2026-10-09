@@ -8,6 +8,10 @@ export async function database() {
         const client = new MongoClient(config.mongoUri, {
             maxPoolSize: 5,
             serverSelectionTimeoutMS: 10000,
+            // Without this, an operation on a server that stops answering waits
+            // forever, holding one of only five connections. The app gives up on
+            // a request after 20 seconds, so nothing should outlast that.
+            socketTimeoutMS: 15000,
         });
         connection = client
             .connect()

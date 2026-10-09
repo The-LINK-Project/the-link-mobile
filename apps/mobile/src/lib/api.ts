@@ -34,7 +34,12 @@ export function useApiAuth() {
             ++authGeneration;
             authAccount = account;
         }
-        getToken = isSignedIn ? () => clerkGetToken() : async () => null;
+        // Called with options on purpose. With no options, and the resource
+        // cache on, Clerk answers a network error with the last token it
+        // saved, usually expired. If Clerk is unreachable but this API is not,
+        // that token earns a 401, and a 401 signs the learner out. With
+        // options, the network error comes through, and is not a sign-out.
+        getToken = isSignedIn ? () => clerkGetToken({}) : async () => null;
         onUnauthorized = isSignedIn
             ? () => {
                   void signOut().catch(() => undefined);

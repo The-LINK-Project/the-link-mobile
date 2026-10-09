@@ -18,8 +18,10 @@ export function OfflineBanner() {
 
     useEffect(() => {
         const unsubscribe = NetInfo.addEventListener((state) => {
-            // isInternetReachable is null while unknown — treat as online
-            setOffline(state.isConnected === false || state.isInternetReachable === false);
+            // Only a flat "no connection" counts, as in `firstLanguage/sync.ts`.
+            // Some networks block the reachability probe while every request
+            // still works, and the banner would then say "No internet" for good.
+            setOffline(state.isConnected === false);
         });
         return unsubscribe;
     }, []);

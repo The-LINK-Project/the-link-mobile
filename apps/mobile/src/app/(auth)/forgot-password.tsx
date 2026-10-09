@@ -137,6 +137,7 @@ export default function ForgotPasswordScreen() {
                                 textContentType="newPassword"
                                 onSubmitEditing={reset}
                             />
+                            <Text variant="caption">{t("passwordMinLength")}</Text>
                         </>
                     )}
 
