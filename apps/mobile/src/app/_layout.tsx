@@ -19,9 +19,10 @@ import { useLocaleFollowsFirstLanguage } from "@/lib/firstLanguage/interfaceCopy
 import { useFirstLanguageReady } from "@/lib/firstLanguage/store";
 import { useFirstLanguageSync } from "@/lib/firstLanguage/sync";
 import i18n, { useLocaleReady } from "@/lib/i18n";
+import { usePortraitOnPhones } from "@/lib/orientation";
 import { useProgressReady } from "@/lib/progress/store";
 import { useProgressSync } from "@/lib/progress/sync";
-import { colors, spacing } from "@/lib/theme";
+import { colors, CONTENT_MAX_WIDTH, spacing } from "@/lib/theme";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -56,12 +57,14 @@ function AppShell() {
                 too, and the bubble has to be able to draw over both. */}
             <WordTranslationHost>
                 <OfflineBanner />
-                <Stack
-                    screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: colors.background },
-                    }}
-                />
+                <View style={styles.column}>
+                    <Stack
+                        screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: colors.background },
+                        }}
+                    />
+                </View>
             </WordTranslationHost>
         </>
     );
@@ -143,6 +146,7 @@ function Accounts({ onRetry }: { onRetry: () => void }) {
 export default function RootLayout() {
     const [attempt, setAttempt] = useState(0);
     const retry = useCallback(() => setAttempt((n) => n + 1), []);
+    usePortraitOnPhones();
 
     if (!publishableKey || !API_BASE_URL) {
         throw new Error("Configure the mobile .env using .env.example before starting.");
@@ -187,7 +191,8 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 }
 
 const styles = StyleSheet.create({
-    fill: { flex: 1 },
+    fill: { flex: 1, backgroundColor: colors.background },
+    column: { flex: 1, width: "100%", maxWidth: CONTENT_MAX_WIDTH, alignSelf: "center" },
     fullscreenMessage: {
         flex: 1,
         justifyContent: "center",

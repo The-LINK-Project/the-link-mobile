@@ -4,7 +4,7 @@
     "slug": "the-link-mobile",
     "owner": "adrish7",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "thelinkproject",
     "userInterfaceStyle": "light",
@@ -57,7 +57,17 @@
         }
       ],
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# kotlinx-io, which Clerk's Android SDK pulls in through Ktor, is built with a newer\n# Kotlin than this app's and carries an annotation the app's Kotlin does not have.\n# Android ignores annotations whose class is missing, so only the build warning goes.\n-dontwarn kotlin.MustUseReturnValues"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

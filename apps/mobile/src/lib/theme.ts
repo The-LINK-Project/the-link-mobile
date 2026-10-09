@@ -80,3 +80,9 @@ export const shadow = {
 
 /** Minimum touch target per Android accessibility guidance. */
 export const TOUCH_TARGET = 48;
+
+/**
+ * Widest the app is drawn. On a tablet the screens sit in a centred column of
+ * this width rather than stretching lines of text and buttons across the glass.
+ */
+export const CONTENT_MAX_WIDTH = 720;
