@@ -1,4 +1,3 @@
-import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -35,6 +34,7 @@ import {
     setResume,
 } from "@/lib/progress/store";
 import { restoreConversation, saidCount } from "@/lib/speaking/conversation";
+import { englishSplitter } from "@/lib/speaking/highlight";
 import { micSettleMs } from "@/lib/speaking/microphone";
 import { usePlayback } from "@/lib/speaking/playback";
 import { useRecorder } from "@/lib/speaking/recorder";
@@ -106,7 +106,6 @@ function SpeakingFlow({
     screenReader: boolean;
 }) {
     const t = useFirstLanguageInterface("speaking");
-    const localized = useFirstLanguageLocalized();
     const router = useRouter();
     const [locale] = useLocale();
     const [firstLanguage] = useFirstLanguage();
@@ -183,7 +182,7 @@ function SpeakingFlow({
             </View>
             <ScrollView contentContainerStyle={styles.intro} showsVerticalScrollIndicator={false}>
                 <SpeakingIntro
-                    title={localized(lesson.title)}
+                    lesson={lesson}
                     targets={preview?.goals.map((goal) => goal.target) ?? []}
                     language={language}
                     onLanguageChange={setChosen}
@@ -235,10 +234,10 @@ function Conversation({
     onAgain: () => void;
 }) {
     const t = useFirstLanguageInterface("speaking");
-    const localized = useFirstLanguageLocalized();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { state, takeTurn } = useSpeakingSession(context, saved?.state);
+    const english = useMemo(() => englishSplitter(context), [context]);
     const recorder = useRecorder();
     const voice = usePlayback();
     const review = usePlayback();
@@ -334,7 +333,7 @@ function Conversation({
             <Screen edges={["top", "left", "right"]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <SpeakingSummary
-                    title={localized(lesson.title)}
+                    lesson={lesson}
                     goals={context.goals.map((goal, index) => ({
                         id: goal.id,
                         target: goal.target,
@@ -369,7 +368,7 @@ function Conversation({
                 <LessonProgress value={state.results.length / state.goalCount} />
                 {/* A bar says "some of it"; a number says when it ends, which is
                     what somebody with ten minutes of break left wants to know. */}
-                <Text variant="caption" accessibilityLabel={t("goalCount", goalLabel)}>
+                <Text style={styles.count} accessibilityLabel={t("goalCount", goalLabel)}>
                     {`${goalLabel.current}/${goalLabel.total}`}
                 </Text>
             </View>
@@ -383,6 +382,8 @@ function Conversation({
                     <ChatBubble
                         key={message.id}
                         message={message}
+                        english={english}
+                        icon={lesson.icon}
                         disabled={preparing || recorder.status === "recording"}
                         playing={!!message.audioUri && voice.playingUri === message.audioUri}
                         onPlay={(speed) => {
@@ -478,6 +479,12 @@ function CloseButton({ label, onPress }: { label: string; onPress: () => void })
 }
 
 const styles = StyleSheet.create({
+    count: {
+        fontSize: 15,
+        fontWeight: "800",
+        fontVariant: ["tabular-nums"],
+        color: colors.muted,
+    },
     root: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: "row",

@@ -1,6 +1,8 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
+import { LessonHeading } from "@/components/lessons/LessonHeading";
 import { FirstLanguagePicker } from "@/components/language/FirstLanguagePicker";
 import { Button, Card, ListRow, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
@@ -10,10 +12,11 @@ import {
     TRANSLATION_LANGUAGES,
     type TranslationLanguage,
 } from "@/lib/firstLanguage/languages";
-import { spacing } from "@/lib/theme";
+import type { Lesson } from "@/lib/lessons/types";
+import { colors, radius, spacing } from "@/lib/theme";
 
 type Props = {
-    title: string;
+    lesson: Lesson;
     /** The English the learner will be asked to say. */
     targets: string[];
     language: TranslationLanguage | null;
@@ -26,7 +29,7 @@ type Props = {
  * learner will say. Languages are listed by their own names in their own
  * scripts, since the learner may not read the English around them.
  */
-export function SpeakingIntro({ title, targets, language, onLanguageChange, micBlocked }: Props) {
+export function SpeakingIntro({ lesson, targets, language, onLanguageChange, micBlocked }: Props) {
     const t = useFirstLanguageInterface("speaking");
     const [languageOpen, setLanguageOpen] = useState(false);
     const languageLabel = language ? FIRST_LANGUAGE_LABELS[language] : t("chooseLanguage");
@@ -34,11 +37,9 @@ export function SpeakingIntro({ title, targets, language, onLanguageChange, micB
 
     return (
         <View style={styles.container}>
-            <View style={styles.hero}>
-                <Text variant="label">{title}</Text>
-                <Text variant="title">{t("title")}</Text>
+            <LessonHeading lesson={lesson} title={t("title")} fraction={0.5}>
                 <Text variant="caption">{t("intro")}</Text>
-            </View>
+            </LessonHeading>
 
             <View style={styles.section}>
                 <Text variant="label">{t("language")}</Text>
@@ -69,9 +70,14 @@ export function SpeakingIntro({ title, targets, language, onLanguageChange, micB
             <View style={styles.section}>
                 <Text variant="label">{t("youWillSay")}</Text>
                 {targets.map((target) => (
-                    <Text key={target} variant="bodyStrong">
-                        {target}
-                    </Text>
+                    <View key={target} style={styles.target}>
+                        <View style={styles.targetIcon}>
+                            <Ionicons name="mic" size={18} color={colors.primaryDark} />
+                        </View>
+                        <Text variant="bodyStrong" style={styles.targetText}>
+                            {target}
+                        </Text>
+                    </View>
                 ))}
             </View>
 
@@ -96,7 +102,16 @@ export function SpeakingIntro({ title, targets, language, onLanguageChange, micB
 
 const styles = StyleSheet.create({
     container: { gap: spacing.xl, paddingBottom: spacing.xl },
-    hero: { gap: spacing.xs, paddingTop: spacing.sm },
+    target: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    targetIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: radius.full,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: colors.primarySoft,
+    },
+    targetText: { flex: 1 },
     section: { gap: spacing.sm },
     notes: { gap: spacing.xs },
     blocked: { gap: spacing.md },

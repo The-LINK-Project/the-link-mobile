@@ -279,7 +279,7 @@ function LessonRunner({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <Text variant="subheading">{localized(exercise.instruction)}</Text>
+                <Text variant="heading">{localized(exercise.instruction)}</Text>
 
                 <ExerciseRenderer
                     exercise={exercise}

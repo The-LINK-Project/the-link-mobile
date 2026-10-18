@@ -7,12 +7,14 @@ import {
     type ViewStyle,
 } from "react-native";
 
-import { colors, fontSize, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
+import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
 
 import { Text } from "./Text";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive" | "ghostDestructive";
 type Size = "sm" | "md" | "lg";
+
+const KEYED = new Set<Variant>(["primary", "secondary", "outline", "destructive"]);
 
 type Props = Omit<PressableProps, "style" | "children"> & {
     title: string;
@@ -25,12 +27,15 @@ type Props = Omit<PressableProps, "style" | "children"> & {
 
 const TEXT_COLOR: Record<Variant, string> = {
     primary: colors.onPrimary,
-    secondary: colors.foreground,
-    outline: colors.foreground,
-    ghost: colors.foreground,
+    secondary: colors.ink,
+    outline: colors.link,
+    ghost: colors.muted,
     destructive: colors.white,
     ghostDestructive: colors.destructive,
 };
+
+/** The height of a key's lower edge, which it sinks into when pressed. */
+const EDGE = 4;
 
 export function Button({
     title,
@@ -57,19 +62,37 @@ export function Button({
                 styles.base,
                 styles[variant],
                 styles[`size_${size}`],
-                pressed && !isDisabled ? styles.pressed : null,
-                isDisabled ? styles.disabled : null,
+                pressed && !isDisabled
+                    ? variant === "outline"
+                        ? styles.pressedOutline
+                        : KEYED.has(variant)
+                          ? styles.pressed
+                          : styles.pressedFlat
+                    : null,
+                isDisabled
+                    ? variant === "primary"
+                        ? styles.disabledPrimary
+                        : styles.disabled
+                    : null,
                 style,
             ]}
         >
             {loading ? (
-                <ActivityIndicator color={TEXT_COLOR[variant]} />
+                <ActivityIndicator
+                    color={
+                        isDisabled && variant === "primary" ? colors.keyText : TEXT_COLOR[variant]
+                    }
+                />
             ) : (
                 <>
                     {icon}
                     <Text
                         variant="bodyStrong"
-                        color={TEXT_COLOR[variant]}
+                        color={
+                            isDisabled && variant === "primary"
+                                ? colors.keyText
+                                : TEXT_COLOR[variant]
+                        }
                         style={[styles.label, size === "sm" ? styles.smallText : null]}
                     >
                         {title}
@@ -86,21 +109,51 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         gap: spacing.sm,
-        borderRadius: radius.md,
+        borderRadius: radius.lg,
         borderWidth: 1,
         borderColor: "transparent",
     },
-    primary: { backgroundColor: colors.primary },
-    secondary: { backgroundColor: colors.mutedSurface },
-    outline: { backgroundColor: colors.surface, borderColor: colors.border },
+    // Keys, like the lesson cards on Home: a darker lower edge.
+    primary: {
+        backgroundColor: colors.primary,
+        borderBottomWidth: EDGE,
+        borderBottomColor: colors.primaryLip,
+    },
+    secondary: {
+        backgroundColor: colors.mutedSurface,
+        borderBottomWidth: EDGE,
+        borderBottomColor: colors.keyLip,
+    },
+    outline: {
+        backgroundColor: colors.surface,
+        borderWidth: 2,
+        borderBottomWidth: EDGE + 2,
+        borderColor: colors.key,
+    },
     ghost: { backgroundColor: "transparent" },
-    destructive: { backgroundColor: colors.destructive },
+    destructive: {
+        backgroundColor: colors.destructive,
+        borderBottomWidth: EDGE,
+        borderBottomColor: "#98200c",
+    },
     ghostDestructive: { backgroundColor: "transparent" },
     size_sm: { minHeight: 40, paddingHorizontal: spacing.md },
     size_md: { minHeight: TOUCH_TARGET, paddingHorizontal: spacing.lg },
     size_lg: { minHeight: 56, paddingHorizontal: spacing.xl },
-    label: { flexShrink: 1, textAlign: "center", paddingVertical: spacing.xs },
-    smallText: { fontSize: fontSize.sm },
-    pressed: { opacity: 0.8 },
+    label: {
+        flexShrink: 1,
+        textAlign: "center",
+        paddingVertical: spacing.xs,
+        fontSize: 15,
+        fontWeight: "800",
+        letterSpacing: 0.6,
+        textTransform: "uppercase",
+    },
+    smallText: { fontSize: 13 },
+    // The key sinks into its edge; the space it leaves stays, so nothing moves.
+    pressed: { transform: [{ translateY: EDGE }], borderBottomWidth: 1, marginBottom: EDGE - 1 },
+    pressedOutline: { transform: [{ translateY: EDGE }], borderBottomWidth: 2, marginBottom: EDGE },
+    pressedFlat: { opacity: 0.8 },
     disabled: { opacity: 0.5 },
+    disabledPrimary: { backgroundColor: colors.key, borderBottomColor: colors.keyLip },
 });

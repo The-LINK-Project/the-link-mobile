@@ -30,6 +30,16 @@ export const colors = {
     destructive: "#ca3214",
     destructiveSoft: "#fee2e2",
 
+    // The keys and cards of the lesson kit, from the Home lesson cards: titles
+    // in a warm near-black, a light key edge, links in blue. The website's
+    // lesson screens use the same values (`--color-lesson-*` in globals.css).
+    ink: "#3c3c3c",
+    key: "#e5e5e5",
+    keyLip: "#d4d4d4",
+    keyText: "#8f8f8f",
+    link: "#0b6fa4",
+    primaryLip: "#3fbf86",
+
     white: "#ffffff",
     black: "#000000",
 } as const;

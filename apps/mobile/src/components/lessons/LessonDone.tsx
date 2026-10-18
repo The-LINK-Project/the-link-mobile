@@ -1,15 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
+import { LessonHeading } from "@/components/lessons/LessonHeading";
 import { LessonWords } from "@/components/lessons/LessonIntro";
 import { LessonStages } from "@/components/lessons/LessonStages";
 import { LessonHero } from "@/components/lessons/LessonVisual";
 import { Badge, Button, Card, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
-import { localized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
 import type { LessonRecord } from "@/lib/progress/model";
-import { colors, radius, spacing } from "@/lib/theme";
+import { colors, spacing } from "@/lib/theme";
 
 /**
  * A lesson whose exercises are finished, opened again.
@@ -37,20 +37,12 @@ export function LessonDone({
 
     return (
         <View style={styles.container}>
-            <View style={styles.hero}>
-                <Text variant="label">{localized(lesson.title, "en")}</Text>
-                <View style={styles.title}>
-                    <View style={[styles.tick, speakingLeft && styles.tickProgress]}>
-                        <Ionicons
-                            name={speakingLeft ? "ellipsis-horizontal" : "checkmark"}
-                            size={20}
-                            color={colors.white}
-                        />
-                    </View>
-                    <Text variant="title" style={styles.titleText}>
-                        {speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
-                    </Text>
-                </View>
+            <LessonHeading
+                lesson={lesson}
+                title={speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
+                fraction={speakingLeft ? 0.5 : 1}
+                done={!speakingLeft}
+            >
                 {speakingLeft ? <Text variant="caption">{t("summarySpeakNext")}</Text> : null}
                 <LessonHero lesson={lesson} />
                 <View style={styles.badges}>
@@ -67,7 +59,7 @@ export function LessonDone({
                         size="lg"
                     />
                 ) : null}
-            </View>
+            </LessonHeading>
 
             <Card>
                 <Text variant="label">{t("summaryFirstTry")}</Text>
@@ -110,18 +102,6 @@ export function LessonDoneActions({
 
 const styles = StyleSheet.create({
     container: { gap: spacing.xl },
-    hero: { gap: spacing.md },
-    title: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-    titleText: { flexShrink: 1 },
-    tick: {
-        width: 32,
-        height: 32,
-        borderRadius: radius.full,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: colors.success,
-    },
-    tickProgress: { backgroundColor: colors.warningFill },
     badges: { flexDirection: "row" },
     section: { gap: spacing.sm },
     actions: { gap: spacing.sm },
