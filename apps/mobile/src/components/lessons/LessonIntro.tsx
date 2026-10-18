@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { LessonHeading } from "@/components/lessons/LessonHeading";
 import { LessonHero, VocabularyVisual } from "@/components/lessons/LessonVisual";
 import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
@@ -28,15 +29,13 @@ export function LessonIntro({ lesson }: { lesson: Lesson }) {
 
     return (
         <View style={styles.container}>
-            <View style={styles.hero}>
-                <Text variant="label">{localized(lesson.title, "en")}</Text>
-                <Text variant="title">{t("introTitle")}</Text>
+            <LessonHeading lesson={lesson} title={t("introTitle")}>
                 <LessonHero lesson={lesson} />
-                <Text variant="bodyStrong" color={colors.primaryDark}>
+                <Text variant="subheading" color={colors.primaryDark}>
                     {localized(lesson.goal, "en")}
                 </Text>
                 <Text variant="caption">{t("introBody")}</Text>
-            </View>
+            </LessonHeading>
             <LessonWords lesson={lesson} />
         </View>
     );
@@ -88,9 +87,11 @@ export function LessonWords({ lesson }: { lesson: Lesson }) {
     );
 }
 
+/** The height of a key's lower edge. */
+const EDGE = 4;
+
 const styles = StyleSheet.create({
     container: { gap: spacing.xl },
-    hero: { gap: spacing.md },
     words: { width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.sm },
     word: {
         flexDirection: "row",
@@ -99,11 +100,13 @@ const styles = StyleSheet.create({
         minHeight: 92,
         padding: spacing.md,
         borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderWidth: 2,
+        borderBottomWidth: EDGE + 2,
+        borderColor: colors.key,
         backgroundColor: colors.surface,
     },
-    pressed: { opacity: 0.85 },
+    // Sinks into its edge like the other keys of a lesson.
+    pressed: { transform: [{ translateY: EDGE }], borderBottomWidth: 2, marginBottom: EDGE },
     speaker: {
         width: TOUCH_TARGET,
         height: TOUCH_TARGET,

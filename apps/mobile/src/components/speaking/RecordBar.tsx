@@ -124,7 +124,7 @@ export function RecordBar(props: Props) {
                         large
                         onPress={props.onRecord}
                     />
-                    <Text variant="caption">{t("tapToSpeak")}</Text>
+                    <Text style={styles.tapToSpeak}>{t("tapToSpeak")}</Text>
                 </View>
             )}
         </View>
@@ -149,11 +149,18 @@ function RoundButton({
     onPress: () => void;
 }) {
     const palette = {
-        plain: { background: colors.mutedSurface, foreground: colors.foreground },
-        primary: { background: colors.primary, foreground: colors.onPrimary },
-        danger: { background: colors.destructive, foreground: colors.white },
+        plain: { background: colors.mutedSurface, foreground: colors.ink, lip: colors.keyLip },
+        primary: {
+            background: colors.primary,
+            foreground: colors.onPrimary,
+            lip: colors.primaryLip,
+        },
+        danger: { background: colors.destructive, foreground: colors.white, lip: "#98200c" },
     }[tone];
     const size = large ? 80 : 56;
+    // A key like the rest of the lesson: it sinks into its lower edge when
+    // pressed. The microphone is the biggest key there is.
+    const edge = large ? 6 : 4;
 
     return (
         <Pressable
@@ -164,8 +171,20 @@ function RoundButton({
             onPress={onPress}
             style={({ pressed }) => [
                 styles.round,
-                { width: size, height: size, backgroundColor: palette.background },
-                pressed && !disabled ? styles.pressed : null,
+                {
+                    width: size,
+                    height: size,
+                    backgroundColor: palette.background,
+                    borderBottomWidth: edge,
+                    borderBottomColor: palette.lip,
+                },
+                pressed && !disabled
+                    ? {
+                          transform: [{ translateY: edge }],
+                          borderBottomWidth: 0,
+                          marginBottom: edge,
+                      }
+                    : null,
                 disabled && !busy ? styles.disabled : null,
             ]}
         >
@@ -182,8 +201,6 @@ const styles = StyleSheet.create({
     container: {
         gap: spacing.md,
         padding: spacing.lg,
-        borderTopWidth: 1,
-        borderTopColor: colors.hairline,
         backgroundColor: colors.surface,
     },
     row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
@@ -207,6 +224,13 @@ const styles = StyleSheet.create({
     },
     fill: { height: "100%", backgroundColor: colors.primary },
     round: { alignItems: "center", justifyContent: "center", borderRadius: radius.full },
-    pressed: { opacity: 0.8 },
     disabled: { opacity: 0.5 },
+    tapToSpeak: {
+        paddingTop: spacing.xs,
+        fontSize: 13,
+        fontWeight: "800",
+        letterSpacing: 0.6,
+        textTransform: "uppercase",
+        color: colors.muted,
+    },
 });

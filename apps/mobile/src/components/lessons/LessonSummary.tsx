@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StyleSheet, View } from "react-native";
 
+import { LessonHeading } from "@/components/lessons/LessonHeading";
 import { LessonStages } from "@/components/lessons/LessonStages";
 import { Badge, Button, Card, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
-import { localized, useFirstLanguageLocalized } from "@/lib/lessons/localized";
+import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import type { SessionSummary } from "@/lib/lessons/session";
 import type { Lesson } from "@/lib/lessons/types";
 import { colors, spacing } from "@/lib/theme";
@@ -42,11 +43,12 @@ export function LessonSummary({
             {/* Names the lesson that was finished, and sits left-aligned like
                 every other screen in the app. A centred badge reads as a generic
                 congratulations panel that could belong to any product. */}
-            <View style={styles.hero}>
-                <Text variant="label">{localized(lesson.title, "en")}</Text>
-                <Text variant="title">
-                    {speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
-                </Text>
+            <LessonHeading
+                lesson={lesson}
+                title={speakingLeft ? t("summaryStageTitle") : t("summaryTitle")}
+                fraction={speakingLeft ? 0.5 : 1}
+                done={!speakingLeft}
+            >
                 <Text variant="caption">
                     {perfect
                         ? t("summaryPerfect")
@@ -58,7 +60,7 @@ export function LessonSummary({
                         <Text variant="bodyStrong">{t("summarySpeakNext")}</Text>
                     </View>
                 ) : null}
-            </View>
+            </LessonHeading>
 
             <Card>
                 <Text variant="label">{t("summaryFirstTry")}</Text>
@@ -170,7 +172,6 @@ export function LessonSummaryActions({
 
 const styles = StyleSheet.create({
     container: { gap: spacing.xl, paddingBottom: spacing.xl },
-    hero: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.lg },
     stages: { gap: spacing.sm, paddingTop: spacing.md },
     section: { gap: spacing.sm },
     terms: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

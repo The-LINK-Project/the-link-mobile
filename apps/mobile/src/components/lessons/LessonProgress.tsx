@@ -21,7 +21,10 @@ export function LessonProgress({ value }: { value: number }) {
             accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
             style={styles.track}
         >
-            <View style={[styles.fill, { width: `${clamped * 100}%` }]} />
+            <View style={[styles.fill, { width: `${clamped * 100}%` }]}>
+                {/* The shine along the top, as on the Home cards' keys. */}
+                {clamped > 0.04 ? <View style={styles.shine} /> : null}
+            </View>
         </View>
     );
 }
@@ -31,8 +34,17 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 16,
         borderRadius: radius.full,
-        backgroundColor: colors.mutedSurface,
+        backgroundColor: colors.key,
         overflow: "hidden",
     },
     fill: { height: "100%", borderRadius: radius.full, backgroundColor: colors.primary },
+    shine: {
+        position: "absolute",
+        top: 4,
+        left: 8,
+        right: 8,
+        height: 4,
+        borderRadius: radius.full,
+        backgroundColor: "rgba(255,255,255,0.4)",
+    },
 });
