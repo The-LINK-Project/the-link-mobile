@@ -5,8 +5,8 @@ import { createVerify, generateKeyPairSync } from "node:crypto";
 
 import { parseServiceAccount } from "../src/cloud-speech.js";
 import { readConfig } from "../src/config.js";
-import { createGeminiTutor, speechChunks } from "../src/gemini.js";
-import { QuotaError } from "../src/google.js";
+import { createGeminiTutor, readAloud, speechChunks } from "../src/gemini.js";
+import { QuotaError, READ_ALOUD } from "../src/google.js";
 
 const BASE_ENV = {
     MOBILE_MONGODB_URI: "mongodb://localhost",
@@ -152,6 +152,24 @@ test("when a voice is out of quota the whole reply moves to the next voice", asy
     );
 });
 
+test("the voice is given the reply as a transcript to read, not as a message to answer", async (t) => {
+    // Sent bare, a French reply saying "you will answer in English" was spoken
+    // in English, and "tell me in English that you want to top up" was answered.
+    const calls = fakeFetch(t, () => audioAnswer(480));
+    const tutor = createGeminiTutor({
+        apiKey: "key",
+        tutorModels: TEXT_MODELS,
+        speechModels: VOICES,
+    });
+    const reply = "Dites-moi en anglais que vous voulez recharger dix dollars.";
+    await tutor.speak({ text: reply, language: "fr" }, 10_000);
+
+    const sent = JSON.parse(calls[0].body).contents[0].parts[0].text as string;
+    assert.equal(sent, readAloud(reply));
+    assert.ok(sent.startsWith(READ_ALOUD));
+    assert.ok(sent.endsWith(`TRANSCRIPT:\n${reply}`));
+});
+
 test("with every voice out of quota, speech fails with the quota error", async (t) => {
     t.mock.method(console, "warn", () => undefined);
     fakeFetch(t, () => outOfQuota(60));
@@ -212,7 +230,9 @@ test("Cloud Text-to-Speech signs in as the service account, reuses its token, an
     );
     assert.equal(calls[1].headers.get("authorization"), "Bearer token-1");
     const synthesis = JSON.parse(calls[1].body);
-    assert.equal(synthesis.input.text, "নমস্কার।");
+    // The reply goes in as the text, and the instruction to read it as written
+    // goes in its own field, where it is never spoken.
+    assert.deepEqual(synthesis.input, { text: "নমস্কার।", prompt: READ_ALOUD });
     assert.deepEqual(synthesis.voice, {
         languageCode: "bn-BD",
         name: "Sulafat",

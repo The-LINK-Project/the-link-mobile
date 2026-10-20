@@ -8,13 +8,15 @@ import { wavSamples } from "./audio.js";
  * learners use up. Cloud Text-to-Speech does not accept API keys, so this signs
  * in as a service account.
  *
- * Only the tutor's checked reply is sent. No learner audio goes to this service.
+ * Only the tutor's checked reply is sent, with a fixed instruction to read it as
+ * written. No learner audio goes to this service.
  */
 import { createSign } from "node:crypto";
 
 import {
     DEFAULT_SAMPLE_RATE,
     GoogleError,
+    READ_ALOUD,
     responseError,
     send,
     VOICE,
@@ -150,7 +152,9 @@ export function createCloudSpeech(account: ServiceAccount, now: () => number = D
                         Authorization: `Bearer ${bearer}`,
                     },
                     body: JSON.stringify({
-                        input: { text },
+                        // Cloud keeps the instruction apart from the text, so it is
+                        // never read out.
+                        input: { text, prompt: READ_ALOUD },
                         voice: {
                             languageCode: LANGUAGE_CODES[language],
                             name: VOICE,
