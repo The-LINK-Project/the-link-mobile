@@ -31,6 +31,8 @@ const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
     transfer: require("../../../assets/lessons/interchange.jpg"),
     clock: require("../../../assets/lessons/break.jpg"),
     thermometer: require("../../../assets/lessons/fever.jpg"),
+    pain: require("../../../assets/lessons/pain.jpg"),
+    cough: require("../../../assets/lessons/cough.jpg"),
     medicine: require("../../../assets/lessons/medicine.jpg"),
     clinic: require("../../../assets/lessons/clinic-reception.jpg"),
     appointment: require("../../../assets/lessons/appointment.jpg"),
@@ -41,6 +43,7 @@ const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
     bag: require("../../../assets/lessons/takeaway.jpg"),
     flame: require("../../../assets/lessons/spicy.jpg"),
     drink: require("../../../assets/lessons/drink.jpg"),
+    less: require("../../../assets/lessons/less.jpg"),
     price: require("../../../assets/lessons/price.jpg"),
     stall: require("../../../assets/lessons/stall.jpg"),
     helmet: require("../../../assets/lessons/helmet.jpg"),
@@ -48,6 +51,8 @@ const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
     warning: require("../../../assets/lessons/dangerous.jpg"),
     firstAid: require("../../../assets/lessons/hurt.jpg"),
     person: require("../../../assets/lessons/supervisor.jpg"),
+    salary: require("../../../assets/lessons/salary.jpg"),
+    repeat: require("../../../assets/lessons/again.jpg"),
 };
 
 export function lessonVisual(lessonId: string): ImageSource | undefined {

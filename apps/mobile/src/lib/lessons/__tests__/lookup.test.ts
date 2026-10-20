@@ -1,5 +1,4 @@
 import { listLessons } from "../data";
-import { clinicVisit } from "../data/clinic-visit";
 import { mrtBasics } from "../data/mrt-basics";
 import { normalize } from "../grading";
 import { localized } from "../localized";
@@ -128,7 +127,15 @@ describe("picturableVocab", () => {
     it("throws in development when an option cannot be drawn", () => {
         // An option with no picture renders as an empty tile, which silently
         // reduces the number of choices and can remove the answer itself.
-        expect(() => picturableVocab(clinicVisit, ["v-fever", "v-cough"])).toThrow(/v-cough/);
+        // Every real word has a photo, so this lesson strips one to stand in
+        // for an authoring slip.
+        const lesson: Lesson = {
+            ...mrtBasics,
+            vocab: mrtBasics.vocab.map((item) =>
+                item.id === "v-exit" ? { ...item, picture: undefined } : item,
+            ),
+        };
+        expect(() => picturableVocab(lesson, ["v-platform", "v-exit"])).toThrow(/v-exit/);
     });
 });
 

@@ -6,12 +6,14 @@
  * checks run over the whole catalogue so an authoring slip fails the build.
  */
 
+import { LESSON_CONTENT_COPY } from "@/lib/firstLanguage/lessonContentCopy";
 import { correctAnswer } from "@/test/lessonAnswers";
 
 import { listLessons } from "../data";
 import { gradeAnswer, meaningfulWords, normalize } from "../grading";
 import { dialogueReplies, phraseById, picturableVocab, vocabByIds } from "../lookup";
 import type { Exercise, Lesson, Localized } from "../types";
+import { lessonVisual, pictureVisual } from "../visuals";
 
 const lessons = listLessons();
 const LANGUAGES = ["bn", "ta", "hi"] as const;
@@ -84,6 +86,21 @@ describe("lesson catalogue", () => {
     });
 });
 
+describe("word photos", () => {
+    it("never shows two different words the same photo", () => {
+        // A shared photo teaches the wrong word: "salary" once borrowed the
+        // hawker centre's cash, so it pictured buying lunch rather than pay.
+        const owner = new Map<string, string>();
+        for (const item of lessons.flatMap((lesson) => lesson.vocab)) {
+            if (!item.picture) continue;
+            expect(`${item.picture}: ${owner.get(item.picture) ?? item.term}`).toBe(
+                `${item.picture}: ${item.term}`,
+            );
+            owner.set(item.picture, item.term);
+        }
+    });
+});
+
 describe.each(lessons.map((lesson) => [lesson.id, lesson] as const))("lesson %s", (_, lesson) => {
     it("is translated into every tutor language, with no English left in", () => {
         forEachLocalized(lesson, (value, where) => {
@@ -93,6 +110,26 @@ describe.each(lessons.map((lesson) => [lesson.id, lesson] as const))("lesson %s"
                 );
             }
         });
+    });
+
+    it("has the explanations in every other first language too", () => {
+        forEachLocalized(lesson, (value, where) => {
+            for (const [language, copy] of Object.entries(LESSON_CONTENT_COPY)) {
+                expect(`${where}.${language}: ${copy[value.en] ? "translated" : value.en}`).toBe(
+                    `${where}.${language}: translated`,
+                );
+            }
+        });
+    });
+
+    it("has a scene of its own and a photo for every word", () => {
+        expect(lessonVisual(lesson.id)).toBeDefined();
+        for (const item of lesson.vocab) {
+            expect(`${item.id}: ${item.picture ? "pictured" : "no picture"}`).toBe(
+                `${item.id}: pictured`,
+            );
+            if (item.picture) expect(pictureVisual(item.picture)).toBeDefined();
+        }
     });
 
     it("resolves every vocabulary, phrase and picture reference", () => {
