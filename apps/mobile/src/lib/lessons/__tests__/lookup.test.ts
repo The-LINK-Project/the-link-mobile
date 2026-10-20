@@ -1,4 +1,5 @@
 import { listLessons } from "../data";
+import { clinicVisit } from "../data/clinic-visit";
 import { mrtBasics } from "../data/mrt-basics";
 import { normalize } from "../grading";
 import { localized } from "../localized";
@@ -127,7 +128,7 @@ describe("picturableVocab", () => {
     it("throws in development when an option cannot be drawn", () => {
         // An option with no picture renders as an empty tile, which silently
         // reduces the number of choices and can remove the answer itself.
-        expect(() => picturableVocab(mrtBasics, ["v-platform", "v-tap-out"])).toThrow(/v-tap-out/);
+        expect(() => picturableVocab(clinicVisit, ["v-fever", "v-cough"])).toThrow(/v-cough/);
     });
 });
 

@@ -26,6 +26,7 @@ const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
     mrtFare: require("../../../assets/lessons/mrt-fare.jpg"),
     money: require("../../../assets/lessons/cash.jpg"),
     card: require("../../../assets/lessons/top-up.jpg"),
+    tapOut: require("../../../assets/lessons/tap-out.jpg"),
     seat: require("../../../assets/lessons/reserved-seat.jpg"),
     transfer: require("../../../assets/lessons/interchange.jpg"),
     clock: require("../../../assets/lessons/break.jpg"),

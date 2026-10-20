@@ -4,7 +4,7 @@ These are generated, illustrative Singapore scenes rather than photographs of
 named people, businesses, clinics, stations, or worksites. They deliberately
 avoid real logos and readable private information.
 
-- `mrt-*`, `alight`, `top-up`, `interchange`, `reserved-seat`: a Singapore MRT platform, exit, fare gate, train doors, ticket machine, interchange concourse and priority seat
+- `mrt-*`, `alight`, `top-up`, `tap-out`, `interchange`, `reserved-seat`: a Singapore MRT platform, exit, fare gate, train doors, ticket machine, leaving through the gates, interchange concourse and priority seat
 - `hawker-centre`, `stall`, `chicken-rice`, `takeaway`, `drink`, `spicy`, `price`, `cash`: a neighbourhood hawker-centre visit
 - `clinic-reception`, `fever`, `medicine`, `mc`, `appointment`, `rest`: a neighbourhood clinic visit
 - `work-safety`, `supervisor`, `helmet`, `safety-boots`, `dangerous`, `day-off`, `break`, `hurt`: work and rest situations in Singapore
