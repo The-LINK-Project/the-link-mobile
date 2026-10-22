@@ -32,6 +32,15 @@ const listeners = new Set<() => void>();
 let onChoiceChanged: (() => void) | null = null;
 /** One write at a time, in order, so an older choice can never land last. */
 let writes: Promise<void> = Promise.resolve();
+/** Each account's newest choice not yet on disk. A queued write takes the newest. */
+const pending = new Map<string, FirstLanguageChoice | null>();
+/**
+ * Accounts whose stored choice could not be read: storage failed, as opposed to
+ * holding nothing. Their memory works as usual, but nothing is written until the
+ * stored copy has been read and folded in, or the choice made on this phone
+ * would be written over with nothing.
+ */
+const unreadable = new Set<string>();
 
 function announce() {
     listeners.forEach((listener) => listener());
@@ -40,10 +49,57 @@ function announce() {
 function commit(next: State) {
     state = next;
     announce();
-    const key = owner ? keyFor(owner) : null;
-    if (!key) return;
-    const snapshot = JSON.stringify(next.choice);
-    writes = writes.then(() => AsyncStorage.setItem(key, snapshot)).catch(() => undefined);
+    if (!owner) return;
+    const user = owner;
+    pending.set(user, next.choice);
+    writes = writes.then(() => persist(user)).catch(() => undefined);
+}
+
+async function persist(user: string) {
+    if (!pending.has(user)) return;
+    if (unreadable.has(user)) {
+        const stored = await readStored(user);
+        // Still unreadable: the change waits, and nothing is written over it.
+        if (stored === UNREADABLE) return;
+        unreadable.delete(user);
+        pending.set(user, newer(stored, pending.get(user) ?? null));
+        const merged = newer(stored, state.choice);
+        if (owner === user && !same(merged, state.choice)) {
+            state = { ...state, choice: merged };
+            announce();
+        }
+    }
+    const snapshot = pending.get(user) ?? null;
+    pending.delete(user);
+    await AsyncStorage.setItem(keyFor(user), JSON.stringify(snapshot));
+}
+
+const UNREADABLE = Symbol("unreadable");
+
+/**
+ * What is stored for an account: its choice, null when nothing usable is there,
+ * or UNREADABLE when storage itself failed twice. A file that will not parse
+ * asks the learner again; a failed read must not, because writing after it
+ * would replace the real choice with nothing.
+ */
+async function readStored(userId: string): Promise<FirstLanguageChoice | null | typeof UNREADABLE> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        let raw: string | null;
+        try {
+            raw = await AsyncStorage.getItem(keyFor(userId));
+        } catch {
+            // "Database is locked" on a busy Android usually clears in a moment.
+            if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 100));
+            continue;
+        }
+        if (!raw) return null;
+        try {
+            return readFirstLanguageChoice(JSON.parse(raw));
+        } catch {
+            return null;
+        }
+    }
+    return UNREADABLE;
 }
 
 /** Resolves once everything queued so far is on disk. For tests and sign-out. */
@@ -87,20 +143,21 @@ export async function loadFirstLanguage(userId: string): Promise<void> {
     if (owner === userId && state.loaded) return;
     owner = userId;
     state = { loaded: false, choice: null };
-    let stored: FirstLanguageChoice | null = null;
-    try {
-        const raw = await AsyncStorage.getItem(keyFor(userId));
-        // Somebody else signed in while this was being read.
-        if (owner !== userId) return;
-        if (raw) stored = readFirstLanguageChoice(JSON.parse(raw));
-    } catch {
-        // Unreadable storage asks the learner again rather than crashing.
-    }
+    unreadable.delete(userId);
+    const stored = await readStored(userId);
+    // Somebody else signed in while this was being read.
     if (owner !== userId) return;
+    // Storage that will not answer still lets the learner in: the server's copy
+    // arrives with the first sync, and is kept in memory until the disk can be
+    // read and the two folded together.
+    if (stored === UNREADABLE) unreadable.add(userId);
     // The first sync can answer before the disk does, so what is already in
     // memory is merged in rather than overwritten, by the same last-write-wins
     // rule as everywhere else.
-    commit({ loaded: true, choice: newer(stored, state.choice) });
+    commit({
+        loaded: true,
+        choice: newer(stored === UNREADABLE ? null : stored, state.choice),
+    });
 }
 
 /** Forget whose language is in memory. The file stays for their next sign-in. */
@@ -113,8 +170,15 @@ export function unloadFirstLanguage() {
 /** Remove an account's choice from this phone, for account deletion. */
 export async function eraseFirstLanguage(userId: string): Promise<void> {
     if (owner === userId) unloadFirstLanguage();
+    pending.delete(userId);
+    unreadable.delete(userId);
     await writes;
     await AsyncStorage.removeItem(keyFor(userId)).catch(() => undefined);
+}
+
+/** Whose choice is in memory, so a sync can tell the phone changed hands under it. */
+export function firstLanguageOwner(): string | null {
+    return owner;
 }
 
 export function getFirstLanguage(): FirstLanguage | null {
@@ -190,13 +254,42 @@ export function setFirstLanguageListener(listener: (() => void) | null) {
  * Last write wins, and a tie goes to the server: two writes in the same
  * millisecond are almost certainly the same write coming back, and preferring
  * the server there stops the phone pushing it again on every launch.
+ *
+ * The same language on both sides is no news either way, so the phone takes the
+ * server's date for it. A phone whose clock runs fast keeps a date the server
+ * has already moved back to the moment it heard the choice; holding on to it
+ * would push the same language again on every sync and, worse, beat a later
+ * choice made on another phone.
  */
 export function mergeRemoteFirstLanguage(remote: FirstLanguageChoice | null): boolean {
     const mine = state.choice;
     if (!remote) return mine !== null;
-    if (mine && Date.parse(mine.updatedAt) > Date.parse(remote.updatedAt)) return true;
+    const sameLanguage = mine?.language === remote.language;
+    if (mine && !sameLanguage && Date.parse(mine.updatedAt) > Date.parse(remote.updatedAt)) {
+        return true;
+    }
     if (!same(mine, remote)) commit({ ...state, choice: remote });
     return false;
+}
+
+/**
+ * The server's answer to a choice this phone sent, which is final for it.
+ *
+ * The server has already compared the two, with its own clock in place of a
+ * phone's that ran fast, so its answer stands even where the dates the phone
+ * holds say otherwise. Unless the learner has chosen again since sending: that
+ * newer choice is still to go, and is merged as usual rather than undone.
+ */
+export function settleSentFirstLanguage(
+    sent: FirstLanguageChoice,
+    saved: FirstLanguageChoice | null,
+): void {
+    if (!saved) return;
+    if (same(state.choice, sent)) {
+        if (!same(state.choice, saved)) commit({ ...state, choice: saved });
+        return;
+    }
+    mergeRemoteFirstLanguage(saved);
 }
 
 /** Test seam: start from nothing. */
@@ -205,4 +298,6 @@ export function resetFirstLanguageForTests() {
     state = { loaded: false, choice: null };
     onChoiceChanged = null;
     writes = Promise.resolve();
+    pending.clear();
+    unreadable.clear();
 }

@@ -1,4 +1,6 @@
+import { TRANSLATION_LANGUAGES } from "@/lib/firstLanguage/languages";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
+import { localized } from "@/lib/lessons/localized";
 import type { Lesson } from "@/lib/lessons/types";
 
 import { lookupGlossary, resetGlossaryForTests } from "../glossary";
@@ -115,11 +117,42 @@ it("prefers the short expression over the whole sentence it appears in", () => {
     expect(found?.phrase?.text).toBe("Which platform for Jurong East?");
 });
 
-it("says nothing in a language the lessons are not written in", () => {
-    // Burmese is a first language but no lesson is authored in it, and the
-    // English gloss is exactly what the learner could not read.
-    expect(lookupGlossary("platform", "The platform is over there.", "bu")).toBeNull();
-    expect(lookupGlossary("platform", "The platform is over there.", "vi")).toBeNull();
+it("answers in every first language the lessons explain themselves in", () => {
+    // Bengali, Tamil and Hindi are in the lesson files and the other eleven in
+    // LESSON_CONTENT_COPY. Either way the phone already holds the meaning the
+    // lesson shows, so it answers with no connection, and agrees with the lesson.
+    const platform = mrtBasics.vocab.find((item) => item.term === "platform")!;
+    for (const language of TRANSLATION_LANGUAGES) {
+        const found = lookupGlossary("platform", "The platform is over there.", language);
+        expect({ language, translation: found?.translation }).toEqual({
+            language,
+            translation: localized(platform.meaning, language),
+        });
+        expect(found?.translation).not.toBe(platform.meaning.en);
+    }
+});
+
+it("says nothing for a word the lesson has not been translated into that language", () => {
+    // A row missing from LESSON_CONTENT_COPY must go to the network, not come
+    // back as the English gloss the learner could not read.
+    const lesson: Lesson = {
+        ...mrtBasics,
+        vocab: [
+            {
+                id: "v-gantry",
+                term: "gantry",
+                meaning: { en: "a gate no table has a row for", bn: "গেট" },
+                reviewed: false,
+            },
+        ],
+        phrases: [],
+    };
+    mockContent.lessons = [lesson];
+    resetGlossaryForTests();
+
+    expect(lookupGlossary("gantry", "Tap at the gantry.", "bn")?.translation).toBe("গেট");
+    expect(lookupGlossary("gantry", "Tap at the gantry.", "bu")).toBeNull();
+    expect(lookupGlossary("gantry", "Tap at the gantry.", "vi")).toBeNull();
 });
 
 it("never answers with the English fallback", () => {

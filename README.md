@@ -123,7 +123,7 @@ GEMINI_API_KEY=replace_me
 
 `GEMINI_API_KEY` powers speaking practice and must belong to a paid (billed) Gemini project; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#speaking-practice). The rest of the API runs without it.
 
-Google limits every Gemini model per project, even with billing on. On Tier 1 the preview voice model allows only 100 requests a day, and each tutor reply uses up to three. The API moves to a backup model when one runs out, which stretches the limit but does not remove it. For real learners, set `GOOGLE_TTS_CREDENTIALS` so the tutor's voice comes from Cloud Text-to-Speech, which allows about 1,500 requests a minute with no daily cap:
+Google limits every Gemini model per project, even with billing on, and each tutor reply uses up to three voice requests. The tutor's voice tries Gemini 3.8 Flash-Lite TTS first, then 3.8 Flash TTS. Each has a daily quota of its own, so together they give roughly three times the voice of the 3.1 preview model behind them, which allows only 100 requests a day on Tier 1. That model and the two 2.5 voices after it reach their earliest shutdown date on 17 November 2026. The API moves to the next model when one runs out, which stretches the limit but does not remove it. For real learners, set `GOOGLE_TTS_CREDENTIALS` so the tutor's voice comes from Cloud Text-to-Speech, which allows about 1,500 requests a minute with no daily cap:
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), open the project that owns the Gemini API key. Enable the **Cloud Text-to-Speech API** and the **Agent Platform API** (`aiplatform.googleapis.com`, formerly the Vertex AI API). The Gemini voices run on Agent Platform: without it every speech request is refused with a 403.
 2. Under **IAM & Admin → Service Accounts**, create a service account and give it the **Agent Platform User** role (`roles/aiplatform.user`; Vertex AI is now called Gemini Enterprise Agent Platform).
@@ -161,6 +161,14 @@ Every exercise is answered by tapping. The types, and what each is for:
 To add a lesson: copy the shape of `hawker-food.ts`, give every id a unique prefix, add it to `data/index.ts`, and run `npm test`. To add an exercise type: add a variant to `Exercise`, a grading branch, a component, a renderer branch and an answer in `src/test/lessonAnswers.ts`; TypeScript refuses a half-wired type.
 
 The daily mix (`data/review.ts`) picks eight exercises across all lessons, seeded by the date, so ids must be unique across lessons.
+
+Every word and sentence a lesson reads aloud is a recording in the speaking tutor's voice, shipped inside the app in `apps/mobile/assets/lessons/audio` (about 300 KB), so it plays offline and sounds the same on every phone. A text with no recording yet is read by the phone's own voice. The recordings are the website's, named after what they say (`lib/lessons/audio.ts`). After adding or changing a lesson's words, record them on the website (`npm run record:audio` in the-link-project), then run this with the website checked out beside this repository, or with `LINK_WEB_DIR` pointing at it:
+
+```bash
+npm run audio:sync --workspace @link/mobile
+```
+
+It copies new and re-recorded clips, deletes unused ones and regenerates `lib/lessons/audioClips.ts`; commit the clips and that file together. `lib/lessons/__tests__/audio.test.ts` fails while any text lacks a recording.
 
 ## Validation
 

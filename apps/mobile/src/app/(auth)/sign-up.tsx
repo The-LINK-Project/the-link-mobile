@@ -1,16 +1,28 @@
 import { useSignUp } from "@clerk/expo";
 import { Link } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { AuthHeader } from "@/components/auth/AuthHeader";
+import { FormError } from "@/components/auth/FormError";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { USERNAME_PATTERN, useGoogleSignIn, useProfileAttributes } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
-import { colors, spacing } from "@/lib/theme";
+import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
+
+/**
+ * A sign-up waiting for its email code, to carry on with. Android closes an app
+ * in the background to free memory, and a learner who went to their email app
+ * for the code would otherwise come back to an empty form; filling it in again
+ * sends a new code, and the one they just read stops working.
+ */
+function waitingForCode(signUp: ReturnType<typeof useSignUp>["signUp"]): string | null {
+    if (signUp.status !== "missing_requirements" || !signUp.emailAddress) return null;
+    return signUp.unverifiedFields.includes("email_address") ? signUp.emailAddress : null;
+}
 
 export default function SignUpScreen() {
     const t = useTranslations("mobile.auth");
@@ -23,10 +35,12 @@ export default function SignUpScreen() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(() => waitingForCode(signUp) ?? "");
     const [password, setPassword] = useState("");
     const [code, setCode] = useState("");
-    const [pendingVerification, setPendingVerification] = useState(false);
+    const [pendingVerification, setPendingVerification] = useState(
+        () => waitingForCode(signUp) !== null,
+    );
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const submittingRef = useRef(false);
@@ -90,12 +104,19 @@ export default function SignUpScreen() {
         setBusy(true);
         setError(null);
         try {
-            const { error: verifyError } = await signUp.verifications.verifyEmailCode({
-                code: code.trim(),
-            });
-            if (verifyError) {
-                setError(clerkErrorMessage(verifyError, t("genericError")));
-            } else if (signUp.status === "complete") {
+            // A code already taken is used up. When it was the step after it,
+            // activating the session, that failed, only that step is tried
+            // again: checking the code a second time would fail for ever.
+            if (signUp.status !== "complete") {
+                const { error: verifyError } = await signUp.verifications.verifyEmailCode({
+                    code: code.trim(),
+                });
+                if (verifyError) {
+                    setError(clerkErrorMessage(verifyError, t("genericError")));
+                    return;
+                }
+            }
+            if (signUp.status === "complete") {
                 const { error: finalizeError } = await signUp.finalize();
                 if (finalizeError) {
                     setError(clerkErrorMessage(finalizeError, t("genericError")));
@@ -131,11 +152,7 @@ export default function SignUpScreen() {
                                 maxLength={6}
                                 onSubmitEditing={handleVerify}
                             />
-                            {error ? (
-                                <Text variant="caption" color={colors.destructive}>
-                                    {error}
-                                </Text>
-                            ) : null}
+                            <FormError message={error} />
                             <Button
                                 title={t("verify")}
                                 size="lg"
@@ -214,11 +231,7 @@ export default function SignUpScreen() {
                                 onSubmitEditing={handleSignUp}
                             />
                             <Text variant="caption">{t("passwordMinLength")}</Text>
-                            {error ? (
-                                <Text variant="caption" color={colors.destructive}>
-                                    {error}
-                                </Text>
-                            ) : null}
+                            <FormError message={error} />
                             <Button
                                 title={t("signUp")}
                                 size="lg"
@@ -243,9 +256,11 @@ export default function SignUpScreen() {
                         <View style={styles.footer}>
                             <Text variant="caption">{t("haveAccount")}</Text>
                             <Link href="/sign-in" asChild>
-                                <Text variant="bodyStrong" color={colors.primaryDark}>
-                                    {t("signIn")}
-                                </Text>
+                                <Pressable accessibilityRole="link" style={styles.link}>
+                                    <Text variant="bodyStrong" color={colors.primaryDark}>
+                                        {t("signIn")}
+                                    </Text>
+                                </Pressable>
                             </Link>
                         </View>
                     </>
@@ -269,7 +284,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         flexWrap: "wrap",
         justifyContent: "center",
-        gap: spacing.sm,
-        marginTop: spacing.xl,
+        alignItems: "center",
+        columnGap: spacing.sm,
+        // The link's own height makes up the rest of the space above.
+        marginTop: spacing.md,
     },
+    // Tall enough for a thumb, with the text where it was.
+    link: { minHeight: TOUCH_TARGET, justifyContent: "center", paddingHorizontal: spacing.xs },
 });

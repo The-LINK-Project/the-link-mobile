@@ -4,12 +4,13 @@ import { Stack, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Button, Screen, Text, TextField } from "@/components/ui";
+import { FormError } from "@/components/auth/FormError";
+import { Button, Screen, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { USERNAME_PATTERN, useProfileAttributes } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
 import { queryKeys } from "@/lib/queries";
-import { colors, spacing } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
 // Edits whichever profile fields the Clerk instance has enabled (username on
 // ours; first/last name where the dashboard turns them on). Avatar upload is
@@ -100,11 +101,7 @@ export default function EditProfileScreen() {
                         />
                     ) : null}
 
-                    {error ? (
-                        <Text variant="caption" color={colors.destructive}>
-                            {error}
-                        </Text>
-                    ) : null}
+                    <FormError message={error} />
 
                     <Button
                         title={t("save")}

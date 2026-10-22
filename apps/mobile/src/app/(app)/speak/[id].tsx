@@ -2,10 +2,11 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LessonProgress } from "@/components/lessons/LessonProgress";
+import { StepNav, WithBack } from "@/components/lessons/StepNav";
 import { ChatBubble } from "@/components/speaking/ChatBubble";
 import { RecordBar } from "@/components/speaking/RecordBar";
 import { SpeakingIntro } from "@/components/speaking/SpeakingIntro";
@@ -16,6 +17,7 @@ import { goBack } from "@/lib/navigation";
 import { getFirstLanguageChoice, useFirstLanguage } from "@/lib/firstLanguage/store";
 import { useLocale } from "@/lib/i18n";
 import { getLesson } from "@/lib/lessons/data";
+import { DAILY_MIX_ID } from "@/lib/lessons/data/review";
 import type { Lesson } from "@/lib/lessons/types";
 import {
     buildSpeakingContext,
@@ -34,6 +36,7 @@ import {
     setResume,
 } from "@/lib/progress/store";
 import { restoreConversation, saidCount } from "@/lib/speaking/conversation";
+import { quietEveryone } from "@/lib/speaking/floor";
 import { englishSplitter } from "@/lib/speaking/highlight";
 import { micSettleMs } from "@/lib/speaking/microphone";
 import { usePlayback } from "@/lib/speaking/playback";
@@ -94,6 +97,20 @@ export default function SpeakScreen() {
     );
 }
 
+/**
+ * Back from speaking: the step before it, which is the lesson. Speaking takes
+ * the lesson's place rather than stacking on it, so the lesson takes this
+ * screen's place in turn and Home stays underneath. The daily mix is new each
+ * run and has no lesson page to return to, so it goes home.
+ */
+function useStepBefore(lesson: Lesson) {
+    const router = useRouter();
+    return useCallback(() => {
+        if (lesson.id === DAILY_MIX_ID) goBack(router);
+        else router.replace({ pathname: "/lesson/[id]", params: { id: lesson.id } });
+    }, [router, lesson.id]);
+}
+
 function SpeakingFlow({
     lesson,
     run,
@@ -107,6 +124,7 @@ function SpeakingFlow({
 }) {
     const t = useFirstLanguageInterface("speaking");
     const router = useRouter();
+    const stepBefore = useStepBefore(lesson);
     const [locale] = useLocale();
     const [firstLanguage] = useFirstLanguage();
     const insets = useSafeAreaInsets();
@@ -192,13 +210,15 @@ function SpeakingFlow({
             {/* Pinned, like every other way forward in a lesson: on a small
                 phone the button used to sit below the privacy notes, out of sight. */}
             <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
-                <Button
-                    title={t("start")}
-                    size="lg"
-                    disabled={!language}
-                    accessibilityHint={language ? undefined : t("chooseLanguage")}
-                    onPress={start}
-                />
+                <WithBack onBack={stepBefore}>
+                    <Button
+                        title={t("start")}
+                        size="lg"
+                        disabled={!language}
+                        accessibilityHint={language ? undefined : t("chooseLanguage")}
+                        onPress={start}
+                    />
+                </WithBack>
             </View>
         </SafeAreaView>
     );
@@ -235,6 +255,7 @@ function Conversation({
 }) {
     const t = useFirstLanguageInterface("speaking");
     const router = useRouter();
+    const stepBefore = useStepBefore(lesson);
     const insets = useSafeAreaInsets();
     const { state, takeTurn } = useSpeakingSession(context, saved?.state);
     const english = useMemo(() => englishSplitter(context), [context]);
@@ -258,15 +279,31 @@ function Conversation({
 
     // Each new tutor line plays by itself, the way a person would simply speak,
     // and it can always be stopped. Not under a screen reader, which would be
-    // talking at the same time.
+    // talking at the same time. A reply that arrives while the app is in the
+    // background waits and plays when the learner comes back to it.
+    const [foreground, setForeground] = useState(AppState.currentState !== "background");
+    useEffect(() => {
+        const subscription = AppState.addEventListener("change", (next) =>
+            setForeground(next !== "background"),
+        );
+        return () => subscription.remove();
+    }, []);
     const latest = state.messages[state.messages.length - 1];
     const playVoice = voice.play;
     useEffect(() => {
-        if (screenReader || latest?.role !== "tutor" || !latest.audioUri) return;
+        if (screenReader || !foreground || latest?.role !== "tutor" || !latest.audioUri) return;
         if (autoplayed.current === latest.id) return;
-        autoplayed.current = latest.id;
-        playVoice(latest.audioUri);
-    }, [latest, playVoice, screenReader]);
+        const id = latest.id;
+        autoplayed.current = id;
+        void playVoice(latest.audioUri).then((started) => {
+            // Put off because the app went to the background on the way: it
+            // plays on the way back instead. Anything else that stopped it (the
+            // learner pressing record) was meant to.
+            if (!started && autoplayed.current === id && AppState.currentState === "background") {
+                autoplayed.current = null;
+            }
+        });
+    }, [latest, playVoice, screenReader, foreground]);
 
     // The talk is written down after every turn, and recorded as done the
     // moment the last goal is, not when the results screen is dismissed: a
@@ -284,7 +321,8 @@ function Conversation({
 
     useEffect(() => () => setResume(null), []);
 
-    // The talk is kept, so leaving needs no warning.
+    // The talk is kept, so leaving needs no warning, and coming back to
+    // speaking carries it on.
     const quit = useCallback(() => goBack(router), [router]);
 
     const record = async () => {
@@ -293,6 +331,9 @@ function Conversation({
         setPreparing(true);
         voice.stop();
         review.stop();
+        // A word read aloud from the hold-to-translate bubble, too: it would be
+        // heard in the learner's answer.
+        quietEveryone();
         setNotice(null);
         try {
             const settle = micSettleMs(Math.min(voice.quietForMs(), review.quietForMs()));
@@ -341,6 +382,8 @@ function Conversation({
                     }))}
                     onDone={() => goBack(router)}
                     onAgain={onAgain}
+                    // Back to the conversation the results came from.
+                    onBack={() => setShowSummary(false)}
                 />
             </Screen>
         );
@@ -419,45 +462,53 @@ function Conversation({
             <View style={{ paddingBottom: insets.bottom }}>
                 {state.phase === "finished" ? (
                     <View style={styles.footer}>
-                        <Button
-                            title={t("seeResults")}
-                            size="lg"
-                            onPress={() => {
-                                voice.stop();
-                                setShowSummary(true);
-                            }}
-                        />
+                        <WithBack onBack={stepBefore}>
+                            <Button
+                                title={t("seeResults")}
+                                size="lg"
+                                onPress={() => {
+                                    voice.stop();
+                                    setShowSummary(true);
+                                }}
+                            />
+                        </WithBack>
                     </View>
-                ) : opening && state.error ? null : (
-                    <RecordBar
-                        status={recorder.status}
-                        durationMs={recorder.durationMs}
-                        level={recorder.level}
-                        busyLabel={busyLabel}
-                        notice={
-                            recorder.failed
-                                ? t("recordFailed")
-                                : recorder.tooShort
-                                  ? t("tooShort")
-                                  : recorder.tooQuiet
-                                    ? t("tooQuiet")
-                                    : notice
-                        }
-                        reviewPlaying={!!recorder.uri && review.playingUri === recorder.uri}
-                        onRecord={record}
-                        onStop={recorder.stop}
-                        onCancel={recorder.cancel}
-                        onDelete={() => {
-                            review.stop();
-                            recorder.discard();
-                        }}
-                        onPlayRecording={() => {
-                            voice.stop();
-                            if (recorder.uri) review.play(recorder.uri);
-                        }}
-                        onStopPlayback={review.stop}
-                        onSend={send}
-                    />
+                ) : opening && state.error ? (
+                    <StepNav onBack={stepBefore} />
+                ) : (
+                    <>
+                        <RecordBar
+                            status={recorder.status}
+                            durationMs={recorder.durationMs}
+                            level={recorder.level}
+                            busyLabel={busyLabel}
+                            notice={
+                                recorder.failed
+                                    ? t("recordFailed")
+                                    : recorder.tooShort
+                                      ? t("tooShort")
+                                      : recorder.tooQuiet
+                                        ? t("tooQuiet")
+                                        : notice
+                            }
+                            reviewPlaying={!!recorder.uri && review.playingUri === recorder.uri}
+                            onRecord={record}
+                            onStop={recorder.stop}
+                            onCancel={recorder.cancel}
+                            onDelete={() => {
+                                review.stop();
+                                recorder.discard();
+                            }}
+                            onPlayRecording={() => {
+                                voice.stop();
+                                if (recorder.uri) review.play(recorder.uri);
+                            }}
+                            onStopPlayback={review.stop}
+                            onSend={send}
+                        />
+                        {/* The record bar fills the footer, so Back has a row of its own. */}
+                        <StepNav onBack={stepBefore} />
+                    </>
                 )}
             </View>
         </SafeAreaView>

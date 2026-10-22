@@ -43,6 +43,8 @@ type Props = {
     onSelfSubmit: (answer: Answer) => void;
     result: GradeResult | null;
     locked: boolean;
+    /** A second showing after a miss: its options in a new order. */
+    again?: boolean;
 };
 
 /**

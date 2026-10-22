@@ -19,8 +19,6 @@
 
 import { getLocales } from "expo-localization";
 
-import { getLocale } from "@/lib/i18n";
-
 export const FIRST_LANGUAGES = [
     "bn",
     "ta",
@@ -243,14 +241,12 @@ function fromDeviceTag(tag: string | null | undefined): TranslationLanguage | nu
 /**
  * Best guess to pre-select on the onboarding screen; null when there is none.
  *
- * The app's own locale comes first: a learner who already switched the app to
- * Tamil has told us something deliberate. Failing that we read the phone's
- * language list, which is usually right and costs the learner nothing when it
- * is not, since the screen still asks.
+ * Read from the phone's language list, which is usually right and costs the
+ * learner nothing when it is not, since the screen still asks. Not from the
+ * app's language: there is no setting for it any more, it follows whoever was
+ * signed in last, and on a phone shared in a dormitory that is someone else.
  */
 export function suggestFirstLanguage(): TranslationLanguage | null {
-    const locale = getLocale();
-    if (isTranslationLanguage(locale)) return locale;
     try {
         for (const device of getLocales()) {
             const match = fromDeviceTag(device.languageCode) ?? fromDeviceTag(device.languageTag);

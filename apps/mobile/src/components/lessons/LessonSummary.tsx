@@ -36,7 +36,9 @@ export function LessonSummary({
 }) {
     const t = useFirstLanguageInterface("lessons");
     const native = useFirstLanguageLocalized();
-    const perfect = summary.reviewed === 0;
+    // Every exercise right the first time. Nothing coming round again is not
+    // enough: a matching round with a wrong pairing in it passes, but not cleanly.
+    const perfect = summary.firstTryCorrect === summary.total;
 
     return (
         <View style={styles.container}>
@@ -49,11 +51,13 @@ export function LessonSummary({
                 fraction={speakingLeft ? 0.5 : 1}
                 done={!speakingLeft}
             >
-                <Text variant="caption">
-                    {perfect
-                        ? t("summaryPerfect")
-                        : t("summaryReviewed", { count: summary.reviewed })}
-                </Text>
+                {perfect || summary.reviewed > 0 ? (
+                    <Text variant="caption">
+                        {perfect
+                            ? t("summaryPerfect")
+                            : t("summaryReviewed", { count: summary.reviewed })}
+                    </Text>
+                ) : null}
                 {speakingLeft ? (
                     <View style={styles.stages}>
                         <LessonStages learn="done" speak="current" size="lg" />

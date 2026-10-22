@@ -38,3 +38,38 @@ export function seededShuffle<T>(items: readonly T[], seed: string): T[] {
     }
     return result;
 }
+
+/**
+ * A second ordering of the same items in which no item keeps the index it has
+ * in `first`, for two columns that must be matched across: if a pair ever sat
+ * on the same row, reading straight across would give it away. Tries suffixed
+ * seeds until the orders do not collide, which for a handful of items takes
+ * only a few draws.
+ */
+export function seededDerangement<T>(first: readonly T[], seed: string): T[] {
+    if (first.length < 2) return [...first];
+    for (let attempt = 0; attempt < 64; attempt++) {
+        const candidate = seededShuffle(first, `${seed}:${attempt}`);
+        if (candidate.every((item, i) => item !== first[i])) return candidate;
+    }
+    // Never reached for a handful of distinct items; moving every item along
+    // one place still leaves none on its own row.
+    return [...first.slice(1), first[0]];
+}
+
+/**
+ * The order an exercise's options are shown in. The first time it is `first`
+ * (as written, or a shuffle seeded by the exercise). Coming back after a miss
+ * no option keeps its place, so the retry is answered by knowing the answer
+ * and not by remembering where its tile was: a missed last exercise comes back
+ * straight after its own feedback. A shuffle that only had to differ somewhere
+ * left the right tile where it was about a third of the time.
+ */
+export function retryOrder<T>(first: readonly T[], seed: string, again: boolean): T[] {
+    if (!again || first.length < 2) return [...first];
+    const order = seededDerangement(first, `${seed}:again`);
+    if (order.some((item, i) => item !== first[i])) return order;
+    // Only possible when every option is the same word; turning it round is
+    // as different as it gets.
+    return [...first].reverse();
+}

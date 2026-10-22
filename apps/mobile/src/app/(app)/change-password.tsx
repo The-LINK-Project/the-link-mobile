@@ -3,10 +3,11 @@ import { Stack, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { FormError } from "@/components/auth/FormError";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { useTranslations } from "@/lib/i18n";
-import { colors, spacing } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
 // Change the Clerk password (accounts that have one — the Account screen
 // hides the entry point for Google-only sign-ins). Other sessions are kept:
@@ -69,11 +70,7 @@ export default function ChangePasswordScreen() {
                     />
                     <Text variant="caption">{t("passwordMinLength")}</Text>
 
-                    {error ? (
-                        <Text variant="caption" color={colors.destructive}>
-                            {error}
-                        </Text>
-                    ) : null}
+                    <FormError message={error} />
 
                     <Button
                         title={t("save")}

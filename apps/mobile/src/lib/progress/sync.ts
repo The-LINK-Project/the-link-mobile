@@ -13,17 +13,31 @@ import { useEffect } from "react";
 import { api } from "@/lib/api";
 
 import { readProgress } from "./model";
-import { getProgressData, mergeRemoteProgress, setProgressListener } from "./store";
+import {
+    acceptSavedProgress,
+    getProgressData,
+    mergeRemoteProgress,
+    progressOwner,
+    setProgressListener,
+} from "./store";
 
 let inFlight: Promise<void> | null = null;
 let again = false;
 
 async function syncOnce(): Promise<void> {
+    // A shared phone can change hands mid-sync: one learner signs out and the
+    // next signs in while the server is still answering. What it sent belongs
+    // to whoever was signed in when it was asked, and must not be folded into
+    // the next person's progress, nor saved to their account.
+    const owner = progressOwner();
     const remote = readProgress((await api.progress()).progress);
+    if (progressOwner() !== owner) return;
     const phoneKnowsMore = mergeRemoteProgress(remote);
     if (!phoneKnowsMore) return;
-    const saved = await api.saveProgress(getProgressData().progress);
-    mergeRemoteProgress(readProgress(saved.progress));
+    const sent = getProgressData().progress;
+    const saved = await api.saveProgress(sent);
+    if (progressOwner() !== owner) return;
+    acceptSavedProgress(sent, readProgress(saved.progress));
 }
 
 /** Safe to call at any time: calls made during a sync are folded into one more. */

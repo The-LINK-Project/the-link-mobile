@@ -1,4 +1,7 @@
 import {
+    keptDates,
+    foldStored,
+    asServerKeeps,
     continuePoint,
     doneToday,
     emptyData,
@@ -271,5 +274,72 @@ describe("the daily mix", () => {
         expect(doneToday(record, new Date(2026, 8, 17, 23, 59))).toBe(true);
         expect(doneToday(record, new Date(2026, 8, 18, 0, 1))).toBe(false);
         expect(doneToday(undefined)).toBe(false);
+    });
+});
+
+describe("dates the server moved back", () => {
+    const lesson = (completedAt: string, speakingAt?: string) => ({
+        completedAt,
+        runs: 1,
+        bestFirstTry: 5,
+        total: 6,
+        ...(speakingAt ? { speaking: { completedAt: speakingAt, said: 2, total: 3 } } : {}),
+    });
+    const AHEAD = "2026-10-25T04:00:00.000Z";
+    const SERVER = "2026-10-22T04:00:00.000Z";
+
+    it("notes only the dates the server kept earlier than they were sent", () => {
+        const sent = { lessons: { a: lesson(AHEAD, AHEAD), b: lesson(SERVER) } };
+        const saved = { lessons: { a: lesson(SERVER, SERVER), b: lesson(SERVER) } };
+        expect(keptDates(sent, saved)).toEqual({
+            a: { lesson: [AHEAD, SERVER], speaking: [AHEAD, SERVER] },
+        });
+    });
+
+    it("reads a moved date as the one the server kept, and nothing else", () => {
+        const kept = keptDates(
+            { lessons: { a: lesson(AHEAD) } },
+            { lessons: { a: lesson(SERVER) } },
+        );
+        expect(asServerKeeps({ lessons: { a: lesson(AHEAD) } }, kept)).toEqual({
+            lessons: { a: lesson(SERVER) },
+        });
+        // Finished again since: a new date is news, and is sent.
+        const later = "2026-10-26T04:00:00.000Z";
+        expect(asServerKeeps({ lessons: { a: lesson(later) } }, kept)).toEqual({
+            lessons: { a: lesson(later) },
+        });
+    });
+});
+
+describe("folding in progress that could only be read late", () => {
+    const record = (completedAt: string) => ({ completedAt, runs: 1, bestFirstTry: 5, total: 6 });
+    const run = (savedAt: string) => ({
+        fingerprint: "f",
+        locale: "en",
+        screenReader: false,
+        queue: ["x"],
+        position: 0,
+        records: {},
+        requeued: [],
+        savedAt,
+    });
+
+    it("merges what was finished, and keeps memory's runs over stored ones", () => {
+        const stored = {
+            ...emptyData(),
+            progress: { lessons: { a: record("2026-10-01T00:00:00.000Z") } },
+            runs: { b: run("2026-10-02T00:00:00.000Z"), c: run("2026-10-02T00:00:00.000Z") },
+        };
+        const current = {
+            ...emptyData(),
+            progress: { lessons: { c: record("2026-10-03T00:00:00.000Z") } },
+            runs: { b: run("2026-10-04T00:00:00.000Z") },
+        };
+        const folded = foldStored(stored, current);
+        expect(Object.keys(folded.progress.lessons).sort()).toEqual(["a", "c"]);
+        expect(folded.runs.b.savedAt).toBe("2026-10-04T00:00:00.000Z");
+        // Finished since that run was saved: it does not come back.
+        expect(folded.runs.c).toBeUndefined();
     });
 });

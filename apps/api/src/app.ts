@@ -84,6 +84,19 @@ function statusOf(error: unknown): number | undefined {
     return typeof status === "number" ? status : undefined;
 }
 
+/**
+ * Clerk's Backend API refusing this server rather than the learner. It answers
+ * 401 or 403, with its list of `errors` (`clerk_key_invalid` and the like),
+ * when our secret key is wrong, rotated or lacks access. The learner did
+ * nothing wrong: passed on as a 401 it would sign them out, and every sign-in
+ * after it would end the same way.
+ */
+function clerkRefusedServer(error: unknown): boolean {
+    const status = statusOf(error);
+    if (status !== 401 && status !== 403) return false;
+    return Array.isArray((error as { errors?: unknown }).errors);
+}
+
 /** Counts one request in the current minute for `key` and returns the running total. */
 async function countRequest(db: Db, key: string): Promise<number> {
     const window = Math.floor(Date.now() / 60000);
@@ -95,6 +108,21 @@ async function countRequest(db: Db, key: string): Promise<number> {
             { upsert: true, returnDocument: "after" },
         );
     return record?.count ?? 0;
+}
+
+/**
+ * `countRequest`, or null when the count could not be kept because the
+ * database is unreachable. Callers answer 503 rather than an unexplained 500.
+ */
+async function countRequestIn(db: () => Promise<Db>, key: string): Promise<number | null> {
+    try {
+        return await countRequest(await db(), key);
+    } catch (error) {
+        console.error("Rate limit check failed", {
+            message: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+    }
 }
 
 const defaults: Dependencies = {
@@ -266,7 +294,8 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             if (
                 (status && status >= 500) ||
                 status === 429 ||
-                VERIFIER_UNAVAILABLE.has(reason as string)
+                VERIFIER_UNAVAILABLE.has(reason as string) ||
+                clerkRefusedServer(error)
             ) {
                 throw new HttpError(503, "Sign-in service unavailable");
             }
@@ -280,7 +309,11 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
         }
         res.locals.userId = auth.userId;
 
-        if ((await countRequest(await dep.db(), auth.userId)) > REQUESTS_PER_MINUTE) {
+        // The count lives in MongoDB, so a database that cannot be reached
+        // fails here first: that is the service being unavailable, not a bare 500.
+        const requests = await countRequestIn(dep.db, auth.userId);
+        if (requests === null) throw new HttpError(503, "Database unavailable");
+        if (requests > REQUESTS_PER_MINUTE) {
             res.set("Retry-After", "60");
             throw new HttpError(429, "Please wait a minute and try again");
         }
@@ -388,7 +421,10 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
 
     app.post("/v1/tutor/turn", express.json({ limit: "3mb" }), async (req, res) => {
         const userId = res.locals.userId as string;
-        if ((await countRequest(await dep.db(), `tutor:${userId}`)) > TUTOR_TURNS_PER_MINUTE) {
+        // The limiter failing is the same "not available" as a tutor failure.
+        const turns = await countRequestIn(dep.db, `tutor:${userId}`);
+        if (turns === null) throw new HttpError(503, "The tutor is not available right now");
+        if (turns > TUTOR_TURNS_PER_MINUTE) {
             res.set("Retry-After", "60");
             throw new HttpError(429, "Please wait a minute and try again");
         }
@@ -444,9 +480,10 @@ export function createApp(overrides: Partial<Dependencies> = {}) {
             message = error.message;
         } else {
             // body-parser (413, 400) and Clerk's backend client both attach a
-            // numeric status. Upstream failures are reported as unavailable.
+            // numeric status. Upstream failures are reported as unavailable,
+            // and so is Clerk refusing this server's own key (see above).
             const upstream = statusOf(error);
-            if (upstream && upstream >= 500) {
+            if ((upstream && upstream >= 500) || clerkRefusedServer(error)) {
                 status = 503;
                 message = "Sign-in service unavailable";
             } else if (upstream && upstream >= 400) {

@@ -50,7 +50,8 @@ i18n.placeholder = /\{\{?(.*?)\}?\}/gm;
 
 // Map a device language tag to one of ours. Burmese is "my" and Filipino
 // "fil"/"tl" on the device but "bu"/"fi" in our catalogues.
-function detectDeviceLocale(): Locale {
+/** The phone's own language, where the app is written in it; English otherwise. */
+export function detectDeviceLocale(): Locale {
     const tag = getLocales()[0]?.languageCode?.toLowerCase();
     switch (tag) {
         case "bn":

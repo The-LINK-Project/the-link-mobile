@@ -10,8 +10,12 @@
  * - There are no hearts or energy. A wrong answer never blocks progress; the
  *   exercise is put back on the end of the queue instead. That is Duolingo's
  *   own spaced-repetition reasoning, minus the part that locks people out.
- * - Progress never moves backwards. The bar is `position / queue.length`, and
+ * - Progress never moves backwards. The bar is `reached / queue.length`, and
  *   the queue only ever grows, so a mistake slows the bar rather than undoing it.
+ * - A learner can step back to an exercise they have already answered, to look
+ *   at it again or try it again. That is practice, not a second attempt: the
+ *   grade still shows, but the records, the mistake queue and the progress bar
+ *   are left as they were, and Next walks forward again without answering.
  * - A run can be saved and picked up again. What is saved is the queue, the
  *   position and the records: never the answer being built, because an exercise
  *   keeps the look of its half-built answer to itself and would come back
@@ -55,7 +59,10 @@ export type SessionState = {
     screenReader: boolean;
     /** Exercise ids in the order they will be shown. Grows when a mistake is re-queued. */
     queue: string[];
+    /** The exercise on screen. Behind `reached` after the learner steps back. */
     position: number;
+    /** The first exercise not answered yet: how far the learner has really got. */
+    reached: number;
     phase: SessionPhase;
     /** The answer in progress, before the learner submits it. */
     draft: Answer | null;
@@ -107,9 +114,9 @@ export function snapshotOf(state: SessionState): RunSnapshot {
         locale: state.locale,
         screenReader: state.screenReader,
         queue: state.queue,
-        // Feedback on screen means that exercise is answered and recorded, so
-        // the learner comes back to the one after it.
-        position: state.phase === "graded" ? state.position + 1 : state.position,
+        // The first exercise not answered yet, so a learner who stepped back to
+        // look at an earlier one comes back to where they had got to.
+        position: state.reached,
         records: state.records,
         requeued: state.requeued,
     };
@@ -125,7 +132,8 @@ function isRunLanguage(value: string): value is Locale | FirstLanguage {
 /**
  * Pick a saved run back up, or null when it no longer fits: the lesson changed,
  * the run was already over, or a screen reader has been switched on since and
- * the queue holds picture exercises it cannot do.
+ * the queue holds picture exercises it cannot do. A run a change of language
+ * leaves nothing more in comes back finished.
  *
  * `language` is the one the learner reads now. When it is not the one the run
  * was built for, what they have answered stands and the rest of the queue is
@@ -147,7 +155,12 @@ export function restoreSession(
         const exercise = exercises.get(id);
         return exercise !== undefined && appliesToLearner(exercise, locale, screenReader);
     };
-    if (!saved.queue.every((id) => fits(id, saved.locale as Locale | FirstLanguage))) return null;
+    // What is already answered only has to still exist: a language change keeps
+    // it even where the new language would not offer it, so checking it again
+    // would throw the run away the next time the learner comes back.
+    if (!saved.queue.every((id) => exercises.has(id))) return null;
+    const ahead = saved.queue.slice(saved.position);
+    if (!ahead.every((id) => fits(id, saved.locale as Locale | FirstLanguage))) return null;
 
     let queue = saved.queue;
     if (language !== saved.locale) {
@@ -161,8 +174,6 @@ export function restoreSession(
                 screenReader,
             ),
         ];
-        // Nothing left that this learner can do: the run is over, not resumable.
-        if (saved.position >= queue.length) return null;
     }
     return {
         lesson,
@@ -170,7 +181,11 @@ export function restoreSession(
         screenReader,
         queue,
         position: saved.position,
-        phase: "answering",
+        reached: saved.position,
+        // Nothing left that this learner can do, when the new language drops
+        // what was still ahead: the run is over, and opens on its results so it
+        // is recorded as finished rather than thrown away.
+        phase: saved.position >= queue.length ? "finished" : "answering",
         draft: null,
         result: null,
         records: saved.records,
@@ -182,6 +197,7 @@ type SessionAction =
     | { type: "draft"; answer: Answer | null }
     | { type: "submit"; answer?: Answer }
     | { type: "next" }
+    | { type: "back" }
     | { type: "restart" };
 
 /**
@@ -252,12 +268,29 @@ export function initSession(
         screenReader,
         queue,
         position: 0,
+        reached: 0,
         phase: queue.length === 0 ? "finished" : "answering",
         draft: null,
         result: null,
         records: {},
         requeued: [],
     };
+}
+
+/**
+ * A finished lesson opened again on its last exercise, for stepping back from
+ * its results. A finished run is not kept, so the exercises are laid out
+ * afresh, and every one counts as answered: each can be looked at, tried again
+ * as practice, or passed with Next.
+ */
+export function reviewSession(
+    lesson: Lesson,
+    locale: Locale | FirstLanguage = getFirstLanguage() ?? getLocale(),
+    screenReader = false,
+): SessionState {
+    const session = initSession(lesson, locale, screenReader);
+    if (session.queue.length === 0) return session;
+    return { ...session, position: session.queue.length - 1, reached: session.queue.length };
 }
 
 function exerciseById(lesson: Lesson, id: string | undefined): Exercise | undefined {
@@ -279,12 +312,17 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
             if (!answer || !exercise) return state;
 
             const result = gradeAnswer(state.lesson, exercise, answer);
+
+            // Trying an earlier exercise again: show the grade, record nothing.
+            if (isRevisit(state)) return { ...state, phase: "graded", draft: answer, result };
+
             const previous = state.records[exercise.id];
             const attempts = (previous?.attempts ?? 0) + 1;
 
             return {
                 ...state,
                 phase: "graded",
+                reached: state.position + 1,
                 draft: answer,
                 result,
                 records: {
@@ -313,7 +351,10 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         }
 
         case "next": {
-            if (state.phase !== "graded") return state;
+            // An exercise already answered can be passed without answering it again.
+            if (state.phase !== "graded" && !(state.phase === "answering" && isRevisit(state))) {
+                return state;
+            }
             const position = state.position + 1;
             return {
                 ...state,
@@ -324,9 +365,25 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
             };
         }
 
+        case "back":
+            // From the results, this is the last exercise.
+            if (state.position === 0) return state;
+            return {
+                ...state,
+                position: state.position - 1,
+                phase: "answering",
+                draft: null,
+                result: null,
+            };
+
         case "restart":
             return initSession(state.lesson, state.locale, state.screenReader);
     }
+}
+
+/** Is the exercise on screen one the learner has already answered? */
+export function isRevisit(state: SessionState): boolean {
+    return state.position < state.reached;
 }
 
 export type SessionSummary = {
@@ -391,14 +448,18 @@ export function useLessonSession(
     screenReader = false,
     /** A run saved earlier, to continue instead of starting again. */
     saved?: RunSnapshot,
+    /** Step back through a finished lesson rather than run it (see `reviewSession`). */
+    review = false,
 ) {
     const [firstLanguage] = useFirstLanguage();
     const locale = firstLanguage ?? getLocale();
     // Initialised once; a later language change does not rebuild the queue.
     const [state, dispatch] = useReducer(
         sessionReducer,
-        { lesson, locale, screenReader, saved },
+        { lesson, locale, screenReader, saved, review },
         (initial) =>
+            (initial.review &&
+                reviewSession(initial.lesson, initial.locale, initial.screenReader)) ||
             (initial.saved &&
                 restoreSession(
                     initial.lesson,
@@ -423,13 +484,13 @@ export function useLessonSession(
          * A graded exercise counts as done while its feedback is still on
          * screen, so the bar moves on the answer rather than waiting for the
          * learner to press Continue. Re-queuing a missed exercise lengthens the
-         * queue at the same moment, which slows the bar but cannot rewind it.
+         * queue at the same moment, which slows the bar but cannot rewind it,
+         * and stepping back to an earlier exercise leaves it where it was.
          */
-        progress:
-            state.queue.length === 0
-                ? 1
-                : (state.position + (state.phase === "graded" ? 1 : 0)) / state.queue.length,
+        progress: state.queue.length === 0 ? 1 : state.reached / state.queue.length,
         isLastStep: state.position === state.queue.length - 1,
+        /** On an exercise already answered, after stepping back. */
+        revisiting: isRevisit(state),
         setDraft: useCallback((answer: Answer | null) => dispatch({ type: "draft", answer }), []),
         /**
          * Grade whatever the learner has built. Takes no arguments on purpose:
@@ -440,6 +501,7 @@ export function useLessonSession(
         /** Grade an answer handed over by a self-grading exercise such as matching. */
         submitAnswer: useCallback((answer: Answer) => dispatch({ type: "submit", answer }), []),
         next: useCallback(() => dispatch({ type: "next" }), []),
+        back: useCallback(() => dispatch({ type: "back" }), []),
         restart: useCallback(() => dispatch({ type: "restart" }), []),
         summary: useMemo(() => summarize(state), [state]),
     };

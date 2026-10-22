@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { Tile } from "@/components/lessons/Tile";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { vocabByIds } from "@/lib/lessons/lookup";
-import { seededShuffle } from "@/lib/lessons/shuffle";
+import { retryOrder, seededDerangement, seededShuffle } from "@/lib/lessons/shuffle";
 import type { MatchPairsExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
 
@@ -42,13 +42,19 @@ export function TapThePairs({
     lesson,
     onSelfSubmit,
     locked,
+    again = false,
 }: ExerciseProps<MatchPairsExercise>) {
     const localized = useFirstLanguageLocalized();
     const pairs = useMemo(() => vocabByIds(lesson, exercise.vocabIds), [lesson, exercise.vocabIds]);
-    const terms = useMemo(() => seededShuffle(pairs, `${exercise.id}-terms`), [pairs, exercise.id]);
+    const terms = useMemo(
+        () =>
+            retryOrder(seededShuffle(pairs, `${exercise.id}-terms`), `${exercise.id}-terms`, again),
+        [pairs, exercise.id, again],
+    );
+    // Never on the same row as its term, or reading straight across gives it away.
     const meanings = useMemo(
-        () => seededShuffle(pairs, `${exercise.id}-meanings`),
-        [pairs, exercise.id],
+        () => seededDerangement(terms, `${exercise.id}-meanings`),
+        [terms, exercise.id],
     );
 
     const [matched, setMatched] = useState<string[]>([]);

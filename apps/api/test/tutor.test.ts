@@ -517,3 +517,47 @@ test("tutor turns have their own, tighter per-minute limit", async () => {
         await close();
     }
 });
+
+test("a rate limiter that cannot reach its database answers 503, not a bare 500", async (t) => {
+    t.mock.method(console, "error", () => undefined);
+    const { model } = fakeModel();
+    // The general count before every route keeps working, and the tutor's own
+    // count fails, as when the database drops between the two.
+    let failTutorCount = true;
+    const db = {
+        collection: () => ({
+            async findOneAndUpdate(filter: { _id: string }) {
+                if (failTutorCount && filter._id.startsWith("tutor:")) {
+                    throw new Error("connection pool cleared");
+                }
+                return { _id: filter._id, count: 1 };
+            },
+        }),
+    } as unknown as Db;
+    let reachable = true;
+    const app = createApp({
+        db: async () => {
+            if (!reachable) throw new Error("Server selection timed out");
+            return db;
+        },
+        authenticate: signedIn,
+        tutor: () => model,
+    });
+    const { url, close } = await listen(app);
+    try {
+        const tutorDown = await postTurn(url, OPENING);
+        assert.equal(tutorDown.status, 503);
+        assert.deepEqual(await tutorDown.json(), { error: "The tutor is not available right now" });
+
+        failTutorCount = false;
+        reachable = false;
+        const allDown = await postTurn(url, OPENING);
+        assert.equal(allDown.status, 503);
+        assert.deepEqual(await allDown.json(), { error: "Database unavailable" });
+
+        reachable = true;
+        assert.equal((await postTurn(url, OPENING)).status, 200);
+    } finally {
+        await close();
+    }
+});

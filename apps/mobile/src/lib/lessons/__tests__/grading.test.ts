@@ -179,18 +179,16 @@ describe("gradeAnswer", () => {
     });
 
     it("passes a completed matching exercise and flags a messy run", () => {
-        expect(gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 0 })).toMatchObject({
-            correct: true,
-            accepted: false,
-            firstPassClean: true,
-        });
+        const clean = gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 0 });
+        expect(clean).toMatchObject({ correct: true, firstPassClean: true });
+        expect(clean.accepted).toBeFalsy();
         // Still a pass: a wrong pairing is corrected in the moment. But it was
-        // not a clean first pass, so the summary must not count it as one.
-        expect(gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 2 })).toMatchObject({
-            correct: true,
-            accepted: true,
-            firstPassClean: false,
-        });
+        // not a clean first pass, so the summary must not count it as one. Nor
+        // is it "accepted", which says "Good, we understand you" and is for a
+        // sentence put another way: a matching round has no other way.
+        const messy = gradeAnswer(mrtBasics, pairs, { kind: "pairs", wrongAttempts: 2 });
+        expect(messy).toMatchObject({ correct: true, firstPassClean: false });
+        expect(messy.accepted).toBeFalsy();
     });
 
     it("labels the listening reveal as the audio rather than a rephrasing", () => {

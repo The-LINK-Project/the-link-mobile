@@ -24,8 +24,22 @@ export type MobileUser = {
     /** The language the learner reads best, and when they last chose it. */
     firstLanguage?: FirstLanguage;
     firstLanguageUpdatedAt?: Date;
+    /**
+     * Times from the future a phone has sent, and the moment each was first
+     * heard (see `saveFirstLanguage`). Only the last few: a phone resends the
+     * stamp of the choice it is holding, not every one it ever made.
+     */
+    firstLanguageClamped?: ClampedStamp[];
 };
 export type FirstLanguageChoice = { firstLanguage: FirstLanguage; firstLanguageUpdatedAt: Date };
+
+/** A phone's timestamp from the future, and when the server first heard it. */
+type ClampedStamp = { sentAt: string; at: Date };
+
+/** A choice as sent: `fromFuture` is the phone's own stamp when its clock ran ahead. */
+export type SentFirstLanguageChoice = FirstLanguageChoice & { fromFuture?: string };
+
+const CLAMPED_KEPT = 5;
 export function profile(identity: Identity) {
     return {
         clerkId: identity.id,
@@ -54,17 +68,26 @@ export async function syncUser(
             { $set: { ...data, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
             { upsert: true, returnDocument: "after", includeResultMetadata: true },
         );
-        return { user: result.value, created: !result.lastErrorObject?.updatedExisting };
+        return {
+            user: result.value && withoutBookkeeping(result.value),
+            created: !result.lastErrorObject?.updatedExisting,
+        };
     } catch (error) {
         // A deletion tombstone wins over an in-flight profile read or late webhook.
         if ((error as { code?: number }).code === 11000) {
             const existing = await users.findOne({ clerkId: identity.id });
             if (existing?.deletedAt) return { user: null, created: false };
-            if (existing) return { user: existing, created: false };
+            if (existing) return { user: withoutBookkeeping(existing), created: false };
         }
         throw error;
     }
 }
+/** The record as the learner's phone sees it: the server's own notes left out. */
+function withoutBookkeeping<T extends MobileUser>(user: T): T {
+    const { firstLanguageClamped: _notes, ...rest } = user;
+    return rest as T;
+}
+
 export function firstLanguageOf(user: MobileUser | null): FirstLanguageChoice | null {
     return user?.firstLanguage && user.firstLanguageUpdatedAt
         ? {
@@ -78,12 +101,13 @@ export function firstLanguageOf(user: MobileUser | null): FirstLanguageChoice | 
  * The choice a phone sent, or why it was refused.
  *
  * A phone's clock is its own. One running fast would otherwise win every later
- * write from every other device, so a time in the future is taken as now.
+ * write from every other device, so a time in the future is taken as now, and
+ * the phone's own stamp is kept alongside so a resend of it can be recognised.
  */
 export function parseFirstLanguageChoice(
     body: unknown,
     now: number = Date.now(),
-): { ok: true; value: FirstLanguageChoice } | { ok: false; error: string } {
+): { ok: true; value: SentFirstLanguageChoice } | { ok: false; error: string } {
     const fail = (error: string) => ({ ok: false as const, error });
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
         return fail("Invalid request");
@@ -93,10 +117,12 @@ export function parseFirstLanguageChoice(
     if (typeof updatedAt !== "string" || updatedAt.length > 40) return fail("Invalid updatedAt");
     const time = Date.parse(updatedAt);
     if (Number.isNaN(time)) return fail("Invalid updatedAt");
-    return {
-        ok: true,
-        value: { firstLanguage: language, firstLanguageUpdatedAt: new Date(Math.min(time, now)) },
+    const value: SentFirstLanguageChoice = {
+        firstLanguage: language,
+        firstLanguageUpdatedAt: new Date(Math.min(time, now)),
     };
+    if (time > now) value.fromFuture = new Date(time).toISOString();
+    return { ok: true, value };
 }
 
 /**
@@ -108,13 +134,31 @@ export function parseFirstLanguageChoice(
  * record here, but a deletion tombstone holds the unique `clerkId`, so the
  * insert that would resurrect it comes back as a duplicate key, the same way
  * `syncUser` sees it. Null means the account is gone.
+ *
+ * A time from the future is dated to the moment the server first heard it, and
+ * keeps that date when the same stamp comes again. A phone running two days
+ * fast that sends its choice twice (the answer to the first send was lost)
+ * would otherwise be dated "now" both times, and its second send would beat a
+ * choice the learner made on another phone in between.
  */
 export async function saveFirstLanguage(
     db: Db,
     clerkId: string,
-    choice: FirstLanguageChoice,
+    sent: SentFirstLanguageChoice,
 ): Promise<FirstLanguageChoice | null> {
     const users = db.collection<MobileUser>("users");
+    const { fromFuture, ...dated } = sent;
+    let choice: FirstLanguageChoice = dated;
+    let clamped: ClampedStamp[] | undefined;
+    if (fromFuture) {
+        const kept = (await users.findOne({ clerkId }))?.firstLanguageClamped ?? [];
+        const heard = kept.find((stamp) => stamp.sentAt === fromFuture);
+        if (heard) choice = { ...choice, firstLanguageUpdatedAt: heard.at };
+        else
+            clamped = [...kept, { sentAt: fromFuture, at: choice.firstLanguageUpdatedAt }].slice(
+                -CLAMPED_KEPT,
+            );
+    }
     try {
         const written = await users.findOneAndUpdate(
             {
@@ -125,7 +169,10 @@ export async function saveFirstLanguage(
                     { firstLanguageUpdatedAt: { $lt: choice.firstLanguageUpdatedAt } },
                 ],
             },
-            { $set: { ...choice }, $setOnInsert: { createdAt: new Date() } },
+            {
+                $set: { ...choice, ...(clamped ? { firstLanguageClamped: clamped } : {}) },
+                $setOnInsert: { createdAt: new Date() },
+            },
             { upsert: true, returnDocument: "after" },
         );
         const saved = firstLanguageOf(written);
@@ -158,6 +205,7 @@ export async function deleteMobileUser(db: Db, clerkId: string) {
                 updatedAt: "",
                 firstLanguage: "",
                 firstLanguageUpdatedAt: "",
+                firstLanguageClamped: "",
             },
         },
         { upsert: true },

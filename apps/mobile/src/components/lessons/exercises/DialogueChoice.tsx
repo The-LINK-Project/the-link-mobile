@@ -7,7 +7,7 @@ import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { dialogueReplies } from "@/lib/lessons/lookup";
-import { seededShuffle } from "@/lib/lessons/shuffle";
+import { retryOrder, seededShuffle } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
 import type { DialogueChoiceExercise } from "@/lib/lessons/types";
 import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
@@ -30,14 +30,20 @@ export function DialogueChoice({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<DialogueChoiceExercise>) {
     const t = useFirstLanguageInterface("lessons");
     const localized = useFirstLanguageLocalized();
     const { speak, speaking } = useSpeech();
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;
     const replies = useMemo(
-        () => seededShuffle(dialogueReplies(lesson, exercise), exercise.id),
-        [lesson, exercise],
+        () =>
+            retryOrder(
+                seededShuffle(dialogueReplies(lesson, exercise), exercise.id),
+                exercise.id,
+                again,
+            ),
+        [lesson, exercise, again],
     );
 
     return (

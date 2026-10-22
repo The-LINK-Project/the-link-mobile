@@ -16,21 +16,41 @@ import i18n, { setLocale } from "@/lib/i18n";
 
 jest.mock("expo-image", () => ({ Image: () => null }));
 
+const mockDevice: { languages: string[] } = { languages: ["en"] };
+jest.mock("expo-localization", () => ({
+    getLocales: () =>
+        mockDevice.languages.map((tag) => ({ languageCode: tag.split("-")[0], languageTag: tag })),
+}));
+
 /** The onboarding copy in whatever language the screen is showing. */
 const label = (key: string) => i18n.t(`mobile.firstLanguage.${key}`);
 
 beforeEach(async () => {
     resetFirstLanguageForTests();
+    mockDevice.languages = ["en"];
     await act(() => setLocale("en"));
 });
 
-it("asks nothing twice: the app's own language starts the list chosen", async () => {
-    // A learner who already put the app into Tamil has told us something.
-    await act(() => setLocale("ta"));
+it("starts the list on the phone's own language", async () => {
+    mockDevice.languages = ["ta-IN"];
     render(<ChooseLanguageScreen />);
 
     expect(screen.getByLabelText("தமிழ், Tamil").props.accessibilityState.checked).toBe(true);
-    expect(screen.getByLabelText(label("continue")).props.accessibilityState.disabled).toBe(false);
+    // The question is asked in the language it starts on, Continue included.
+    expect(
+        screen.getByLabelText(FIRST_LANGUAGE_ONBOARDING_COPY.ta.continue).props.accessibilityState
+            .disabled,
+    ).toBe(false);
+});
+
+it("does not start on the language the last learner left the app in", async () => {
+    // Bengali from whoever had the phone before; the phone itself is in Tamil.
+    await act(() => setLocale("bn"));
+    mockDevice.languages = ["ta-IN"];
+    render(<ChooseLanguageScreen />);
+
+    expect(screen.getByLabelText("বাংলা, Bengali").props.accessibilityState.checked).toBe(false);
+    expect(screen.getByLabelText("தமிழ், Tamil").props.accessibilityState.checked).toBe(true);
 });
 
 it("waits for an answer before it lets the learner on", async () => {

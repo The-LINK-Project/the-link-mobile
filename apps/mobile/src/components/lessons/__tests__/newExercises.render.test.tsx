@@ -6,7 +6,7 @@
  * grader expects, and nothing gives the answer away before it is graded.
  */
 
-import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { DialogueChoice } from "@/components/lessons/exercises/DialogueChoice";
 import { ListenArrangeWords } from "@/components/lessons/exercises/ListenArrangeWords";
@@ -14,6 +14,7 @@ import { PictureToWord } from "@/components/lessons/exercises/PictureToWord";
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
 import { phraseById } from "@/lib/lessons/lookup";
+import { recordingFor } from "@/lib/lessons/speech";
 import type {
     DialogueChoiceExercise,
     ListenArrangeWordsExercise,
@@ -84,7 +85,10 @@ describe("ListenArrangeWords", () => {
         expect(screen.getByText("Tap the words you heard")).toBeTruthy();
 
         await user.press(screen.getByLabelText("Listen"));
-        expect(Speech.speak).toHaveBeenCalledWith(sentence, expect.anything());
+        await waitFor(() =>
+            expect(jest.requireMock("expo-audio").played).toEqual([recordingFor(sentence)]),
+        );
+        expect(Speech.speak).not.toHaveBeenCalled();
     });
 
     it("reports placed tiles as a token answer", async () => {

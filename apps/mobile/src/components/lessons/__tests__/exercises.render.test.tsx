@@ -7,7 +7,7 @@
  * while every exercise was broken. Logic tests alone cannot see that.
  */
 
-import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { ArrangeWords } from "@/components/lessons/exercises/ArrangeWords";
 import { FillBlank } from "@/components/lessons/exercises/FillBlank";
@@ -18,6 +18,7 @@ import { LessonFooter } from "@/components/lessons/LessonFooter";
 import { resetFirstLanguageForTests } from "@/lib/firstLanguage/store";
 import { setLocale } from "@/lib/i18n";
 import { mrtBasics } from "@/lib/lessons/data/mrt-basics";
+import { recordingFor } from "@/lib/lessons/speech";
 import type {
     ArrangeWordsExercise,
     FillBlankExercise,
@@ -129,17 +130,16 @@ describe("ListenChooseMeaning", () => {
         expect(screen.queryByText(listenExercise.audioText)).toBeNull();
     });
 
-    it("speaks the phrase when the play button is pressed", async () => {
+    it("plays the phrase in the tutor's voice when the play button is pressed", async () => {
         const user = userEvent.setup();
+        const audio = jest.requireMock("expo-audio");
         const Speech = jest.requireMock("expo-speech");
         render(<ListenChooseMeaning exercise={listenExercise} {...baseProps()} />);
 
         await user.press(screen.getByLabelText("Listen"));
 
-        expect(Speech.speak).toHaveBeenCalledWith(
-            listenExercise.audioText,
-            expect.objectContaining({ rate: expect.any(Number) }),
-        );
+        await waitFor(() => expect(audio.played).toEqual([recordingFor(listenExercise.audioText)]));
+        expect(Speech.speak).not.toHaveBeenCalled();
     });
 
     it("reports the chosen option as a draft answer", async () => {

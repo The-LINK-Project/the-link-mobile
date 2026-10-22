@@ -85,8 +85,14 @@ it("offers English, and stops promising a translation nobody will get", async ()
 });
 
 describe("the rest of the app", () => {
-    function Follower() {
-        useLocaleFollowsFirstLanguage();
+    function Follower({
+        userId = "user_a",
+        ready = true,
+    }: {
+        userId?: string | null;
+        ready?: boolean;
+    }) {
+        useLocaleFollowsFirstLanguage(userId, ready);
         return null;
     }
 
@@ -97,6 +103,37 @@ describe("the rest of the app", () => {
         // No Chinese catalogue: Privacy and About fall back to English rather
         // than staying in the Tamil the last choice left behind.
         await act(() => setFirstLanguage("zh"));
+        expect(i18n.locale).toBe("en");
+    });
+
+    // A phone in a dormitory changes hands. Signed out, the app is in the
+    // phone's own language (English here, see jest.setup), not the last
+    // learner's, so the next person can read the sign-in screen.
+    it("goes back to the phone's language when the learner signs out", async () => {
+        await act(() => setFirstLanguage("bn"));
+        const { rerender } = render(<Follower />);
+        expect(i18n.locale).toBe("bn");
+
+        await act(async () => {
+            rerender(<Follower userId={null} />);
+        });
+        expect(i18n.locale).toBe("en");
+    });
+
+    it("waits for the saved language to be read before changing anything", async () => {
+        await act(() => setLocale("ta"));
+        const { rerender } = render(<Follower userId={null} ready={false} />);
+        expect(i18n.locale).toBe("ta");
+
+        await act(async () => {
+            rerender(<Follower userId={null} ready />);
+        });
+        expect(i18n.locale).toBe("en");
+    });
+
+    it("leaves a new learner's screens in the phone's language until they choose", async () => {
+        await act(() => setLocale("en"));
+        render(<Follower userId="user_b" />);
         expect(i18n.locale).toBe("en");
     });
 });
