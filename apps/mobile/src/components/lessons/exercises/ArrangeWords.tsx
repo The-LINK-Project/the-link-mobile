@@ -8,7 +8,7 @@ import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { exercisePicture, phraseById } from "@/lib/lessons/lookup";
 import { spacing } from "@/lib/theme";
-import { seededShuffle } from "@/lib/lessons/shuffle";
+import { retryOrder, seededShuffle } from "@/lib/lessons/shuffle";
 import type { ArrangeWordsExercise } from "@/lib/lessons/types";
 
 import { tokenIndices, type ExerciseProps } from "./shared";
@@ -34,13 +34,14 @@ export function ArrangeWords({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<ArrangeWordsExercise>) {
     const t = useFirstLanguageInterface("lessons");
     const localized = useFirstLanguageLocalized();
     const phrase = phraseById(lesson, exercise.phraseId);
     const tokens = useMemo(
-        () => seededShuffle(exercise.tokens, exercise.id),
-        [exercise.id, exercise.tokens],
+        () => retryOrder(seededShuffle(exercise.tokens, exercise.id), exercise.id, again),
+        [exercise.id, exercise.tokens, again],
     );
     const placed = draft?.kind === "tokens" ? tokenIndices(draft.tokens, tokens) : [];
 

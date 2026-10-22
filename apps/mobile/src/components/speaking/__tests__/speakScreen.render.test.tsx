@@ -15,9 +15,13 @@ import { api, ApiError, type TutorTurnRequest } from "@/lib/api";
 import { FIRST_LANGUAGE_LABELS, TRANSLATION_LANGUAGES } from "@/lib/firstLanguage/languages";
 import { resetFirstLanguageForTests, setFirstLanguage } from "@/lib/firstLanguage/store";
 import i18n, { setLocale } from "@/lib/i18n";
+import { getProgressData } from "@/lib/progress/store";
+import { quietEveryone } from "@/lib/speaking/floor";
 
 /** A speaking-practice string in whatever language the screen is showing. */
 const label = (key: string) => i18n.t(`mobile.speaking.${key}`);
+/** The same, for the lesson strings speaking shares, such as Back. */
+const lessonLabel = (key: string) => i18n.t(`mobile.lessons.${key}`);
 
 const RECORDING = "file:///cache/recording.wav";
 const mockFiles = new Set<string>();
@@ -29,9 +33,15 @@ const mockPlayer = {
     setPlaybackRate: jest.fn(),
 };
 
+const mockRouter = {
+    back: jest.fn(),
+    push: jest.fn(),
+    replace: jest.fn(),
+    canGoBack: jest.fn(() => true),
+};
 jest.mock("expo-router", () => ({
     useLocalSearchParams: () => ({ id: "mrt-basics" }),
-    useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+    useRouter: () => mockRouter,
     Stack: { Screen: () => null },
 }));
 
@@ -53,6 +63,13 @@ jest.mock("expo-audio", () => {
         useAudioPlayer: () => mockPlayer,
         useAudioPlayerStatus: () => ({ playing: false, didJustFinish: false }),
     };
+});
+
+// Spied on, so a test can see the microphone quiet the rest of the app first.
+jest.mock("@/lib/speaking/floor", () => {
+    const actual =
+        jest.requireActual<typeof import("@/lib/speaking/floor")>("@/lib/speaking/floor");
+    return { ...actual, quietEveryone: jest.fn(actual.quietEveryone) };
 });
 
 jest.mock("expo-file-system", () => ({
@@ -321,6 +338,54 @@ describe("speaking practice", () => {
         await user.press(screen.getByLabelText(label("cancel")));
     });
 
+    it("plays a reply that came in while the app was away once the learner is back", async () => {
+        withScreenReader(false);
+        const changes: ((state: string) => void)[] = [];
+        jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+            changes.push(listener as (state: string) => void);
+            return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
+        });
+        const moveTo = (state: "active" | "background") =>
+            act(() => {
+                AppState.currentState = state;
+                changes.forEach((listener) => listener(state));
+            });
+        let resolve!: (response: typeof OPENING) => void;
+        tutorTurn.mockReturnValueOnce(
+            new Promise((done) => {
+                resolve = done;
+            }),
+        );
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+        await user.press(await screen.findByText(label("start")));
+
+        // Away while the tutor is thinking: nothing plays to an empty room.
+        moveTo("background");
+        await act(async () => resolve(OPENING));
+        await screen.findByText(OPENING.reply);
+        expect(mockPlayer.play).not.toHaveBeenCalled();
+
+        // Back: the reply plays then, once.
+        moveTo("active");
+        await waitFor(() => expect(mockPlayer.play).toHaveBeenCalledTimes(1));
+        moveTo("background");
+        moveTo("active");
+        await act(async () => undefined);
+        expect(mockPlayer.play).toHaveBeenCalledTimes(1);
+    });
+
+    it("quiets every other voice, a word from the translation bubble too, before recording", async () => {
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        const user = await startConversation();
+        (quietEveryone as jest.Mock).mockClear();
+        await user.press(screen.getByLabelText(label("record")));
+        await screen.findByLabelText(label("stop"));
+        expect(quietEveryone).toHaveBeenCalled();
+        await user.press(screen.getByLabelText(label("cancel")));
+    });
+
     it("leaves the tutor's voice to the learner under a screen reader", async () => {
         withScreenReader(true);
         tutorTurn.mockResolvedValueOnce(OPENING);
@@ -328,5 +393,65 @@ describe("speaking practice", () => {
 
         expect(mockPlayer.play).not.toHaveBeenCalled();
         expect(screen.getByLabelText(label("play"))).toBeTruthy();
+    });
+});
+
+describe("going back from speaking practice", () => {
+    /** Speaking took the lesson's place, so the lesson takes speaking's. */
+    const toLesson = { pathname: "/lesson/[id]", params: { id: "mrt-basics" } };
+
+    it("goes back to the lesson from the speaking page", async () => {
+        withScreenReader(false);
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+
+        await screen.findByText(label("start"));
+        await user.press(screen.getByText(lessonLabel("back")));
+        expect(mockRouter.replace).toHaveBeenCalledWith(toLesson);
+        expect(mockRouter.back).not.toHaveBeenCalled();
+        expect(tutorTurn).not.toHaveBeenCalled();
+    });
+
+    it("goes back to the lesson from the talk, and keeps the talk", async () => {
+        withScreenReader(false);
+        tutorTurn.mockResolvedValueOnce(OPENING);
+        const user = await startConversation();
+
+        // Beside the record bar, not in place of it.
+        expect(screen.getByLabelText(label("record"))).toBeTruthy();
+        await user.press(screen.getByText(lessonLabel("back")));
+        expect(mockRouter.replace).toHaveBeenCalledWith(toLesson);
+        expect(getProgressData().talks["mrt-basics"]).toBeDefined();
+    });
+
+    it("goes back to the lesson when the tutor could not open", async () => {
+        withScreenReader(false);
+        tutorTurn.mockRejectedValueOnce(new ApiError(0, "Network error"));
+        const user = userEvent.setup();
+        render(<SpeakScreen />);
+        await user.press(await screen.findByText(label("start")));
+
+        await screen.findByText(label("retry"));
+        await user.press(screen.getByText(lessonLabel("back")));
+        expect(mockRouter.replace).toHaveBeenCalledWith(toLesson);
+    });
+
+    it("goes back from the talk's results to the talk", async () => {
+        withScreenReader(false);
+        tutorTurn
+            .mockResolvedValueOnce(OPENING)
+            .mockResolvedValueOnce({ ...answer("met"), finished: true });
+        const user = await startConversation();
+
+        await recordAndStop(user);
+        await user.press(await screen.findByLabelText(label("send")));
+        await user.press(await screen.findByText(label("seeResults")));
+        expect(await screen.findByText(label("again"))).toBeTruthy();
+
+        await user.press(screen.getByText(lessonLabel("back")));
+        // The talk again, with the way on to its results.
+        expect(await screen.findByText(label("seeResults"))).toBeTruthy();
+        expect(screen.getByText(OPENING.reply)).toBeTruthy();
+        expect(mockRouter.replace).not.toHaveBeenCalled();
     });
 });

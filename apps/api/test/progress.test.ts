@@ -92,8 +92,6 @@ test("a progress request with anything wrong in it is refused whole", () => {
         lessons({ "mrt-basics": { ...good, bestFirstTry: 10 } }),
         lessons({ "mrt-basics": { ...good, total: 1.5 } }),
         lessons({ "mrt-basics": { ...good, completedAt: "yesterday" } }),
-        // A finish date far in the future would win every later merge.
-        lessons({ "mrt-basics": { ...good, completedAt: "2099-01-01T00:00:00.000Z" } }),
         lessons({
             "mrt-basics": {
                 ...good,
@@ -114,6 +112,44 @@ test("a progress request with anything wrong in it is refused whole", () => {
         "runs",
         "total",
     ]);
+});
+
+test("a phone whose clock is days fast keeps syncing, its dates brought back to now", () => {
+    // Refusing the date refused the whole save, and the phone keeps that date,
+    // so one lesson finished on a fast clock stopped this learner's progress
+    // reaching the server for good. Kept as written, a finish date far in the
+    // future would win every later merge, so it becomes now.
+    const now = Date.parse("2026-09-17T00:00:00.000Z");
+    const future = "2026-09-20T00:00:00.000Z";
+    const parsed = parseProgress(
+        {
+            progress: {
+                lessons: {
+                    "mrt-basics": record(future, 5, {
+                        speaking: { completedAt: "2099-01-01T00:00:00.000Z", said: 3, total: 4 },
+                    }),
+                    "hawker-food": record("2026-09-16T10:00:00.000Z", 4),
+                },
+            },
+        },
+        now,
+    );
+    assert.ok(parsed.ok);
+    const lesson = parsed.value.lessons["mrt-basics"];
+    assert.equal(lesson.completedAt, new Date(now).toISOString());
+    assert.equal(lesson.speaking?.completedAt, new Date(now).toISOString());
+    assert.equal(parsed.value.lessons["hawker-food"].completedAt, "2026-09-16T10:00:00.000Z");
+});
+
+test("a date only a little ahead, as a phone's clock may be, is kept as written", () => {
+    const now = Date.parse("2026-09-17T00:00:00.000Z");
+    const ahead = "2026-09-17T01:00:00.000Z";
+    const parsed = parseProgress(
+        { progress: { lessons: { "mrt-basics": record(ahead, 5) } } },
+        now,
+    );
+    assert.ok(parsed.ok);
+    assert.equal(parsed.value.lessons["mrt-basics"].completedAt, ahead);
 });
 
 test("progress is stored per learner, merged on write, and closed to a deleted account", async () => {

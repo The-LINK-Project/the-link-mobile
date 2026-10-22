@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Tile } from "@/components/lessons/Tile";
 import { Text } from "@/components/ui";
+import { retryOrder } from "@/lib/lessons/shuffle";
 import type { FillBlankExercise } from "@/lib/lessons/types";
 import { colors, radius, spacing } from "@/lib/theme";
 
@@ -20,7 +22,12 @@ export function FillBlank({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<FillBlankExercise>) {
+    const choices = useMemo(
+        () => retryOrder(exercise.choices, exercise.id, again),
+        [exercise, again],
+    );
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;
     const chosenLabel = exercise.choices.find((choice) => choice.id === chosen)?.label;
 
@@ -31,7 +38,13 @@ export function FillBlank({
             <Text variant="heading" style={styles.sentence}>
                 {exercise.sentence.map((part, index) =>
                     part === null ? (
-                        <Text key={`blank-${index}`} variant="heading" style={styles.blank}>
+                        <Text
+                            key={`blank-${index}`}
+                            variant="heading"
+                            // A missed word is marked as missed, not left in the
+                            // brand green that reads as right.
+                            style={[styles.blank, result && !result.correct && styles.missed]}
+                        >
                             {chosenLabel ? ` ${chosenLabel} ` : "        "}
                         </Text>
                     ) : (
@@ -43,7 +56,7 @@ export function FillBlank({
             </Text>
 
             <View style={styles.choices}>
-                {exercise.choices.map((choice) => {
+                {choices.map((choice) => {
                     const isChosen = chosen === choice.id;
                     const isAnswer = choice.id === exercise.correctChoiceId;
                     return (
@@ -74,6 +87,11 @@ const styles = StyleSheet.create({
         textDecorationColor: colors.border,
         color: colors.primaryDark,
         borderRadius: radius.sm,
+    },
+    missed: {
+        textDecorationLine: "underline line-through",
+        textDecorationColor: colors.destructive,
+        color: colors.destructive,
     },
     choices: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
 });

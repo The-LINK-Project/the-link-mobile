@@ -12,8 +12,8 @@ import {
 } from "react-native";
 
 import { Text } from "@/components/ui";
+import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
-import { useTranslations } from "@/lib/i18n";
 import { useSpeech } from "@/lib/lessons/speech";
 import { lookupTranslation, type WordTranslation } from "@/lib/translate/lookup";
 import type { Popup } from "@/lib/translate/popupStore";
@@ -62,7 +62,8 @@ export function WordBubble({
     reduceMotion,
     onTouchInside,
 }: Props) {
-    const t = useTranslations("mobile.translate");
+    // The learner's own language, all fifteen of them, like the meaning above it.
+    const t = useFirstLanguageInterface("translate");
     const { speak, speaking } = useSpeech();
     const { word, context } = popup;
 

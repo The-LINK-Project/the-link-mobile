@@ -11,6 +11,7 @@ import {
     resetFirstLanguageForTests,
     setFirstLanguage,
     setFirstLanguageListener,
+    settleSentFirstLanguage,
     unloadFirstLanguage,
 } from "../store";
 
@@ -168,5 +169,129 @@ describe("merging with the server", () => {
         await loading;
 
         expect(getFirstLanguage()).toBe("ta");
+    });
+});
+
+// A phone whose clock runs fast dates its choice in the future. The server
+// takes that as the moment it first heard it; the phone has to come round to
+// that date too, or it pushes the same choice for ever and beats later ones.
+describe("a phone whose clock runs fast", () => {
+    beforeEach(() => jest.useFakeTimers({ now: Date.parse("2026-10-24T09:00:00.000Z") }));
+    afterEach(() => jest.useRealTimers());
+    const heard = "2026-10-22T09:00:00.000Z";
+
+    it("takes the server's date for the language they agree on, and has nothing to push", async () => {
+        await loadFirstLanguage("user_a");
+        await setFirstLanguage("bn");
+
+        expect(mergeRemoteFirstLanguage({ language: "bn", updatedAt: heard })).toBe(false);
+        expect(getFirstLanguageChoice()).toEqual({ language: "bn", updatedAt: heard });
+    });
+
+    it("then gives way to a later choice made on another phone", async () => {
+        await loadFirstLanguage("user_a");
+        await setFirstLanguage("bn");
+        mergeRemoteFirstLanguage({ language: "bn", updatedAt: heard });
+
+        const tamil = { language: "ta" as const, updatedAt: "2026-10-22T10:00:00.000Z" };
+        expect(mergeRemoteFirstLanguage(tamil)).toBe(false);
+        expect(getFirstLanguageChoice()).toEqual(tamil);
+    });
+
+    it("takes the server's answer to what it sent, whatever its own dates say", async () => {
+        await loadFirstLanguage("user_a");
+        await setFirstLanguage("bn");
+        const sent = getFirstLanguageChoice()!;
+
+        // Another phone chose Tamil, and the server kept it over this send.
+        const kept = { language: "ta" as const, updatedAt: "2026-10-22T10:00:00.000Z" };
+        settleSentFirstLanguage(sent, kept);
+        expect(getFirstLanguageChoice()).toEqual(kept);
+    });
+
+    it("keeps a choice made while the answer was on its way", async () => {
+        await loadFirstLanguage("user_a");
+        await setFirstLanguage("bn");
+        const sent = getFirstLanguageChoice()!;
+        jest.advanceTimersByTime(1000);
+        await setFirstLanguage("hi");
+
+        settleSentFirstLanguage(sent, { language: "bn", updatedAt: heard });
+        expect(getFirstLanguage()).toBe("hi");
+    });
+});
+
+// A read that fails (Android's "database is locked", a full disk) is not the
+// same as nothing stored. Writing after it would replace the learner's choice.
+describe("storage that will not be read", () => {
+    beforeEach(() => resetFirstLanguageForTests());
+    const KEY = "link.firstLanguage.v1.user_a";
+    const stored = { language: "bn", updatedAt: LONG_AGO };
+
+    /** The next `times` reads fail; `mockRestore` puts the real ones back. */
+    function failReads(times: number) {
+        // The storage mock's getItem is itself a jest.fn, so spying on it hands
+        // back that same function: keep its implementation to put back.
+        const getItem = AsyncStorage.getItem as jest.Mock;
+        const real = getItem.getMockImplementation()!;
+        let left = times;
+        getItem.mockImplementation((key: string) => {
+            if (left > 0) {
+                left--;
+                return Promise.reject(new Error("database is locked"));
+            }
+            return real(key);
+        });
+        return { mockRestore: () => getItem.mockImplementation(real) };
+    }
+
+    it("tries the read again once, and then has the choice", async () => {
+        await AsyncStorage.setItem(KEY, JSON.stringify(stored));
+        const reads = failReads(1);
+
+        await loadFirstLanguage("user_a");
+        expect(getFirstLanguage()).toBe("bn");
+        reads.mockRestore();
+    });
+
+    it("lets the learner in, and writes nothing over the stored choice", async () => {
+        await AsyncStorage.setItem(KEY, JSON.stringify(stored));
+        const reads = failReads(Number.POSITIVE_INFINITY);
+
+        await loadFirstLanguage("user_a");
+        expect(isFirstLanguageLoaded()).toBe(true);
+        expect(getFirstLanguage()).toBeNull();
+        // The server's copy still arrives and is used, from memory.
+        mergeRemoteFirstLanguage({ language: "ta", updatedAt: LONG_AGO });
+        expect(getFirstLanguage()).toBe("ta");
+        await flushFirstLanguage();
+        reads.mockRestore();
+        expect(JSON.parse((await AsyncStorage.getItem(KEY))!)).toEqual(stored);
+    });
+
+    it("folds the stored choice in once it can be read, newest first", async () => {
+        await AsyncStorage.setItem(KEY, JSON.stringify(stored));
+        const reads = failReads(2);
+        await loadFirstLanguage("user_a");
+        reads.mockRestore();
+
+        // The learner answers again meanwhile; that is newer than what is stored.
+        await setFirstLanguage("ta");
+        await flushFirstLanguage();
+        expect(getFirstLanguage()).toBe("ta");
+        expect(JSON.parse((await AsyncStorage.getItem(KEY))!).language).toBe("ta");
+    });
+
+    it("takes the stored choice when the server's copy that arrived meanwhile is older", async () => {
+        const recent = { language: "hi", updatedAt: "2026-10-01T00:00:00.000Z" };
+        await AsyncStorage.setItem(KEY, JSON.stringify(recent));
+        const reads = failReads(2);
+        await loadFirstLanguage("user_a");
+        reads.mockRestore();
+
+        mergeRemoteFirstLanguage({ language: "bn", updatedAt: LONG_AGO });
+        await flushFirstLanguage();
+        expect(getFirstLanguage()).toBe("hi");
+        expect(JSON.parse((await AsyncStorage.getItem(KEY))!)).toEqual(recent);
     });
 });

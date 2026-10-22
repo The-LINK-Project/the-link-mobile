@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { SpeakerButton } from "@/components/lessons/SpeakerButton";
@@ -6,6 +7,7 @@ import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { useFirstLanguageLocalized } from "@/lib/lessons/localized";
 import { choiceText } from "@/lib/lessons/lookup";
+import { retryOrder } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
 import type { ListenChooseMeaningExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
@@ -27,7 +29,12 @@ export function ListenChooseMeaning({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<ListenChooseMeaningExercise>) {
+    const choices = useMemo(
+        () => retryOrder(exercise.choices, exercise.id, again),
+        [exercise, again],
+    );
     const t = useFirstLanguageInterface("lessons");
     const localized = useFirstLanguageLocalized();
     const { speak, speaking, hasPlayed } = useSpeech();
@@ -51,7 +58,7 @@ export function ListenChooseMeaning({
             )}
 
             <View style={styles.choices}>
-                {exercise.choices.map((choice) => {
+                {choices.map((choice) => {
                     const isChosen = chosen === choice.id;
                     const isAnswer = choice.id === exercise.correctChoiceId;
                     return (

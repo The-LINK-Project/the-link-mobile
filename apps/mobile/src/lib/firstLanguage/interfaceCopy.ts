@@ -1,11 +1,18 @@
 import { useEffect, useMemo } from "react";
 
-import i18n, { getLocale, LOCALES, setLocale, useTranslations, type Locale } from "@/lib/i18n";
+import i18n, {
+    detectDeviceLocale,
+    getLocale,
+    LOCALES,
+    setLocale,
+    useTranslations,
+    type Locale,
+} from "@/lib/i18n";
 
 import type { FirstLanguage } from "./languages";
 import { useFirstLanguage } from "./store";
 
-export type InterfaceNamespace = "account" | "foundation" | "lessons" | "speaking";
+export type InterfaceNamespace = "account" | "foundation" | "lessons" | "speaking" | "translate";
 export type ExtraInterfaceLanguage = "te" | "ml" | "ms" | "zh" | "th" | "vi" | "fr" | "es";
 
 // These languages are offered for word translation but do not yet have a full
@@ -54,6 +61,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "కొనసాగించండి",
             gotIt: "సరే",
             finish: "ముగించండి",
+            back: "వెనక్కి",
+            next: "తర్వాత",
+            restart: "పాఠాన్ని మళ్లీ ప్రారంభించండి",
+            restartTitle: "ఈ పాఠాన్ని మళ్లీ ప్రారంభించాలా?",
+            restartBody: "ఇప్పటివరకు మీరు ఇచ్చిన జవాబులు తొలగిపోతాయి.",
+            restartConfirm: "మళ్లీ ప్రారంభించండి",
+            restartKeep: "కొనసాగించండి",
             introTitle: "ఈ పాఠంలోని పదాలు",
             introBody: "వినడానికి ఒక పదాన్ని నొక్కండి. సిద్ధమైనప్పుడు ప్రారంభించండి.",
             introStart: "ప్రారంభించండి",
@@ -85,6 +99,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "బాగుంది, మీరు చెప్పింది అర్థమైంది",
             incorrectTitle: "పూర్తిగా సరికాదు",
             modelAnswer: "ఇలా కూడా చెప్పవచ్చు:",
+            rightAnswer: "సరైన జవాబు:",
             missingWords: "తప్పిపోయినవి: {words}",
             exerciseMissing: "ఈ అభ్యాసాన్ని లోడ్ చేయలేకపోయాం.",
             summaryTitle: "పాఠం పూర్తయింది!",
@@ -148,6 +163,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "మీరు {total}లో {said} మీ అంతట మీరే చెప్పారు.",
             again: "మళ్లీ అభ్యసించండి",
         },
+        translate: {
+            loading: "అనువదిస్తోంది…",
+            failed: "ఈ పదాన్ని అనువదించలేకపోయాం.",
+            offline: "ఇంటర్నెట్ లేదు. ఇంటర్నెట్ వచ్చాక మళ్లీ ప్రయత్నించండి.",
+            retry: "మళ్లీ ప్రయత్నించండి",
+            listen: "వినండి",
+        },
     },
     ml: {
         foundation: {
@@ -186,6 +208,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "തുടരുക",
             gotIt: "ശരി",
             finish: "പൂർത്തിയാക്കുക",
+            back: "പിന്നോട്ട്",
+            next: "അടുത്തത്",
+            restart: "പാഠം വീണ്ടും തുടങ്ങുക",
+            restartTitle: "ഈ പാഠം വീണ്ടും തുടങ്ങണോ?",
+            restartBody: "ഇതുവരെയുള്ള നിങ്ങളുടെ ഉത്തരങ്ങൾ മായ്ക്കപ്പെടും.",
+            restartConfirm: "വീണ്ടും തുടങ്ങുക",
+            restartKeep: "തുടരുക",
             introTitle: "ഈ പാഠത്തിലെ വാക്കുകൾ",
             introBody: "കേൾക്കാൻ ഒരു വാക്കിൽ ടാപ്പ് ചെയ്യുക. തയ്യാറാകുമ്പോൾ തുടങ്ങുക.",
             introStart: "തുടങ്ങുക",
@@ -217,6 +246,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "നല്ലത്, നിങ്ങൾ പറഞ്ഞത് മനസ്സിലായി",
             incorrectTitle: "പൂർണ്ണമായി ശരിയല്ല",
             modelAnswer: "ഇങ്ങനെയും പറയാം:",
+            rightAnswer: "ശരിയായ ഉത്തരം:",
             missingWords: "വിട്ടുപോയത്: {words}",
             exerciseMissing: "ഈ അഭ്യാസം ലോഡ് ചെയ്യാനായില്ല.",
             summaryTitle: "പാഠം പൂർത്തിയായി!",
@@ -281,6 +311,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "{total}-ൽ {said} നിങ്ങൾ സ്വയം പറഞ്ഞു.",
             again: "വീണ്ടും പരിശീലിക്കുക",
         },
+        translate: {
+            loading: "വിവർത്തനം ചെയ്യുന്നു…",
+            failed: "ഈ വാക്ക് വിവർത്തനം ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+            offline: "ഇന്റർനെറ്റ് ഇല്ല. ഇന്റർനെറ്റ് കിട്ടുമ്പോൾ വീണ്ടും ശ്രമിക്കുക.",
+            retry: "വീണ്ടും ശ്രമിക്കുക",
+            listen: "കേൾക്കുക",
+        },
     },
     ms: {
         foundation: {
@@ -319,6 +356,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "Teruskan",
             gotIt: "Baik",
             finish: "Selesai",
+            back: "Kembali",
+            next: "Seterusnya",
+            restart: "Mula semula pelajaran",
+            restartTitle: "Mula semula pelajaran ini?",
+            restartBody: "Jawapan anda setakat ini akan dipadam.",
+            restartConfirm: "Mula semula",
+            restartKeep: "Teruskan",
             introTitle: "Perkataan dalam pelajaran ini",
             introBody: "Tekan perkataan untuk mendengarnya. Mula apabila anda bersedia.",
             introStart: "Mula",
@@ -350,6 +394,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "Bagus, kami faham anda",
             incorrectTitle: "Belum tepat",
             modelAnswer: "Anda juga boleh kata:",
+            rightAnswer: "Jawapan yang betul:",
             missingWords: "Tertinggal: {words}",
             exerciseMissing: "Latihan ini tidak dapat dimuatkan.",
             summaryTitle: "Pelajaran selesai!",
@@ -413,6 +458,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "Anda menyebut {said} daripada {total} sendiri.",
             again: "Berlatih lagi",
         },
+        translate: {
+            loading: "Sedang menterjemah…",
+            failed: "Kami tidak dapat menterjemah perkataan ini.",
+            offline: "Tiada internet. Cuba lagi apabila ada sambungan internet.",
+            retry: "Cuba lagi",
+            listen: "Dengar",
+        },
     },
     zh: {
         foundation: {
@@ -449,6 +501,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "继续",
             gotIt: "知道了",
             finish: "完成",
+            back: "返回",
+            next: "下一步",
+            restart: "重新开始这节课",
+            restartTitle: "要重新开始这节课吗？",
+            restartBody: "你之前的答案会被清除。",
+            restartConfirm: "重新开始",
+            restartKeep: "继续",
             introTitle: "本课单词",
             introBody: "点击单词即可收听。准备好后开始。",
             introStart: "开始",
@@ -480,6 +539,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "很好，我们听懂了",
             incorrectTitle: "还不太对",
             modelAnswer: "你也可以说：",
+            rightAnswer: "正确答案：",
             missingWords: "缺少：{words}",
             exerciseMissing: "无法加载这个练习。",
             summaryTitle: "课程完成！",
@@ -542,6 +602,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "{total} 句中你自己说出了 {said} 句。",
             again: "再练习一次",
         },
+        translate: {
+            loading: "正在翻译…",
+            failed: "这个词没能翻译出来。",
+            offline: "没有网络。连上网络后再试一次。",
+            retry: "再试一次",
+            listen: "听一听",
+        },
     },
     th: {
         foundation: {
@@ -578,6 +645,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "ทำต่อ",
             gotIt: "ตกลง",
             finish: "เสร็จสิ้น",
+            back: "ย้อนกลับ",
+            next: "ถัดไป",
+            restart: "เริ่มบทเรียนใหม่",
+            restartTitle: "เริ่มบทเรียนนี้ใหม่ไหม?",
+            restartBody: "คำตอบที่คุณทำไว้จะถูกลบ",
+            restartConfirm: "เริ่มใหม่",
+            restartKeep: "ทำต่อ",
             introTitle: "คำศัพท์ในบทเรียนนี้",
             introBody: "แตะคำเพื่อฟัง เริ่มเมื่อคุณพร้อม",
             introStart: "เริ่ม",
@@ -609,6 +683,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "ดีมาก เราเข้าใจคุณ",
             incorrectTitle: "ยังไม่ถูกทีเดียว",
             modelAnswer: "คุณพูดแบบนี้ก็ได้:",
+            rightAnswer: "คำตอบที่ถูกต้อง:",
             missingWords: "ขาดไป: {words}",
             exerciseMissing: "โหลดแบบฝึกหัดนี้ไม่ได้",
             summaryTitle: "จบบทเรียนแล้ว!",
@@ -671,6 +746,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "คุณพูดเองได้ {said} จาก {total} ประโยค",
             again: "ฝึกอีกครั้ง",
         },
+        translate: {
+            loading: "กำลังแปล…",
+            failed: "แปลคำนี้ไม่ได้",
+            offline: "ไม่มีอินเทอร์เน็ต ลองอีกครั้งเมื่อเชื่อมต่อได้",
+            retry: "ลองอีกครั้ง",
+            listen: "ฟัง",
+        },
     },
     vi: {
         foundation: {
@@ -707,6 +789,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "Tiếp tục",
             gotIt: "Đã hiểu",
             finish: "Hoàn thành",
+            back: "Quay lại",
+            next: "Tiếp theo",
+            restart: "Làm lại bài học",
+            restartTitle: "Làm lại bài học này từ đầu?",
+            restartBody: "Các câu trả lời của bạn sẽ bị xóa.",
+            restartConfirm: "Làm lại",
+            restartKeep: "Tiếp tục",
             introTitle: "Từ trong bài học này",
             introBody: "Chạm vào một từ để nghe. Bắt đầu khi bạn sẵn sàng.",
             introStart: "Bắt đầu",
@@ -738,6 +827,7 @@ export const EXTRA_INTERFACE_COPY: Record<
             acceptedTitle: "Tốt, chúng tôi hiểu bạn",
             incorrectTitle: "Chưa đúng lắm",
             modelAnswer: "Bạn cũng có thể nói:",
+            rightAnswer: "Câu trả lời đúng:",
             missingWords: "Còn thiếu: {words}",
             exerciseMissing: "Không tải được bài tập này.",
             summaryTitle: "Hoàn thành bài học!",
@@ -800,6 +890,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "Bạn đã tự nói được {said} trên {total} câu.",
             again: "Luyện tập lại",
         },
+        translate: {
+            loading: "Đang dịch…",
+            failed: "Không dịch được từ này.",
+            offline: "Không có mạng. Hãy thử lại khi có mạng.",
+            retry: "Thử lại",
+            listen: "Nghe",
+        },
     },
     fr: {
         foundation: {
@@ -849,10 +946,18 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "Continuer",
             gotIt: "OK",
             finish: "Terminer",
+            back: "Retour",
+            next: "Suivant",
+            restart: "Recommencer la leçon",
+            restartTitle: "Recommencer cette leçon ?",
+            restartBody: "Vos réponses jusqu'ici seront effacées.",
+            restartConfirm: "Recommencer",
+            restartKeep: "Continuer",
             correctTitle: "Correct !",
             acceptedTitle: "Bien, on vous comprend",
             incorrectTitle: "Pas tout à fait",
             modelAnswer: "Vous pouvez aussi dire :",
+            rightAnswer: "La bonne réponse :",
             missingWords: "Il manque : {words}",
             exerciseMissing: "Impossible de charger cet exercice.",
             summaryTitle: "Leçon terminée !",
@@ -933,6 +1038,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "Vous avez dit {said} sur {total} tout seul.",
             again: "S'entraîner encore",
         },
+        translate: {
+            loading: "Traduction…",
+            failed: "Nous n’avons pas pu traduire ce mot.",
+            offline: "Pas d'internet. Réessayez quand vous aurez internet.",
+            retry: "Réessayer",
+            listen: "Écouter",
+        },
     },
     es: {
         foundation: {
@@ -981,10 +1093,18 @@ export const EXTRA_INTERFACE_COPY: Record<
             continue: "Continuar",
             gotIt: "OK",
             finish: "Terminar",
+            back: "Atrás",
+            next: "Siguiente",
+            restart: "Empezar la lección de nuevo",
+            restartTitle: "¿Empezar esta lección de nuevo?",
+            restartBody: "Se borrarán las respuestas que has dado.",
+            restartConfirm: "Empezar de nuevo",
+            restartKeep: "Continuar",
             correctTitle: "¡Correcto!",
             acceptedTitle: "Bien, te entendemos",
             incorrectTitle: "No del todo",
             modelAnswer: "También puedes decir:",
+            rightAnswer: "La respuesta correcta:",
             missingWords: "Falta: {words}",
             exerciseMissing: "No se pudo cargar este ejercicio.",
             summaryTitle: "¡Lección terminada!",
@@ -1065,6 +1185,13 @@ export const EXTRA_INTERFACE_COPY: Record<
             summaryCount: "Dijiste {said} de {total} por tu cuenta.",
             again: "Practicar otra vez",
         },
+        translate: {
+            loading: "Traduciendo…",
+            failed: "No pudimos traducir esta palabra.",
+            offline: "Sin internet. Inténtalo de nuevo cuando tengas conexión.",
+            retry: "Intentar de nuevo",
+            listen: "Escuchar",
+        },
     },
 };
 
@@ -1080,16 +1207,25 @@ export function localeFor(language: FirstLanguage): Locale {
  * Keeps the app's locale in step with the learner's language.
  *
  * The locale still decides the screens this file does not cover (Privacy,
- * About, Contact, the profile forms), and used to be a second setting under
- * Account. The two drifted apart: a learner reading Home in Bengali would open
- * Privacy in whatever the other setting said. Mounted once, signed in, so a
- * choice arriving from the server moves the locale as well as one tapped here.
+ * About, Contact, the profile forms, signing in), and used to be a second
+ * setting under Account. The two drifted apart: a learner reading Home in
+ * Bengali would open Privacy in whatever the other setting said. Mounted once,
+ * at the root, so a choice arriving from the server moves the locale as well as
+ * one tapped here.
+ *
+ * Signed out, it goes back to the phone's own language. Phones are shared in a
+ * dormitory, and the next person to pick this one up would otherwise meet the
+ * sign-in screen, and the language question, in the last learner's language,
+ * with no way to change it before signing in. `ready` waits for the saved
+ * locale to be read, which would otherwise land after this and undo it.
  */
-export function useLocaleFollowsFirstLanguage() {
+export function useLocaleFollowsFirstLanguage(userId: string | null | undefined, ready: boolean) {
     const [language] = useFirstLanguage();
     useEffect(() => {
-        if (language && getLocale() !== localeFor(language)) void setLocale(localeFor(language));
-    }, [language]);
+        if (!ready) return;
+        const wanted = userId ? (language ? localeFor(language) : null) : detectDeviceLocale();
+        if (wanted && getLocale() !== wanted) void setLocale(wanted);
+    }, [language, ready, userId]);
 }
 
 function isExtraInterfaceLanguage(value: string): value is ExtraInterfaceLanguage {

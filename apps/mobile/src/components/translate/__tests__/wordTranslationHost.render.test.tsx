@@ -12,7 +12,8 @@ import { BackHandler } from "react-native";
 import { WordTranslationHost } from "@/components/translate/WordTranslationHost";
 import { Button, Text } from "@/components/ui";
 import { setFirstLanguage } from "@/lib/firstLanguage/store";
-import { setLocale } from "@/lib/i18n";
+import i18n, { setLocale } from "@/lib/i18n";
+import { EXTRA_INTERFACE_COPY } from "@/lib/firstLanguage/interfaceCopy";
 import { lookupTranslation, type WordTranslation } from "@/lib/translate/lookup";
 import { getPopup, holdAt, resetPopupForTests } from "@/lib/translate/popupStore";
 
@@ -61,6 +62,13 @@ function App() {
         </WordTranslationHost>
     );
 }
+
+/**
+ * The bubble's own words, in the learner's language (Bengali in these tests),
+ * like the meaning it shows: an English "Translating…" is no use to someone
+ * holding a word because they cannot read the English.
+ */
+const bubble = (key: string) => i18n.t(`mobile.translate.${key}`, { locale: "bn" });
 
 let clock = 0;
 const touches = [{}];
@@ -132,14 +140,14 @@ it("opens for the held word, shows it is working, then shows the translation", a
     render(<App />);
     hold(/^platform$/);
 
-    expect(screen.getByLabelText("Translating…")).toBeTruthy();
+    expect(screen.getByLabelText(bubble("loading"))).toBeTruthy();
     expect(lookup).toHaveBeenCalledWith(
         expect.objectContaining({ word: "platform", context: SENTENCE, language: "bn" }),
     );
 
     await pending.answerWith(answer());
     expect(screen.getByText("প্ল্যাটফর্ম")).toBeTruthy();
-    expect(screen.queryByLabelText("Translating…")).toBeNull();
+    expect(screen.queryByLabelText(bubble("loading"))).toBeNull();
 });
 
 it("is two lines and no more: no label for the language, and no close button", async () => {
@@ -153,7 +161,7 @@ it("is two lines and no more: no label for the language, and no close button", a
     expect(screen.queryByLabelText("Close")).toBeNull();
     // What is left: the word, a way to hear it, and the answer.
     expect(screen.getAllByText("platform").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Listen")).toBeTruthy();
+    expect(screen.getByLabelText(bubble("listen"))).toBeTruthy();
 });
 
 it("adds one line for the phrase the word belongs to", async () => {
@@ -177,7 +185,7 @@ it("says the word aloud from the speaker button", async () => {
     hold(/^platform$/);
     await screen.findByText("প্ল্যাটফর্ম");
 
-    fireEvent.press(screen.getByLabelText("Listen"));
+    fireEvent.press(screen.getByLabelText(bubble("listen")));
     expect(mockSpeak).toHaveBeenCalledWith("platform");
 });
 
@@ -186,10 +194,10 @@ it("says so when the word could not be translated, and tries again when asked", 
     render(<App />);
     hold(/^platform$/);
 
-    expect(await screen.findByText("We could not translate this word.")).toBeTruthy();
+    expect(await screen.findByText(bubble("failed"))).toBeTruthy();
 
     lookup.mockResolvedValueOnce(answer());
-    fireEvent.press(screen.getByText("Try again"));
+    fireEvent.press(screen.getByText(bubble("retry")));
     expect(await screen.findByText("প্ল্যাটফর্ম")).toBeTruthy();
     expect(lookup).toHaveBeenCalledTimes(2);
 });
@@ -199,8 +207,19 @@ it("tells a learner with no connection that this is what is wrong", async () => 
     render(<App />);
     hold(/^platform$/);
 
-    expect(await screen.findByText("No internet. Try again when you are online.")).toBeTruthy();
-    expect(screen.getByText("Try again")).toBeTruthy();
+    expect(await screen.findByText(bubble("offline"))).toBeTruthy();
+    expect(screen.getByText(bubble("retry"))).toBeTruthy();
+});
+
+it("speaks a language the app has no catalogue for, too", async () => {
+    // Vietnamese has the onboarding and lesson copy but no app catalogue.
+    await act(() => setFirstLanguage("vi"));
+    lookup.mockRejectedValueOnce(Object.assign(new Error("no"), { reason: "offline" }));
+    render(<App />);
+    hold(/^platform$/);
+
+    expect(await screen.findByText(EXTRA_INTERFACE_COPY.vi.translate.offline)).toBeTruthy();
+    expect(screen.getByText(EXTRA_INTERFACE_COPY.vi.translate.retry)).toBeTruthy();
 });
 
 it("closes on a touch anywhere else, and stops the lookup it no longer needs", async () => {

@@ -1,7 +1,17 @@
 import { correctAnswer } from "@/test/lessonAnswers";
 
 import { mrtBasics } from "../data/mrt-basics";
-import { buildQueue, initSession, sessionReducer, summarize } from "../session";
+import {
+    buildQueue,
+    initSession,
+    isRevisit,
+    restoreSession,
+    reviewSession,
+    sessionReducer,
+    snapshotOf,
+    summarize,
+    type SessionState,
+} from "../session";
 import type { Answer, Exercise, Lesson } from "../types";
 
 /** The right answer for an exercise in the MRT lesson, by id. */
@@ -458,5 +468,204 @@ describe("picking a run back up", () => {
         const summary = summarize({ ...state, locale: "en" });
         expect(summary.total).toBe(state.queue.length);
         expect(summary.firstTryCorrect).toBeLessThanOrEqual(summary.total);
+    });
+});
+
+// Stepping back through a lesson: going back is for looking again, so it must
+// never change the score, the mistake queue, how far the learner has got, or
+// where a saved run picks up.
+describe("stepping back through a lesson", () => {
+    function fill(id: string): Exercise {
+        return {
+            id,
+            type: "fillBlank",
+            instruction: { en: "Which word fits?" },
+            practises: [],
+            sentence: ["It is a", null],
+            choices: [
+                { id: "right", label: "right" },
+                { id: "wrong", label: "wrong" },
+            ],
+            correctChoiceId: "right",
+            grading: { mode: "choice" },
+        };
+    }
+
+    const lesson: Lesson = {
+        id: "test-lesson",
+        title: { en: "Test" },
+        goal: { en: "Test" },
+        icon: "work",
+        level: "beginner",
+        estimatedMinutes: 1,
+        notes: [],
+        vocab: [],
+        phrases: [],
+        exercises: [fill("a"), fill("b"), fill("c")],
+    };
+
+    const right = { type: "submit", answer: { kind: "choice", choiceId: "right" } } as const;
+    const wrong = { type: "submit", answer: { kind: "choice", choiceId: "wrong" } } as const;
+    const next = { type: "next" } as const;
+    const back = { type: "back" } as const;
+
+    function run(...actions: Parameters<typeof sessionReducer>[1][]): SessionState {
+        return actions.reduce(sessionReducer, initSession(lesson, "en"));
+    }
+
+    it("has nothing to go back to on the first exercise", () => {
+        const start = initSession(lesson, "en");
+        expect(sessionReducer(start, back)).toBe(start);
+    });
+
+    it("goes back to the exercise before, ready to answer again", () => {
+        const state = run(right, next, back);
+        expect(state.position).toBe(0);
+        expect(state.phase).toBe("answering");
+        expect(state.draft).toBeNull();
+        expect(isRevisit(state)).toBe(true);
+        expect(state.reached).toBe(1);
+    });
+
+    it("can go back from the feedback of an answer just given", () => {
+        const state = run(right, next, right, back);
+        expect(state.position).toBe(0);
+        expect(state.reached).toBe(2);
+    });
+
+    it("grades a second try but records nothing and queues nothing", () => {
+        const before = run(right, next, back);
+        const after = sessionReducer(before, wrong);
+        expect(after.phase).toBe("graded");
+        expect(after.result?.correct).toBe(false);
+        expect(after.records).toEqual(before.records);
+        expect(after.queue).toEqual(before.queue);
+        expect(after.requeued).toEqual(before.requeued);
+        expect(after.reached).toBe(1);
+    });
+
+    it("passes an answered exercise without answering it again", () => {
+        const state = run(right, next, right, next, back, back);
+        expect(state.position).toBe(0);
+        const forward = [next, next].reduce(sessionReducer, state);
+        expect(forward.position).toBe(2);
+        expect(forward.phase).toBe("answering");
+        expect(isRevisit(forward)).toBe(false);
+    });
+
+    it("goes back from the results to the last exercise, and on to the results again", () => {
+        const finished = run(right, next, right, next, right, next);
+        expect(finished.phase).toBe("finished");
+        const last = sessionReducer(finished, back);
+        expect(last.position).toBe(2);
+        expect(last.phase).toBe("answering");
+        expect(isRevisit(last)).toBe(true);
+        const again = sessionReducer(last, next);
+        expect(again.phase).toBe("finished");
+        expect(again.records).toEqual(finished.records);
+    });
+
+    it("opens a finished lesson on its last exercise, with every one counted as answered", () => {
+        const review = reviewSession(lesson, "en");
+        expect(review.position).toBe(2);
+        expect(review.phase).toBe("answering");
+        expect(isRevisit(review)).toBe(true);
+        // Back all the way, and forward again without answering anything.
+        const first = [back, back].reduce(sessionReducer, review);
+        expect(first.position).toBe(0);
+        expect(isRevisit(first)).toBe(true);
+        const end = [next, next, next].reduce(sessionReducer, first);
+        expect(end.phase).toBe("finished");
+        expect(end.records).toEqual({});
+    });
+
+    it("does not let an unanswered exercise be skipped", () => {
+        const state = run(right, next);
+        expect(sessionReducer(state, next)).toBe(state);
+    });
+
+    it("saves the run where the learner had got to, not where they looked back to", () => {
+        const state = run(right, next, right, next, back, back);
+        expect(snapshotOf(state).position).toBe(2);
+    });
+
+    it("still finishes, and a miss before stepping back still comes round again", () => {
+        const state = run(wrong, next, back, right, next, right, next, right, next);
+        // The miss on "a" put it back on the end; getting it right on a look
+        // back does not take it off again.
+        expect(state.queue).toEqual(["a", "b", "c", "a"]);
+        expect(state.records.a.firstTryCorrect).toBe(false);
+        expect(state.position).toBe(3);
+        expect(state.phase).toBe("answering");
+        const done = [right, next].reduce(sessionReducer, state);
+        expect(done.phase).toBe("finished");
+        expect(done.reached).toBe(4);
+    });
+
+    // Starting a lesson again from its top bar (components/lessons/RestartLesson.tsx)
+    // is the session's `restart`: a fresh run that keeps nothing of the old one.
+    it("forgets the answers, the mistakes and how far the learner had got on starting again", () => {
+        const midway = run(wrong, next, right, next, back);
+        expect(midway.queue).toHaveLength(4);
+        const fresh = sessionReducer(midway, { type: "restart" });
+        expect(fresh).toEqual(initSession(lesson, "en"));
+        expect(fresh.reached).toBe(0);
+        expect(snapshotOf(fresh).position).toBe(0);
+    });
+    // Coming back to a run after changing language (restoreSession). What a
+    // learner has answered stands even when it would not be offered in the new
+    // language, so it must not stop the run being picked up again the time after.
+    describe("picking a run up again in another language", () => {
+        const translate = {
+            id: "t",
+            type: "translateWordBank",
+            instruction: { en: "Say it in English" },
+            practises: [],
+            prompt: { en: "It is right", ta: "அது சரி" },
+            phraseId: "p",
+            tokens: ["It", "is", "right", "wrong"],
+            grading: { mode: "keywords", keywords: ["right"] },
+        } as unknown as Exercise;
+        const mixed = {
+            ...lesson,
+            phrases: [{ id: "p", text: "It is right", meaning: { en: "It is right" } }],
+            exercises: [translate, fill("a"), fill("b"), fill("c")],
+        } as Lesson;
+        type Action = Parameters<typeof sessionReducer>[1];
+        const said: Action = {
+            type: "submit",
+            answer: { kind: "tokens", tokens: ["It", "is", "right"] },
+        };
+
+        it("keeps an answered translation that the new language would not offer", () => {
+            // Tamil: the translation is on the queue and gets answered.
+            const opening: Action[] = [said, next, right, next];
+            let state = opening.reduce(sessionReducer, initSession(mixed, "ta"));
+            expect(state.queue[0]).toBe("t");
+            // Back in English, which has no translation to offer.
+            const english = restoreSession(mixed, snapshotOf(state), false, "en");
+            expect(english?.position).toBe(2);
+            // An answer more, then away and back again in English.
+            state = ([right, next] as Action[]).reduce(sessionReducer, english!);
+            const again = restoreSession(mixed, snapshotOf(state), false, "en");
+            expect(again?.position).toBe(3);
+            expect(again?.queue.slice(0, 3)).toEqual(state.queue.slice(0, 3));
+        });
+
+        it("finishes a run the new language leaves nothing more in", () => {
+            // Tamil: the translation is missed, so it comes round again at the
+            // end, and that retry is all that is left when the learner leaves.
+            const missed: Action = {
+                type: "submit",
+                answer: { kind: "tokens", tokens: ["wrong"] },
+            };
+            const steps: Action[] = [missed, next, right, next, right, next, right, next];
+            const state = steps.reduce(sessionReducer, initSession(mixed, "ta"));
+            expect(state.queue).toEqual(["t", "a", "b", "c", "t"]);
+            // In English the retry is not offered: the run is over, not lost.
+            const english = restoreSession(mixed, snapshotOf(state), false, "en");
+            expect(english?.phase).toBe("finished");
+            expect(english?.records).toEqual(state.records);
+        });
     });
 });

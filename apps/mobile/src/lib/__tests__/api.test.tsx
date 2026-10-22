@@ -142,6 +142,36 @@ describe("translating one held word", () => {
         jest.useRealTimers();
     });
 
+    // With no connection Clerk can sit on a token request indefinitely. Found on
+    // a device in airplane mode: the bubble stayed on its loading bar for good.
+    it("still gives up after twelve seconds when the sign-in token never comes", async () => {
+        jest.useFakeTimers();
+        mockAuth.getToken = jest.fn(() => new Promise<string>(() => {}));
+        renderHook(() => useApiAuth());
+        const request = api.translate({ word: "platform", context: "", language: "bn" });
+        await act(async () => {});
+
+        jest.advanceTimersByTime(12_000);
+        await expect(request).rejects.toMatchObject({ status: 0, sent: false });
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        jest.useRealTimers();
+    });
+
+    it("hands back a cancellation made while waiting for the sign-in token", async () => {
+        mockAuth.getToken = jest.fn(() => new Promise<string>(() => {}));
+        renderHook(() => useApiAuth());
+        const controller = new AbortController();
+        const request = api.translate(
+            { word: "platform", context: "", language: "bn" },
+            { signal: controller.signal },
+        );
+        await act(async () => {});
+
+        controller.abort();
+        await expect(request).rejects.toMatchObject({ name: "AbortError" });
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
     it("hands a caller their own cancellation back, not a network error", async () => {
         neverAnswers();
         renderHook(() => useApiAuth());

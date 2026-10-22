@@ -43,7 +43,7 @@ function AppShell() {
     // phone is still looking for the answer.
     const firstLanguageReady = useFirstLanguageReady(userId);
     useFirstLanguageSync(ready && firstLanguageReady ? userId : null);
-    useLocaleFollowsFirstLanguage();
+    useLocaleFollowsFirstLanguage(userId, localeReady && firstLanguageReady);
 
     useEffect(() => {
         if (localeReady && progressReady && firstLanguageReady) void SplashScreen.hideAsync();

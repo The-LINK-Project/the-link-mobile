@@ -1,4 +1,4 @@
-import { sampleRateOf, joinSpeech } from "./audio.js";
+import { sampleRateOf, joinSpeech, wavSamples } from "./audio.js";
 import { createCloudSpeech, parseServiceAccount, type ServiceAccount } from "./cloud-speech.js";
 import {
     GoogleError,
@@ -293,10 +293,10 @@ export function createGeminiTutor(options: TutorOptions): TutorModel {
                 let running = 0;
                 let settled = false;
                 let failure: unknown = new GoogleError("Every voice is out of quota");
-                const hedges: NodeJS.Timeout[] = [];
+                let hedge: NodeJS.Timeout | undefined;
                 const settle = () => {
                     settled = true;
-                    hedges.forEach(clearTimeout);
+                    clearTimeout(hedge);
                 };
 
                 const startNext = () => {
@@ -313,7 +313,12 @@ export function createGeminiTutor(options: TutorOptions): TutorModel {
                     }
                     const voice = candidates[next++];
                     running++;
-                    hedges.push(setTimeout(startNext, hedgeAfterMs));
+                    // One hedge at a time, counted from the voice started last. A
+                    // voice that failed at once must not leave its timer behind:
+                    // it would start another voice early beside the one that
+                    // replaced it, spending quota on a reply already being voiced.
+                    clearTimeout(hedge);
+                    hedge = setTimeout(startNext, hedgeAfterMs);
                     voiced(voice).then(
                         (wav) => {
                             settle();
@@ -403,7 +408,21 @@ export function createGeminiTranslator(options: {
     };
 }
 
-const SENTENCE_END = /(?<=[।.?!])\s+/;
+/**
+ * Where a sentence ends. After `।.?!` only with a space, so a price like 1.20
+ * stays whole. Burmese `။` and the full-width `。？！` of Chinese and Japanese
+ * end a sentence with or without one, since those scripts put no space there.
+ */
+const SENTENCE_END = /(?<=[।.?!])\s+|(?<=[။。？！])\s*/;
+/**
+ * Thai writes no full stop: it runs words together and puts a space where a
+ * clause or sentence ends. A space between two Thai letters is such an end; one
+ * beside an English word ("ไป Jurong East ใช่ไหม") is not split, so a place
+ * name is never voiced in halves.
+ */
+const THAI_BREAK = /(?<=[\u0E00-\u0E7F])\s+(?=[\u0E00-\u0E7F])/;
+/** A piece with no letter or digit in it, such as the second `?` of `?!`. */
+const NO_WORDS = /^[^\p{L}\p{N}]*$/u;
 /** A shorter sentence joins the next one, so a greeting is not a request of its own. */
 const MIN_CHUNK_LENGTH = 60;
 /** Every piece is a request against a quota, so a long reply is merged down to this many. */
@@ -418,10 +437,17 @@ const MAX_CHUNKS = 3;
  */
 export function speechChunks(text: string): string[] {
     const chunks: string[] = [];
-    for (const sentence of text.split(SENTENCE_END)) {
+    const sentences = text.split(SENTENCE_END).flatMap((piece) => piece.split(THAI_BREAK));
+    for (const sentence of sentences) {
         const trimmed = sentence.trim();
         if (!trimmed) continue;
         const last = chunks.length - 1;
+        // Punctuation alone stays with what it ends: a voice asked to read "？"
+        // gives back no audio, and the whole voice would be counted as failed.
+        if (NO_WORDS.test(trimmed)) {
+            if (last >= 0) chunks[last] += trimmed;
+            continue;
+        }
         if (last >= 0 && chunks[last].length < MIN_CHUNK_LENGTH) chunks[last] += ` ${trimmed}`;
         else chunks.push(trimmed);
     }
@@ -441,9 +467,17 @@ export function speechChunks(text: string): string[] {
     return chunks;
 }
 
-/** A piece of the tutor's reply, set out for the voice to read rather than answer. */
-export function readAloud(text: string): string {
-    return `${READ_ALOUD}\n\nTRANSCRIPT:\n${text}`;
+/** The voices from before 3.8, which act on a bare reply instead of reading it. */
+const NEEDS_READ_ALOUD = /^gemini-(2\.5|3\.1)-/;
+
+/**
+ * A piece of the tutor's reply, set out for this voice to read rather than
+ * answer. The 3.8 voices take their input as a script already, and 3.8
+ * Flash-Lite reads an instruction out loud, turning five seconds of speech
+ * into twenty, so they get the reply bare.
+ */
+export function readAloud(text: string, model: string): string {
+    return NEEDS_READ_ALOUD.test(model) ? `${READ_ALOUD}\n\nTRANSCRIPT:\n${text}` : text;
 }
 
 async function speakChunk(
@@ -452,14 +486,14 @@ async function speakChunk(
     text: string,
     timeoutMs: number,
 ): Promise<Spoken> {
-    // The Gemini API has no field for an instruction apart from the text, so the
-    // reply is set out below one as a transcript. Sent bare, the voice acted on
-    // the reply instead of reading it. The instruction itself is never spoken.
+    // The Gemini API has no field for an instruction apart from the text, so for
+    // the older voices the reply is set out below one as a transcript. Sent
+    // bare, they acted on the reply instead of reading it.
     const response = await generate(
         apiKey,
         model,
         {
-            contents: [{ role: "user", parts: [{ text: readAloud(text) }] }],
+            contents: [{ role: "user", parts: [{ text: readAloud(text, model) }] }],
             generationConfig: {
                 responseModalities: ["AUDIO"],
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } },
@@ -468,7 +502,10 @@ async function speakChunk(
         timeoutMs,
     );
     const inline = parts(response).find((part) => part.inlineData?.data)?.inlineData;
-    const pcm = Buffer.from(inline?.data ?? "", "base64");
-    if (pcm.length === 0) throw new GoogleError("Gemini returned no audio");
-    return { pcm, rate: sampleRateOf(inline?.mimeType) };
+    const audio = Buffer.from(inline?.data ?? "", "base64");
+    if (audio.length === 0) throw new GoogleError("Gemini returned no audio");
+    // The 3.8 voices answer with a whole WAV file; older ones with bare PCM,
+    // which wrapped as it is would put a header inside a header.
+    if (audio.toString("ascii", 0, 4) === "RIFF") return wavSamples(audio);
+    return { pcm: audio, rate: sampleRateOf(inline?.mimeType) };
 }

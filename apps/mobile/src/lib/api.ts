@@ -62,6 +62,12 @@ export function useApiAuth() {
 }
 
 export class ApiError extends Error {
+    /**
+     * False when the request never left the phone (no sign-in token, or the
+     * account changed first), so no answer can have been lost on the way back.
+     */
+    sent = true;
+
     constructor(
         public status: number,
         message: string,
@@ -69,6 +75,43 @@ export class ApiError extends Error {
     ) {
         super(message);
     }
+}
+
+/** An ApiError for a request that was never sent. */
+function unsent(status: number, message: string): ApiError {
+    const error = new ApiError(status, message);
+    error.sent = false;
+    return error;
+}
+
+/** What fetch throws for a cancelled request, for the same cancellation before it. */
+function abortError(): Error {
+    const error = new Error("The operation was aborted");
+    error.name = "AbortError";
+    return error;
+}
+
+/**
+ * Waits for `promise`, or rejects with an AbortError once `signal` fires. Clerk
+ * can sit on a token request with no connection for as long as it likes, and
+ * a learner holding a word underground must still hear "No internet".
+ */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+    if (signal.aborted) return Promise.reject(abortError());
+    return new Promise<T>((resolve, reject) => {
+        const onAbort = () => reject(abortError());
+        signal.addEventListener("abort", onAbort, { once: true });
+        promise.then(
+            (value) => {
+                signal.removeEventListener("abort", onAbort);
+                resolve(value);
+            },
+            (error: unknown) => {
+                signal.removeEventListener("abort", onAbort);
+                reject(error);
+            },
+        );
+    });
 }
 
 type RequestOptions = {
@@ -90,30 +133,45 @@ async function request<T>(
     { method = "GET", body, timeoutMs = 20_000, signal }: RequestOptions = {},
 ): Promise<T> {
     const generation = authGeneration;
+    // The deadline covers getting a sign-in token as well as the request: with
+    // no connection Clerk can wait on a token indefinitely. The caller's signal
+    // is folded into the deadline's controller rather than handed to fetch, so
+    // the timeout keeps working exactly as it did and only one has to win.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const abort = () => controller.abort();
+    if (signal) {
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort);
+    }
+    const settle = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+    };
+
     let token: string | null;
     try {
-        token = await getToken();
+        token = await untilAborted(getToken(), controller.signal);
     } catch (error) {
+        settle();
+        if (controller.signal.aborted) {
+            // A caller who cancelled on purpose gets their abort back.
+            if (signal?.aborted) throw error;
+            throw unsent(0, "Could not connect to sign-in service");
+        }
         // Clerk can reject before fetch when a deleted/revoked session is
         // restored from SecureStore. That must take the same path as API 401.
         const expired =
             isClerkAPIResponseError(error) && (error.status === 401 || error.status === 404);
         if (expired && generation === authGeneration) onUnauthorized?.();
-        throw new ApiError(
+        throw unsent(
             expired ? 401 : 0,
             expired ? "Authentication required" : "Could not connect to sign-in service",
         );
     }
-    if (generation !== authGeneration) throw new ApiError(0, "Account changed");
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    // The caller's signal is folded into the deadline's controller rather than
-    // handed to fetch, so the timeout keeps working exactly as it did and only
-    // one of the two has to win.
-    const abort = () => controller.abort();
-    if (signal) {
-        if (signal.aborted) abort();
-        else signal.addEventListener("abort", abort);
+    if (generation !== authGeneration) {
+        settle();
+        throw unsent(0, "Account changed");
     }
 
     let response: Response;
@@ -143,8 +201,7 @@ async function request<T>(
         if (aborted && signal?.aborted) throw error;
         throw new ApiError(0, aborted ? "The request timed out" : "Network error");
     } finally {
-        clearTimeout(timer);
-        signal?.removeEventListener("abort", abort);
+        settle();
     }
 
     if (generation !== authGeneration) throw new ApiError(0, "Account changed");

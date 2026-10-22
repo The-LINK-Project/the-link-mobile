@@ -45,7 +45,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
         // Glossing one word is a far smaller job than a tutor turn, so this
         // exists to point it at a cheaper model without touching the tutor.
         translateModels: list("GEMINI_TRANSLATE_MODEL", tutorModels),
+        // The 3.8 voices first: each has a daily quota of its own, where the
+        // 3.1 preview voice allows only 100 requests a day on Tier 1, and the
+        // three older voices reach their earliest shutdown date on 17 November.
         speechModels: list("GEMINI_SPEECH_MODEL", [
+            "gemini-3.8-flash-lite-tts",
+            "gemini-3.8-flash-tts",
             "gemini-3.1-flash-tts-preview",
             "gemini-2.5-flash-preview-tts",
             "gemini-2.5-pro-preview-tts",

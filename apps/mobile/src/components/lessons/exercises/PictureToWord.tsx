@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { PictureArt } from "@/components/lessons/PictureTile";
 import { Tile } from "@/components/lessons/Tile";
 import { picturableVocab, vocabByIds } from "@/lib/lessons/lookup";
-import { seededShuffle } from "@/lib/lessons/shuffle";
+import { retryOrder, seededShuffle } from "@/lib/lessons/shuffle";
 import type { PictureToWordExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
 
@@ -24,11 +24,17 @@ export function PictureToWord({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<PictureToWordExercise>) {
     const [subject] = picturableVocab(lesson, [exercise.vocabId]);
     const choices = useMemo(
-        () => seededShuffle(vocabByIds(lesson, exercise.choiceVocabIds), exercise.id),
-        [lesson, exercise.choiceVocabIds, exercise.id],
+        () =>
+            retryOrder(
+                seededShuffle(vocabByIds(lesson, exercise.choiceVocabIds), exercise.id),
+                exercise.id,
+                again,
+            ),
+        [lesson, exercise.choiceVocabIds, exercise.id, again],
     );
 
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;

@@ -79,14 +79,19 @@ export function LessonDone({
 /** Pinned to the bottom, like every other way forward in a lesson. */
 export function LessonDoneActions({
     onAgain,
+    resuming = false,
     onSpeak,
 }: {
     onAgain: () => void;
+    /** Another go is already part-way through, and `onAgain` carries on with it. */
+    resuming?: boolean;
     /** Present when the lesson can be practised aloud. */
     onSpeak?: () => void;
 }) {
     const t = useFirstLanguageInterface("lessons");
-    if (!onSpeak) return <Button title={t("summaryRetry")} size="lg" onPress={onAgain} />;
+    // Says what the button does: another go part-way through is carried on.
+    const again = t(resuming ? "continue" : "summaryRetry");
+    if (!onSpeak) return <Button title={again} size="lg" onPress={onAgain} />;
     return (
         <View style={styles.actions}>
             <Button
@@ -95,7 +100,7 @@ export function LessonDoneActions({
                 icon={<Ionicons name="mic" size={20} color={colors.onPrimary} />}
                 onPress={onSpeak}
             />
-            <Button title={t("summaryRetry")} variant="outline" onPress={onAgain} />
+            <Button title={again} variant="outline" onPress={onAgain} />
         </View>
     );
 }

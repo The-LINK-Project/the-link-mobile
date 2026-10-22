@@ -101,10 +101,13 @@ const styles = StyleSheet.create({
         borderBottomWidth: EDGE + 2,
         borderColor: colors.border,
         backgroundColor: colors.surface,
+        // A word too long for the row (Tamil, on a small phone) wraps inside
+        // the tile rather than pushing it off the screen.
+        maxWidth: "100%",
     },
     block: { width: "100%" },
-    label: { textAlign: "center", fontSize: fontSize.md },
-    caption: { textAlign: "center" },
+    label: { textAlign: "center", fontSize: fontSize.md, flexShrink: 1 },
+    caption: { textAlign: "center", flexShrink: 1 },
     usedLabel: { opacity: 0.55 },
 
     default: {},

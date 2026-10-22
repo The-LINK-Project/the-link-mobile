@@ -273,6 +273,78 @@ export function sameProgress(a: Progress, b: Progress): boolean {
     return JSON.stringify(sortKeys(a.lessons)) === JSON.stringify(sortKeys(b.lessons));
 }
 
+/**
+ * Dates the server moved back when it saved them. A phone whose clock runs
+ * fast writes dates ahead of the server's, and the server keeps its own now in
+ * their place. Each entry pairs the date the phone sent with the one kept.
+ */
+export type KeptDates = Record<string, { lesson?: [string, string]; speaking?: [string, string] }>;
+
+/** The dates the server kept earlier than the phone sent them, read from its answer to a save. */
+export function keptDates(sent: Progress, saved: Progress): KeptDates {
+    const kept: KeptDates = {};
+    const movedBack = (ours?: string, theirs?: string): [string, string] | undefined =>
+        ours && theirs && Date.parse(theirs) < Date.parse(ours) ? [ours, theirs] : undefined;
+    for (const [id, ours] of Object.entries(sent.lessons)) {
+        const theirs = saved.lessons[id];
+        if (!theirs) continue;
+        const lesson = movedBack(ours.completedAt, theirs.completedAt);
+        const speaking = movedBack(ours.speaking?.completedAt, theirs.speaking?.completedAt);
+        if (lesson || speaking) {
+            kept[id] = { ...(lesson ? { lesson } : {}), ...(speaking ? { speaking } : {}) };
+        }
+    }
+    return kept;
+}
+
+/**
+ * The phone's progress as the server keeps it: a date it moved back reads as
+ * the date it kept. Only for telling whether the phone knows anything more;
+ * the phone goes on showing its own dates.
+ */
+export function asServerKeeps(progress: Progress, kept: KeptDates): Progress {
+    let lessons = progress.lessons;
+    for (const [id, { lesson, speaking }] of Object.entries(kept)) {
+        const ours = lessons[id];
+        if (!ours) continue;
+        let record = ours;
+        if (lesson && record.completedAt === lesson[0]) {
+            record = { ...record, completedAt: lesson[1] };
+        }
+        if (speaking && record.speaking?.completedAt === speaking[0]) {
+            record = { ...record, speaking: { ...record.speaking, completedAt: speaking[1] } };
+        }
+        if (record !== ours) lessons = { ...lessons, [id]: record };
+    }
+    return lessons === progress.lessons ? progress : { lessons };
+}
+
+/**
+ * What the phone had stored, folded into what it holds now, for storage that
+ * could only be read late (see store.ts). Finished work merges as it always
+ * does. A stored run or talk comes back only for a lesson with none in memory
+ * and nothing finished since it was saved, so a lesson finished in the
+ * meantime does not reopen half-way through.
+ */
+export function foldStored(stored: ProgressData, current: ProgressData): ProgressData {
+    const progress = mergeProgress(stored.progress, current.progress);
+    const since = (done: string | undefined, savedAt: string) =>
+        done !== undefined && Date.parse(done) >= Date.parse(savedAt);
+    const runs = { ...current.runs };
+    for (const [id, run] of Object.entries(stored.runs)) {
+        if (!(id in runs) && !since(progress.lessons[id]?.completedAt, run.savedAt)) {
+            runs[id] = run;
+        }
+    }
+    const talks = { ...current.talks };
+    for (const [id, talk] of Object.entries(stored.talks)) {
+        if (!(id in talks) && !since(progress.lessons[id]?.speaking?.completedAt, talk.savedAt)) {
+            talks[id] = talk;
+        }
+    }
+    return { ...current, progress, runs, talks };
+}
+
 function sortKeys(lessons: Record<string, LessonRecord>) {
     return Object.keys(lessons)
         .sort()

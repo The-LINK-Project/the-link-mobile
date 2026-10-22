@@ -57,10 +57,14 @@ it("never guesses English from the phone, which is in English whoever owns it", 
     expect(suggestFirstLanguage()).toBeNull();
 });
 
-it("suggests the language the learner already chose for the app", () => {
+// The app's language follows whoever signed in last. On a shared phone that is
+// someone else, so the suggestion comes from the phone alone.
+it("ignores the app's language, which may be the last learner's", () => {
     mockApp.locale = "ta";
     device("hi-IN");
-    expect(suggestFirstLanguage()).toBe("ta");
+    expect(suggestFirstLanguage()).toBe("hi");
+    device("en-SG");
+    expect(suggestFirstLanguage()).toBeNull();
 });
 
 it("falls back to the phone's language when the app is in English", () => {

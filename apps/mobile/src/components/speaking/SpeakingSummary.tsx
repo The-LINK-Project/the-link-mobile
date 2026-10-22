@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { LessonHeading } from "@/components/lessons/LessonHeading";
 import { LessonStages } from "@/components/lessons/LessonStages";
+import { WithBack } from "@/components/lessons/StepNav";
 import { Button, Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import type { Lesson } from "@/lib/lessons/types";
@@ -14,6 +15,8 @@ type Props = {
     goals: { id: string; target: string; result: GoalResult }[];
     onDone: () => void;
     onAgain: () => void;
+    /** Back to the talk these results came from. */
+    onBack?: () => void;
 };
 
 /**
@@ -24,7 +27,7 @@ type Props = {
  * This is where a lesson ends. The talk is its second stage, so finishing it is
  * what finishes the lesson, and this is the screen that says "Lesson done!".
  */
-export function SpeakingSummary({ lesson, goals, onDone, onAgain }: Props) {
+export function SpeakingSummary({ lesson, goals, onDone, onAgain, onBack }: Props) {
     const t = useFirstLanguageInterface("speaking");
     const l = useFirstLanguageInterface("lessons");
 
@@ -65,10 +68,12 @@ export function SpeakingSummary({ lesson, goals, onDone, onAgain }: Props) {
                 })}
             </View>
 
-            <View style={styles.actions}>
-                <Button title={t("done")} size="lg" onPress={onDone} />
-                <Button title={t("again")} variant="outline" onPress={onAgain} />
-            </View>
+            <WithBack onBack={onBack}>
+                <View style={styles.actions}>
+                    <Button title={t("done")} size="lg" onPress={onDone} />
+                    <Button title={t("again")} variant="outline" onPress={onAgain} />
+                </View>
+            </WithBack>
         </View>
     );
 }

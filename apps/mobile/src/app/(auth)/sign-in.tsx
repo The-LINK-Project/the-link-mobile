@@ -1,16 +1,17 @@
 import { useSignIn } from "@clerk/expo";
 import { Link } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { AuthHeader } from "@/components/auth/AuthHeader";
+import { FormError } from "@/components/auth/FormError";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { useGoogleSignIn } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
-import { colors, spacing } from "@/lib/theme";
+import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 
 export default function SignInScreen() {
     const t = useTranslations("mobile.auth");
@@ -86,11 +87,7 @@ export default function SignInScreen() {
                         textContentType="password"
                         onSubmitEditing={handleSignIn}
                     />
-                    {error ? (
-                        <Text variant="caption" color={colors.destructive}>
-                            {error}
-                        </Text>
-                    ) : null}
+                    <FormError message={error} />
                     <Button
                         title={t("signIn")}
                         size="lg"
@@ -98,15 +95,18 @@ export default function SignInScreen() {
                         disabled={!canSubmit}
                         onPress={handleSignIn}
                     />
+                    {/* A thumb-sized target around a one-line link. */}
                     <Link href="/forgot-password" asChild>
-                        <Text
-                            variant="caption"
-                            center
-                            color={colors.primaryDark}
-                            style={styles.forgot}
-                        >
-                            {t("forgotPassword")}
-                        </Text>
+                        <Pressable accessibilityRole="link" style={styles.link}>
+                            <Text
+                                variant="caption"
+                                center
+                                color={colors.primaryDark}
+                                style={styles.forgot}
+                            >
+                                {t("forgotPassword")}
+                            </Text>
+                        </Pressable>
                     </Link>
                 </View>
 
@@ -126,9 +126,11 @@ export default function SignInScreen() {
                 <View style={styles.footer}>
                     <Text variant="caption">{t("noAccount")}</Text>
                     <Link href="/sign-up" asChild>
-                        <Text variant="bodyStrong" color={colors.primaryDark}>
-                            {t("signUp")}
-                        </Text>
+                        <Pressable accessibilityRole="link" style={styles.link}>
+                            <Text variant="bodyStrong" color={colors.primaryDark}>
+                                {t("signUp")}
+                            </Text>
+                        </Pressable>
                     </Link>
                 </View>
             </View>
@@ -139,7 +141,9 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: "center", paddingVertical: spacing.xl },
     form: { gap: spacing.md },
-    forgot: { paddingVertical: spacing.xs, fontWeight: "600" },
+    forgot: { fontWeight: "600" },
+    // Tall enough for a thumb, with the text where it was.
+    link: { minHeight: TOUCH_TARGET, justifyContent: "center", paddingHorizontal: spacing.xs },
     dividerRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -151,7 +155,9 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         flexWrap: "wrap",
         justifyContent: "center",
-        gap: spacing.sm,
-        marginTop: spacing.xl,
+        alignItems: "center",
+        columnGap: spacing.sm,
+        // The links' own height makes up the rest of the space above.
+        marginTop: spacing.md,
     },
 });

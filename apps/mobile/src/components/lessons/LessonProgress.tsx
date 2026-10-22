@@ -6,7 +6,7 @@ import { colors, radius } from "@/lib/theme";
 /**
  * Progress through a lesson.
  *
- * Fed `position / queue.length`, which only ever rises: a missed exercise is
+ * Fed `reached / queue.length`, which only ever rises: a missed exercise is
  * added to the end of the queue rather than rewinding the bar, so a mistake
  * slows progress instead of undoing it.
  */

@@ -14,12 +14,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
+    asServerKeeps,
     emptyData,
+    foldStored,
+    keptDates,
     mergeProgress,
     readData,
     sameProgress,
     withLessonDone,
     withSpeakingDone,
+    type KeptDates,
     type Progress,
     type ProgressData,
     type SavedRun,
@@ -35,14 +39,74 @@ const listeners = new Set<() => void>();
 let onProgressChanged: (() => void) | null = null;
 /** One write at a time, in order, so an older snapshot can never land last. */
 let writes: Promise<void> = Promise.resolve();
+/** Each account's newest change not yet on disk. A queued write takes the newest. */
+const pending = new Map<string, ProgressData>();
+/**
+ * Accounts whose stored progress could not be read: storage failed, as opposed
+ * to holding nothing. Their memory works as usual, but nothing is written until
+ * the stored copy has been read and folded in, or what was finished on this
+ * phone would be written over with a blank slate.
+ */
+const unreadable = new Set<string>();
+/** Dates the server moved back from this phone's fast clock (see keptDates). */
+let kept: KeptDates = {};
+
+const notify = () => listeners.forEach((listener) => listener());
 
 function commit(next: ProgressData) {
     data = next;
-    listeners.forEach((listener) => listener());
-    const key = owner ? keyFor(owner) : null;
-    if (!key) return;
-    const snapshot = JSON.stringify(next);
-    writes = writes.then(() => AsyncStorage.setItem(key, snapshot)).catch(() => undefined);
+    notify();
+    if (!owner) return;
+    const user = owner;
+    pending.set(user, next);
+    writes = writes.then(() => persist(user)).catch(() => undefined);
+}
+
+async function persist(user: string) {
+    if (!pending.has(user)) return;
+    if (unreadable.has(user)) {
+        const stored = await readStored(user);
+        // Still unreadable: the change waits, and nothing is written over it.
+        if (stored === UNREADABLE) return;
+        unreadable.delete(user);
+        const waiting = pending.get(user);
+        if (stored && waiting) pending.set(user, foldStored(stored, waiting));
+        if (stored && owner === user) {
+            data = foldStored(stored, data);
+            notify();
+        }
+    }
+    const snapshot = pending.get(user);
+    pending.delete(user);
+    if (snapshot) await AsyncStorage.setItem(keyFor(user), JSON.stringify(snapshot));
+}
+
+const UNREADABLE = Symbol("unreadable");
+
+/**
+ * What is stored for an account: its progress, null when nothing usable is
+ * there, or UNREADABLE when storage itself failed twice. A file that will not
+ * parse starts the learner afresh; a failed read must not, because writing
+ * after it would replace the real file with nothing.
+ */
+async function readStored(userId: string): Promise<ProgressData | null | typeof UNREADABLE> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        let stored: string | null;
+        try {
+            stored = await AsyncStorage.getItem(keyFor(userId));
+        } catch {
+            // "Database is locked" on a busy Android usually clears in a moment.
+            if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 100));
+            continue;
+        }
+        if (!stored) return null;
+        try {
+            return readData(JSON.parse(stored));
+        } catch {
+            return null;
+        }
+    }
+    return UNREADABLE;
 }
 
 /** Resolves once everything queued so far is on disk. For tests and sign-out. */
@@ -54,29 +118,36 @@ export async function loadProgress(userId: string): Promise<void> {
     if (owner === userId) return;
     owner = userId;
     data = emptyData();
-    try {
-        const stored = await AsyncStorage.getItem(keyFor(userId));
-        // Somebody else signed in while this was being read.
-        if (owner !== userId) return;
-        if (stored) data = readData(JSON.parse(stored));
-    } catch {
-        // Unreadable storage starts the learner afresh rather than crashing.
-    }
-    listeners.forEach((listener) => listener());
+    kept = {};
+    unreadable.delete(userId);
+    const stored = await readStored(userId);
+    // Somebody else signed in while this was being read.
+    if (owner !== userId) return;
+    if (stored === UNREADABLE) unreadable.add(userId);
+    else if (stored) data = stored;
+    notify();
 }
 
 /** Forget whose progress is in memory. The file stays for their next sign-in. */
 export function unloadProgress() {
     owner = null;
     data = emptyData();
-    listeners.forEach((listener) => listener());
+    kept = {};
+    notify();
 }
 
 /** Remove an account's progress from this phone, for account deletion. */
 export async function eraseProgress(userId: string): Promise<void> {
     if (owner === userId) unloadProgress();
+    pending.delete(userId);
+    unreadable.delete(userId);
     await writes;
     await AsyncStorage.removeItem(keyFor(userId)).catch(() => undefined);
+}
+
+/** Whose progress is in memory, so a sync can tell the phone changed hands under it. */
+export function progressOwner(): string | null {
+    return owner;
 }
 
 export function getProgressData(): ProgressData {
@@ -128,6 +199,13 @@ export function saveRun(lessonId: string, run: Omit<SavedRun, "savedAt">, href?:
         runs: { ...data.runs, [lessonId]: { ...run, savedAt: at } },
         resume: href ? { href, at } : data.resume,
     });
+}
+
+/** Forget a run the learner chose to start again, so leaving does not bring it back. */
+export function clearRun(lessonId: string) {
+    if (!(lessonId in data.runs)) return;
+    const { [lessonId]: _gone, ...runs } = data.runs;
+    commit({ ...data, runs });
 }
 
 export function completeLesson(
@@ -199,7 +277,15 @@ export function takeResume(): string | null {
 export function mergeRemoteProgress(remote: Progress): boolean {
     const merged = mergeProgress(data.progress, remote);
     if (!sameProgress(merged, data.progress)) commit({ ...data, progress: merged });
-    return !sameProgress(merged, remote);
+    // A date the server moved back is one it has already. Counting it as news
+    // would send the same lessons on every sync, to be moved back every time.
+    return !sameProgress(asServerKeeps(merged, kept), remote);
+}
+
+/** Fold in the server's answer to a save of `sent`, noting any date it moved back. */
+export function acceptSavedProgress(sent: Progress, saved: Progress) {
+    kept = { ...kept, ...keptDates(sent, saved) };
+    mergeRemoteProgress(saved);
 }
 
 /** Test seam: start from nothing. */
@@ -209,4 +295,7 @@ export function resetProgressForTests() {
     resumeOffered = false;
     onProgressChanged = null;
     writes = Promise.resolve();
+    pending.clear();
+    unreadable.clear();
+    kept = {};
 }

@@ -4,10 +4,11 @@ import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { AuthHeader } from "@/components/auth/AuthHeader";
+import { FormError } from "@/components/auth/FormError";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
 import { useTranslations } from "@/lib/i18n";
-import { colors, spacing } from "@/lib/theme";
+import { spacing } from "@/lib/theme";
 
 type Step = "email" | "reset";
 
@@ -60,12 +61,17 @@ export default function ForgotPasswordScreen() {
         setBusy(true);
         setError(null);
         try {
-            const { error: verifyError } = await signIn.resetPasswordEmailCode.verifyCode({
-                code: code.trim(),
-            });
-            if (verifyError) {
-                setError(clerkErrorMessage(verifyError, t("genericError")));
-                return;
+            // Once Clerk has taken the code it waits for a password, and the code
+            // is used up: checking it again fails, so a learner whose first new
+            // password was refused could never save a second one.
+            if (signIn.status !== "needs_new_password") {
+                const { error: verifyError } = await signIn.resetPasswordEmailCode.verifyCode({
+                    code: code.trim(),
+                });
+                if (verifyError) {
+                    setError(clerkErrorMessage(verifyError, t("genericError")));
+                    return;
+                }
             }
             const { error: passwordError } = await signIn.resetPasswordEmailCode.submitPassword({
                 password,
@@ -141,11 +147,7 @@ export default function ForgotPasswordScreen() {
                         </>
                     )}
 
-                    {error ? (
-                        <Text variant="caption" color={colors.destructive}>
-                            {error}
-                        </Text>
-                    ) : null}
+                    <FormError message={error} />
 
                     {step === "email" ? (
                         <Button

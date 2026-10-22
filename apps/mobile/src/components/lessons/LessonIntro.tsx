@@ -117,6 +117,8 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primarySoft,
     },
     speakerOn: { backgroundColor: colors.primaryDark },
-    wordText: { flex: 1, gap: 2 },
+    // A long word (Tamil, on a small phone) breaks inside here rather than
+    // pushing the speaker out of the card.
+    wordText: { flex: 1, minWidth: 0, gap: 2 },
     meaning: { flexShrink: 1 },
 });

@@ -9,6 +9,7 @@ import {
 
 import { colors, radius, spacing, TOUCH_TARGET } from "@/lib/theme";
 
+import { usePressGuard } from "./PressGuard";
 import { Text } from "./Text";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive" | "ghostDestructive";
@@ -23,6 +24,17 @@ type Props = Omit<PressableProps, "style" | "children"> & {
     loading?: boolean;
     icon?: React.ReactNode;
     style?: StyleProp<ViewStyle>;
+    /**
+     * Only the icon, with the title kept for screen readers: for a button
+     * sharing its row with two others, where a long word in a learner's
+     * language would otherwise leave the middle one no room.
+     */
+    compact?: boolean;
+    /**
+     * Under a PressGuard, a press of this kind stays live right after one of
+     * its own: Back where Back was, Next where Next was.
+     */
+    steady?: string;
 };
 
 const TEXT_COLOR: Record<Variant, string> = {
@@ -45,9 +57,24 @@ export function Button({
     disabled,
     icon,
     style,
+    compact = false,
+    steady,
+    onPress,
     ...rest
 }: Props) {
     const isDisabled = disabled || loading;
+    // Under a guard, a press just after the buttons changed is let fall,
+    // without the button sinking as if it had been taken (see PressGuard).
+    const guard = usePressGuard();
+    const holding = guard?.holding(steady) ?? false;
+    const press: PressableProps["onPress"] =
+        guard && onPress
+            ? (event) => {
+                  if (!guard.allows(steady)) return;
+                  guard.note(steady);
+                  onPress(event);
+              }
+            : onPress;
     return (
         <Pressable
             accessibilityRole="button"
@@ -58,11 +85,13 @@ export function Button({
             // target to the 48dp Android minimum without changing the look
             hitSlop={size === "sm" ? { top: 4, bottom: 4 } : undefined}
             {...rest}
+            onPress={press}
             style={({ pressed }) => [
                 styles.base,
                 styles[variant],
                 styles[`size_${size}`],
-                pressed && !isDisabled
+                compact ? styles.compact : null,
+                pressed && !isDisabled && !holding
                     ? variant === "outline"
                         ? styles.pressedOutline
                         : KEYED.has(variant)
@@ -86,17 +115,19 @@ export function Button({
             ) : (
                 <>
                     {icon}
-                    <Text
-                        variant="bodyStrong"
-                        color={
-                            isDisabled && variant === "primary"
-                                ? colors.keyText
-                                : TEXT_COLOR[variant]
-                        }
-                        style={[styles.label, size === "sm" ? styles.smallText : null]}
-                    >
-                        {title}
-                    </Text>
+                    {compact && icon ? null : (
+                        <Text
+                            variant="bodyStrong"
+                            color={
+                                isDisabled && variant === "primary"
+                                    ? colors.keyText
+                                    : TEXT_COLOR[variant]
+                            }
+                            style={[styles.label, size === "sm" ? styles.smallText : null]}
+                        >
+                            {title}
+                        </Text>
+                    )}
                 </>
             )}
         </Pressable>
@@ -140,6 +171,8 @@ const styles = StyleSheet.create({
     size_sm: { minHeight: 40, paddingHorizontal: spacing.md },
     size_md: { minHeight: TOUCH_TARGET, paddingHorizontal: spacing.lg },
     size_lg: { minHeight: 56, paddingHorizontal: spacing.xl },
+    // An icon alone, still a full-size key to press.
+    compact: { minWidth: 56, paddingHorizontal: spacing.md },
     label: {
         flexShrink: 1,
         textAlign: "center",

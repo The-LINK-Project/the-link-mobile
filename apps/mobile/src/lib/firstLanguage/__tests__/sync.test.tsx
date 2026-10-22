@@ -8,6 +8,7 @@ import {
     getFirstLanguageChoice,
     loadFirstLanguage,
     setFirstLanguage,
+    unloadFirstLanguage,
 } from "../store";
 import { resetFirstLanguageSyncForTests, syncFirstLanguage, useFirstLanguageStatus } from "../sync";
 
@@ -127,6 +128,23 @@ describe("syncing the choice with the server", () => {
 
         answer({ user: {} });
         await first;
+    });
+
+    // A shared phone in a dormitory changes hands: one learner's language must
+    // not become the next learner's.
+    it("drops what the server sent when the phone changed hands while it was asked", async () => {
+        await loadFirstLanguage("user_a");
+        let answer: (value: { user: Record<string, string> }) => void = () => undefined;
+        me.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+        const sync = syncFirstLanguage();
+        unloadFirstLanguage();
+        await loadFirstLanguage("user_b");
+        answer({ user: { firstLanguage: "ta", firstLanguageUpdatedAt: FAR_OFF } });
+        await sync;
+
+        expect(getFirstLanguage()).toBeNull();
+        expect(saveFirstLanguage).not.toHaveBeenCalled();
     });
 });
 

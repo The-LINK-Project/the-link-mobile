@@ -14,10 +14,12 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
 
 import {
+    firstLanguageOwner,
     getFirstLanguageChoice,
     mergeRemoteFirstLanguage,
     readFirstLanguageChoice,
     setFirstLanguageListener,
+    settleSentFirstLanguage,
     useFirstLanguage,
     useFirstLanguageLoaded,
 } from "./store";
@@ -56,8 +58,11 @@ function subscribeChecked(listener: () => void) {
     return () => checkedListeners.delete(listener);
 }
 
-async function syncOnce(): Promise<void> {
+async function syncOnce(owner: string | null): Promise<void> {
     const { user } = await api.me();
+    // A shared phone can change hands mid-sync. What the server sent belongs to
+    // whoever was signed in when it was asked, not to the next person.
+    if (firstLanguageOwner() !== owner) return;
     const remote = readFirstLanguageChoice({
         language: user.firstLanguage,
         updatedAt: user.firstLanguageUpdatedAt,
@@ -66,7 +71,9 @@ async function syncOnce(): Promise<void> {
     const mine = getFirstLanguageChoice();
     if (!phoneIsNewer || !mine) return;
     const saved = await api.saveFirstLanguage(mine);
-    mergeRemoteFirstLanguage(
+    if (firstLanguageOwner() !== owner) return;
+    settleSentFirstLanguage(
+        mine,
         readFirstLanguageChoice({
             language: saved.firstLanguage,
             updatedAt: saved.firstLanguageUpdatedAt,
@@ -80,13 +87,16 @@ export function syncFirstLanguage(): Promise<void> {
         again = true;
         return inFlight;
     }
-    inFlight = syncOnce()
+    const owner = firstLanguageOwner();
+    inFlight = syncOnce(owner)
         .catch(() => undefined)
         .finally(() => {
             inFlight = null;
             // A failed check still counts as checked. The screen has waited as
             // long as it usefully can, and asking the learner is the answer.
-            setChecked(true);
+            // Only for the account it was for: the next one's check is still
+            // to come, and they should not be asked before it lands.
+            if (firstLanguageOwner() === owner) setChecked(true);
             if (again) {
                 again = false;
                 void syncFirstLanguage();

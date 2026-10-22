@@ -1,11 +1,13 @@
 /**
  * The lessons' own words, as a dictionary on the phone.
  *
- * Every lesson already teaches its vocabulary and sentences in Bengali, Tamil
- * and Hindi, written by the people who wrote the lesson. So the first place to
- * look for a held word is the lesson content itself: it answers instantly, it
- * answers with no connection, and it answers better than a model would, because
- * "alight" here means what it means on an MRT platform and nothing else.
+ * Every lesson already teaches its vocabulary and sentences in the learner's
+ * language: Bengali, Tamil and Hindi in the lesson files, and every other first
+ * language through `LESSON_CONTENT_COPY`. So the first place to look for a held
+ * word is the lesson content itself: it answers instantly, it answers with no
+ * connection, and it answers better than a model would, because "alight" here
+ * means what it means on an MRT platform and nothing else. It also agrees with
+ * the meaning the lesson itself shows.
  *
  * The index is built the first time a word is held rather than at import, so
  * the cost lands on a learner who is already waiting for a bubble instead of on
@@ -14,7 +16,7 @@
 
 import { listLessons } from "@/lib/lessons/data";
 import { hasTranslation, localized } from "@/lib/lessons/localized";
-import type { LearnerLanguage, Localized } from "@/lib/lessons/types";
+import type { Localized } from "@/lib/lessons/types";
 import type { TranslationLanguage } from "@/lib/firstLanguage/languages";
 
 import type { WordTranslation } from "./lookup";
@@ -29,18 +31,6 @@ type Glossary = {
 };
 
 let glossary: Glossary | null = null;
-
-/**
- * Lesson content is authored in English, Bengali, Tamil and Hindi only, and the
- * learner may have named any of twelve languages. Listed here rather than
- * derived, for the same reason `lessons/localized` lists it: adding a language
- * to the lessons should be one deliberate edit.
- */
-function authored(
-    language: TranslationLanguage,
-): language is Extract<LearnerLanguage, TranslationLanguage> {
-    return language === "bn" || language === "ta" || language === "hi";
-}
 
 /**
  * The words of a piece of English, lower-cased.
@@ -94,10 +84,7 @@ function containsRun(haystack: string[], needle: string[]): boolean {
  * A trailing "s" is forgiven only when the singular is itself a taught word, so
  * "fares" finds "fare" while "less" is never mistaken for a plural of "les".
  */
-function meaningOf(
-    word: string,
-    language: Extract<LearnerLanguage, TranslationLanguage>,
-): string | null {
+function meaningOf(word: string, language: TranslationLanguage): string | null {
     const { terms } = index();
     const direct = terms.get(word);
     const singular = !direct && word.length > 2 && word.endsWith("s") ? word.slice(0, -1) : null;
@@ -119,7 +106,7 @@ function meaningOf(
 function expressionAround(
     word: string,
     context: string,
-    language: Extract<LearnerLanguage, TranslationLanguage>,
+    language: TranslationLanguage,
 ): { text: string; translation: string } | null {
     const sentence = wordsOf(context);
     if (sentence.length === 0) return null;
@@ -153,7 +140,8 @@ export function lookupGlossary(
     context: string,
     language: TranslationLanguage,
 ): WordTranslation | null {
-    if (!authored(language)) return null;
+    // Any language: `hasTranslation` below says whether the lessons have this
+    // word in it, so a language without one still goes to the network.
     const held = wordsOf(word)[0];
     if (!held) return null;
 

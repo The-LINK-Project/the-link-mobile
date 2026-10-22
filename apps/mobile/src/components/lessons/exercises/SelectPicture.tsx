@@ -6,7 +6,7 @@ import { SpeakerButton } from "@/components/lessons/SpeakerButton";
 import { Text } from "@/components/ui";
 import { useFirstLanguageInterface } from "@/lib/firstLanguage/interfaceCopy";
 import { picturableVocab, vocabByIds } from "@/lib/lessons/lookup";
-import { seededShuffle } from "@/lib/lessons/shuffle";
+import { retryOrder, seededShuffle } from "@/lib/lessons/shuffle";
 import { useSpeech } from "@/lib/lessons/speech";
 import type { SelectPictureExercise } from "@/lib/lessons/types";
 import { spacing } from "@/lib/theme";
@@ -33,14 +33,20 @@ export function SelectPicture({
     onDraftChange,
     result,
     locked,
+    again = false,
 }: ExerciseProps<SelectPictureExercise>) {
     const t = useFirstLanguageInterface("lessons");
     const { speak, speaking, hasPlayed } = useSpeech();
 
     const [subject] = vocabByIds(lesson, [exercise.vocabId]);
     const choices = useMemo(
-        () => seededShuffle(picturableVocab(lesson, exercise.choiceVocabIds), exercise.id),
-        [lesson, exercise.choiceVocabIds, exercise.id],
+        () =>
+            retryOrder(
+                seededShuffle(picturableVocab(lesson, exercise.choiceVocabIds), exercise.id),
+                exercise.id,
+                again,
+            ),
+        [lesson, exercise.choiceVocabIds, exercise.id, again],
     );
 
     const chosen = draft?.kind === "choice" ? draft.choiceId : null;

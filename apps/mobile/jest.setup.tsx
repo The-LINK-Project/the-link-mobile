@@ -16,6 +16,40 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" }] }));
 
 /**
+ * expo-audio is native-only, and every screen with a speaker loads it, because
+ * lesson words play recordings through it (lib/lessons/speech.ts). The stand-in
+ * player keeps each source it is asked to play in `played`, so a test can see
+ * which recording started; it never finishes on its own. Tests that drive
+ * playback or recording themselves mock the module again.
+ */
+const mockPlayedAudio: unknown[] = [];
+jest.mock("expo-audio", () => {
+    const { useState } = require("react") as typeof import("react");
+    const createPlayer = () => {
+        let source: unknown = null;
+        return {
+            replace: (next: unknown) => {
+                source = next;
+            },
+            setPlaybackRate: () => undefined,
+            play: () => {
+                mockPlayedAudio.push(source);
+            },
+            pause: () => undefined,
+            addListener: () => ({ remove: () => undefined }),
+        };
+    };
+    return {
+        played: mockPlayedAudio,
+        setAudioModeAsync: async () => undefined,
+        useAudioPlayer: () => useState(createPlayer)[0],
+    };
+});
+beforeEach(() => {
+    mockPlayedAudio.length = 0;
+});
+
+/**
  * Render the keyboard-avoiding wrapper as a plain passthrough.
  *
  * `Screen` uses it, and the shared UI barrel re-exports `Screen`, so importing
@@ -26,6 +60,21 @@ jest.mock("expo-localization", () => ({ getLocales: () => [{ languageCode: "en" 
  */
 jest.mock("@/components/ui/KeyboardAvoiding", () => ({
     KeyboardAvoiding: ({ children }: { children?: React.ReactNode }) => children,
+}));
+
+/**
+ * Footer presses go straight through under test.
+ *
+ * The real guard lets a press fall for 400 ms after the buttons change, so a
+ * second tap of a double tap is not taken as a choice. Screen tests press as
+ * fast as code can, which is exactly that, and would each have to wait it out.
+ * The guard has tests of its own (components/ui/__tests__/pressGuard and
+ * components/lessons/__tests__/doubleTap), which load the real module.
+ */
+jest.mock("@/components/ui/PressGuard", () => ({
+    SETTLE_MS: 400,
+    PressGuard: ({ children }: { children?: React.ReactNode }) => children,
+    usePressGuard: () => null,
 }));
 
 /**

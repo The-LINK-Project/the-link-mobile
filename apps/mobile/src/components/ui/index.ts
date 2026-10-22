@@ -3,6 +3,7 @@ export { Button } from "./Button";
 export { Card } from "./Card";
 export { KeyboardAvoiding } from "./KeyboardAvoiding";
 export { ListRow } from "./ListRow";
+export { PressGuard, SETTLE_MS } from "./PressGuard";
 export { ErrorState, LoadingState, Screen } from "./Screen";
 export { Text } from "./Text";
 export { TextField } from "./TextField";
