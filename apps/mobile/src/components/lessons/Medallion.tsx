@@ -11,18 +11,30 @@ export const LESSON_ICONS: Record<LessonIcon, React.ComponentProps<typeof Ionico
     clinic: "medkit",
     food: "restaurant",
     work: "construct",
+    home: "home",
+    chat: "chatbubbles",
+    sign: "trail-sign",
+    bus: "bus",
+    cart: "cart",
+    build: "business",
     mix: "shuffle",
 };
 
 /**
- * One colour per lesson, taken from the MRT lines, so each lesson is known by
- * its colour as well as its picture. `dark` is the coin's lower edge.
+ * One colour per lesson, the first ones taken from the MRT lines, so each lesson
+ * is known by its colour as well as its picture. `dark` is the coin's lower edge.
  */
 export const LESSON_HUES: Record<LessonIcon, { base: string; dark: string }> = {
     train: { base: "#009645", dark: "#006b31" },
     food: { base: "#fa9e0d", dark: "#b86e00" },
     clinic: { base: "#005ec4", dark: "#003f85" },
     work: { base: "#9900aa", dark: "#6a0076" },
+    home: { base: "#d63f77", dark: "#982a53" },
+    chat: { base: "#0d9488", dark: "#096a61" },
+    sign: { base: "#c99700", dark: "#8c6900" },
+    bus: { base: "#4f5fd9", dark: "#35409a" },
+    cart: { base: "#6a9e14", dark: "#4a6f0e" },
+    build: { base: "#5f6b7a", dark: "#414a55" },
     mix: { base: "#d42e12", dark: "#98200c" },
 };
 

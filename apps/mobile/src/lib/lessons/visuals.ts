@@ -11,6 +11,12 @@ const LESSON_VISUALS: Partial<Record<string, ImageSource>> = {
     "hawker-food": require("../../../assets/lessons/hawker-centre.jpg"),
     "clinic-visit": require("../../../assets/lessons/clinic-reception.jpg"),
     "work-safety": require("../../../assets/lessons/work-safety.jpg"),
+    "home-help": require("../../../assets/lessons/home-help-scene.jpg"),
+    "meet-people": require("../../../assets/lessons/meet-people-scene.jpg"),
+    "reading-signs": require("../../../assets/lessons/reading-signs-scene.jpg"),
+    "bus-directions": require("../../../assets/lessons/bus-directions-scene.jpg"),
+    supermarket: require("../../../assets/lessons/supermarket-scene.jpg"),
+    "construction-science": require("../../../assets/lessons/construction-science-scene.jpg"),
 };
 
 /**
@@ -53,6 +59,60 @@ const PICTURE_VISUALS: Record<PictureKey, ImageSource> = {
     person: require("../../../assets/lessons/supervisor.jpg"),
     salary: require("../../../assets/lessons/salary.jpg"),
     repeat: require("../../../assets/lessons/again.jpg"),
+    // Helping at home
+    laundry: require("../../../assets/lessons/laundry.jpg"),
+    iron: require("../../../assets/lessons/iron.jpg"),
+    mop: require("../../../assets/lessons/mop.jpg"),
+    dishes: require("../../../assets/lessons/dishes.jpg"),
+    rubbish: require("../../../assets/lessons/rubbish.jpg"),
+    fridge: require("../../../assets/lessons/fridge.jpg"),
+    stove: require("../../../assets/lessons/stove.jpg"),
+    cupboard: require("../../../assets/lessons/cupboard.jpg"),
+    // Getting to know someone
+    nameTag: require("../../../assets/lessons/name-tag.jpg"),
+    country: require("../../../assets/lessons/country.jpg"),
+    family: require("../../../assets/lessons/family.jpg"),
+    children: require("../../../assets/lessons/children.jpg"),
+    friend: require("../../../assets/lessons/friend.jpg"),
+    job: require("../../../assets/lessons/job.jpg"),
+    hobby: require("../../../assets/lessons/hobby.jpg"),
+    sunday: require("../../../assets/lessons/sunday.jpg"),
+    // Reading signs
+    wetFloor: require("../../../assets/lessons/wet-floor.jpg"),
+    noEntry: require("../../../assets/lessons/no-entry.jpg"),
+    noSmoking: require("../../../assets/lessons/no-smoking.jpg"),
+    closed: require("../../../assets/lessons/closed.jpg"),
+    push: require("../../../assets/lessons/push.jpg"),
+    pull: require("../../../assets/lessons/pull.jpg"),
+    toilet: require("../../../assets/lessons/toilet.jpg"),
+    danger: require("../../../assets/lessons/danger.jpg"),
+    // Buses and finding your way
+    busStop: require("../../../assets/lessons/bus-stop.jpg"),
+    bell: require("../../../assets/lessons/bell.jpg"),
+    left: require("../../../assets/lessons/left.jpg"),
+    right: require("../../../assets/lessons/right.jpg"),
+    straight: require("../../../assets/lessons/straight.jpg"),
+    trafficLight: require("../../../assets/lessons/traffic-light.jpg"),
+    overheadBridge: require("../../../assets/lessons/overhead-bridge.jpg"),
+    map: require("../../../assets/lessons/map.jpg"),
+    // At the supermarket
+    trolley: require("../../../assets/lessons/trolley.jpg"),
+    aisle: require("../../../assets/lessons/aisle.jpg"),
+    cashier: require("../../../assets/lessons/cashier.jpg"),
+    receipt: require("../../../assets/lessons/receipt.jpg"),
+    discount: require("../../../assets/lessons/discount.jpg"),
+    expiryDate: require("../../../assets/lessons/expiry-date.jpg"),
+    plasticBag: require("../../../assets/lessons/plastic-bag.jpg"),
+    vegetables: require("../../../assets/lessons/vegetables.jpg"),
+    // Construction science
+    concrete: require("../../../assets/lessons/concrete.jpg"),
+    cement: require("../../../assets/lessons/cement.jpg"),
+    steelBar: require("../../../assets/lessons/steel-bar.jpg"),
+    beam: require("../../../assets/lessons/beam.jpg"),
+    column: require("../../../assets/lessons/column.jpg"),
+    load: require("../../../assets/lessons/load.jpg"),
+    level: require("../../../assets/lessons/level.jpg"),
+    scaffold: require("../../../assets/lessons/scaffold.jpg"),
 };
 
 export function lessonVisual(lessonId: string): ImageSource | undefined {

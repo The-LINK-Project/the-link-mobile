@@ -11,7 +11,7 @@ Lessons, exercises and speaking practice are built here from scratch for migrant
 - Expo 57 / React Native application for Android, iOS, and local web preview
 - Clerk sign-in, sign-up, Google sign-in, password recovery, and encrypted session storage
 - Shared LINK identity: deleting an account from mobile deletes the Clerk user used by both products
-- Four lessons (the MRT, buying food, seeing a doctor, at work) built from nine tap-only exercise types, plus a daily mix drawn from all of them
+- Ten lessons (the MRT, buying food, seeing a doctor, at work, getting to know someone, helping at home, reading signs, buses and finding your way, the supermarket, construction science) built from nine tap-only exercise types, plus a daily mix drawn from all of them
 - Spoken practice after each lesson with an AI tutor that speaks Bengali, Tamil or Hindi and uses only the English the lesson taught
 - The app in English, Bengali, Tamil, Hindi, Burmese, Filipino and Indonesian
 - Mobile-owned Express API deployed separately from the website
