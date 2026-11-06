@@ -7,10 +7,10 @@ import { useTranslations } from "@/lib/i18n";
 import { spacing } from "@/lib/theme";
 
 const TEAM = [
-    { name: "Adrish Majumder", image: require("../../../assets/about-us/mun.jpeg") },
-    { name: "Alexandre Lee", image: require("../../../assets/about-us/Alex.jpeg") },
-    { name: "Ruhan Gupta", image: require("../../../assets/about-us/Ruhan.jpeg") },
-    { name: "Videep Agarwal", image: require("../../../assets/about-us/Videep.jpeg") },
+    { name: "Adrish Majumder", image: require("../../../assets/about-us/adrish.jpg") },
+    { name: "Alexandre Lee", image: require("../../../assets/about-us/alex.jpg") },
+    { name: "Ruhan Gupta", image: require("../../../assets/about-us/ruhan.jpg") },
+    { name: "Videep Agarwal", image: require("../../../assets/about-us/videep.jpg") },
 ];
 
 export default function AboutScreen() {
