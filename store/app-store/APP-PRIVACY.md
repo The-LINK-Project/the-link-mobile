@@ -15,7 +15,7 @@ Apple counts data as **collected** when it leaves the phone and the developer *o
 | Contact Info → **Name** | Yes | Yes | No | App Functionality |
 | Contact Info → **Email Address** | Yes | Yes | No | App Functionality |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality |
-| User Content → **Photos or Videos** | Yes (Google sign-in only) | Yes | No | App Functionality |
+| User Content → **Photos or Videos** | Only if Google sign-in is on (it was off in production on 6 Nov 2026) | Yes | No | App Functionality |
 | Usage Data → **Product Interaction** | Yes | Yes | No | App Functionality |
 | Other Data → **Other Data Types** (first language) | Yes | Yes | No | App Functionality |
 | User Content → **Audio Data** | Yes | **No** | No | App Functionality |
@@ -46,7 +46,7 @@ Everything else: **not collected** (list at the end).
 
 - Only for people who sign in with Google: Google shares the account's profile photo, Clerk keeps a copy, and the API stores its link (`apps/api/src/users.ts:52`, `photo: identity.imageUrl`). The Account screen shows it (`apps/mobile/src/app/(app)/(tabs)/account.tsx:48-50`).
 - The app cannot upload or read photos itself: there is no image picker in `apps/mobile/package.json`. Email and Apple accounts get Clerk's generated avatar, which is not user data.
-- This is the most arguable line in the list. Leaving it out would be defensible, but declaring it costs nothing.
+- This is the most arguable line in the list. Production Clerk had Google sign-in off on 6 November 2026 (and Apple not set up), so today no account gets a Google photo, and leaving the line out is accurate. Declaring it anyway costs nothing and stays true if Google is turned on later. The Apple notes below apply only once Apple sign-in is on in production.
 
 ### Product Interaction: collected, linked, App Functionality
 
