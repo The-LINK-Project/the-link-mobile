@@ -3,13 +3,19 @@ import { Link } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { AppleButton } from "@/components/auth/AppleButton";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { FormError } from "@/components/auth/FormError";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
-import { USERNAME_PATTERN, useGoogleSignIn, useProfileAttributes } from "@/lib/clerkSettings";
+import {
+    USERNAME_PATTERN,
+    useAppleSignIn,
+    useGoogleSignIn,
+    useProfileAttributes,
+} from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 
@@ -31,6 +37,7 @@ export default function SignUpScreen() {
     // production intentionally have different profile settings.
     const attributes = useProfileAttributes();
     const googleEnabled = useGoogleSignIn();
+    const appleEnabled = useAppleSignIn();
 
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
@@ -241,14 +248,27 @@ export default function SignUpScreen() {
                             />
                         </View>
 
-                        {googleEnabled ? (
+                        {googleEnabled || appleEnabled ? (
                             <>
                                 <View style={styles.dividerRow}>
                                     <View style={styles.divider} />
                                     <Text variant="caption">{t("or")}</Text>
                                     <View style={styles.divider} />
                                 </View>
-                                <GoogleButton title={t("continueWithGoogle")} onError={setError} />
+                                <View style={styles.form}>
+                                    {appleEnabled ? (
+                                        <AppleButton
+                                            title={t("continueWithApple")}
+                                            onError={setError}
+                                        />
+                                    ) : null}
+                                    {googleEnabled ? (
+                                        <GoogleButton
+                                            title={t("continueWithGoogle")}
+                                            onError={setError}
+                                        />
+                                    ) : null}
+                                </View>
                             </>
                         ) : null}
                         <PrivacyNotice onError={setError} />

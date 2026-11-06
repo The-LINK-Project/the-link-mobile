@@ -53,6 +53,17 @@ test("hides a social provider the instance has switched off", () => {
     };
 
     expect(readSocialProvider(clerk, "oauth_google")).toBe(false);
-    expect(readSocialProvider(clerk, "oauth_apple")).toBe(true);
     expect(readSocialProvider({}, "oauth_google")).toBe(true);
+});
+
+test("treats a provider the instance never set up as off", () => {
+    // Production lists only the providers it has configured; Apple is absent
+    const clerk = {
+        __internal_environment: {
+            user_settings: { social: { oauth_google: { enabled: true } } },
+        },
+    };
+
+    expect(readSocialProvider(clerk, "oauth_google")).toBe(true);
+    expect(readSocialProvider(clerk, "oauth_apple")).toBe(false);
 });

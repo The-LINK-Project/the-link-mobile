@@ -2,17 +2,12 @@ import { useSSO } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 
-import { Button, TextField } from "@/components/ui";
-import { clerkErrorMessage } from "@/lib/clerkErrors";
-import { USERNAME_PATTERN } from "@/lib/clerkSettings";
-import { useTranslations } from "@/lib/i18n";
 import { colors } from "@/lib/theme";
 
-const EMPTY_FIELDS: string[] = [];
-const PROFILE_FIELDS = ["username", "first_name", "last_name"];
+import { type SocialAttempt, SocialButton } from "./SocialButton";
 
 // Closes the in-app browser tab once the OAuth redirect lands back in the app
 WebBrowser.maybeCompleteAuthSession();
@@ -28,11 +23,7 @@ function useWarmUpBrowser() {
     }, []);
 }
 
-/**
- * "Continue with Google". When Google returns a brand-new user whose profile
- * lacks fields the Clerk instance requires, the missing fields appear above
- * the button and a second press completes the sign-up.
- */
+/** "Continue with Google", through Google's page in an in-app browser tab. */
 export function GoogleButton({
     title,
     onError,
@@ -42,115 +33,21 @@ export function GoogleButton({
 }) {
     useWarmUpBrowser();
     const { startSSOFlow } = useSSO();
-    const t = useTranslations("mobile.auth");
-    const [busy, setBusy] = useState(false);
-    const sendingRef = useRef(false);
-    const [pending, setPending] = useState<Awaited<ReturnType<typeof startSSOFlow>> | null>(null);
-    const [username, setUsername] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const missing = pending?.signUp?.missingFields ?? EMPTY_FIELDS;
 
-    const canComplete =
-        (!missing.includes("username") || USERNAME_PATTERN.test(username.trim())) &&
-        (!missing.includes("first_name") || !!firstName.trim()) &&
-        (!missing.includes("last_name") || !!lastName.trim());
-
-    const handlePress = useCallback(async () => {
-        if (sendingRef.current || !canComplete) return;
-        sendingRef.current = true;
-        setBusy(true);
-        try {
-            if (pending?.signUp) {
-                const attempt = await pending.signUp.update({
-                    ...(missing.includes("username") ? { username: username.trim() } : {}),
-                    ...(missing.includes("first_name") ? { firstName: firstName.trim() } : {}),
-                    ...(missing.includes("last_name") ? { lastName: lastName.trim() } : {}),
-                });
-                if (attempt.status === "complete" && pending.setActive) {
-                    await pending.setActive({ session: attempt.createdSessionId });
-                } else {
-                    onError(t("genericError"));
-                }
-                return;
-            }
-            const result = await startSSOFlow({
-                strategy: "oauth_google",
-                redirectUrl: Linking.createURL("/"),
-            });
-            if (result.createdSessionId && result.setActive) {
-                await result.setActive({ session: result.createdSessionId });
-            } else if (
-                result.signUp?.status === "missing_requirements" &&
-                result.signUp.missingFields.length > 0 &&
-                result.signUp.missingFields.every((field) => PROFILE_FIELDS.includes(field))
-            ) {
-                setPending(result);
-            } else if (result.authSessionResult?.type === "success") {
-                onError(
-                    result.signIn?.status === "needs_second_factor"
-                        ? t("mfaUnsupported")
-                        : t("genericError"),
-                );
-            }
-            // Any other outcome means the person dismissed the browser tab
-        } catch (error) {
-            onError(clerkErrorMessage(error, t("genericError")));
-        } finally {
-            sendingRef.current = false;
-            setBusy(false);
-        }
-    }, [canComplete, firstName, lastName, missing, onError, pending, startSSOFlow, t, username]);
+    const start = useCallback(async (): Promise<SocialAttempt> => {
+        const result = await startSSOFlow({
+            strategy: "oauth_google",
+            redirectUrl: Linking.createURL("/"),
+        });
+        return { ...result, finished: result.authSessionResult?.type === "success" };
+    }, [startSSOFlow]);
 
     return (
-        <>
-            {missing.includes("first_name") ? (
-                <TextField
-                    label={t("firstName")}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    autoComplete="given-name"
-                    textContentType="givenName"
-                />
-            ) : null}
-            {missing.includes("last_name") ? (
-                <TextField
-                    label={t("lastName")}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    autoComplete="family-name"
-                    textContentType="familyName"
-                />
-            ) : null}
-            {missing.includes("username") ? (
-                <TextField
-                    label={t("username")}
-                    value={username}
-                    onChangeText={setUsername}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="username-new"
-                    textContentType="username"
-                    error={
-                        username.trim() && !USERNAME_PATTERN.test(username.trim())
-                            ? t("usernameHint")
-                            : null
-                    }
-                />
-            ) : null}
-            <Button
-                title={pending ? t("signUp") : title}
-                variant={pending ? "primary" : "outline"}
-                size={pending ? "lg" : "md"}
-                disabled={!canComplete}
-                loading={busy}
-                onPress={handlePress}
-                icon={
-                    pending ? undefined : (
-                        <Ionicons name="logo-google" size={18} color={colors.foreground} />
-                    )
-                }
-            />
-        </>
+        <SocialButton
+            title={title}
+            icon={<Ionicons name="logo-google" size={18} color={colors.foreground} />}
+            start={start}
+            onError={onError}
+        />
     );
 }

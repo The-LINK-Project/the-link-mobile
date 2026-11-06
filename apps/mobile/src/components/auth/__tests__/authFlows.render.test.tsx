@@ -41,6 +41,7 @@ jest.mock("expo-router", () => ({
 }));
 jest.mock("@/lib/clerkSettings", () => ({
     USERNAME_PATTERN: /^[a-zA-Z0-9_-]{4,64}$/,
+    useAppleSignIn: () => false,
     useGoogleSignIn: () => false,
     useProfileAttributes: () => ({
         username: { enabled: false, required: false },
