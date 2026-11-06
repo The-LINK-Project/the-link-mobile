@@ -1,0 +1,78 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 The LINK Project",
+    "categories": [
+      "EDUCATION"
+    ],
+    "info": {
+      "en-US": {
+        "title": "The LINK Project",
+        "subtitle": "English for life in Singapore",
+        "description": "The LINK Project teaches the English you need for daily life in Singapore: on the MRT, at the food stall, at the clinic and at work. It is made for migrant workers by a student-led team in Singapore.\n\nEach lesson takes about 5 minutes. You see a picture, hear the word, and answer by tapping. You never need to type. If you get a question wrong, it comes back at the end of the lesson, so you can try again without losing your place.\n\nEVERY NEW WORD IN YOUR LANGUAGE\nChoose the language you know best: Bengali, Tamil, Hindi, Burmese, Filipino, Indonesian, Telugu, Malayalam, Malay, Chinese, Thai, Vietnamese, French or Spanish. Every new word and sentence is explained in it. Hold your finger on any English word in the app to see what it means. The app's menus and buttons can be in English, Bengali, Tamil, Hindi, Burmese, Filipino or Indonesian.\n\nPRACTISE SPEAKING WITH AN AI TUTOR\nAfter a lesson, talk with an AI tutor. It explains in your language and asks you to say the English you just learned. Tap, speak, and the tutor tells you if it understood you. If not, it helps you try again. The tutor only uses English from the lesson, so there are no surprise words.\n\nWHAT YOU LEARN\n• Taking the MRT: find the right platform, top up your card, and get off at the right stop.\n• Buying food: order at a food stall, ask the price, and say how you want it.\n• Seeing a doctor: say what is wrong, ask for an MC, and understand how to take your medicine.\n• At work: ask your supervisor to say it again, say when something is not safe, and ask for a day off.\n• Daily practice: eight quick questions from all the lessons, different every day.\n\nLessons also share tips for life in Singapore, like who to call if your employer will not let you see a doctor.\n\nYOUR PROGRESS IS SAVED\nYour finished lessons are saved to your account, so you keep them if you change phones. Lesson pictures and sounds are inside the app, so lessons keep working when your connection is weak. Speaking practice and word meanings need the internet.\n\nYOUR PRIVACY\n• Your voice is sent to Google's Gemini AI so the tutor can hear you. We do not keep your recordings.\n• No ads. No tracking. Nothing to buy.\n• You can delete your account in the app at any time, under Account.\n\nYou need an account to use the app. Sign up with your email, or continue with Apple or Google. The app is for adults aged 18 and over.\n\nQuestions? Email thelinkproject.org@gmail.com.",
+        "keywords": [
+          "migrant",
+          "foreign",
+          "worker",
+          "speaking",
+          "tutor",
+          "AI",
+          "Bengali",
+          "Tamil",
+          "Hindi",
+          "Burmese",
+          "Filipino",
+          "vocabulary",
+          "MRT",
+          "learn"
+        ],
+        "promoText": "Short lessons for the MRT, the food stall, the clinic and work. Every new word is explained in your language, and an AI tutor helps you say it out loud.",
+        "releaseNotes": "The LINK Project is now on iPhone and iPad. Short lessons for daily life in Singapore, every new word explained in your language, and an AI tutor to practise speaking with.",
+        "marketingUrl": "https://www.thelinkproject.org",
+        "supportUrl": "https://www.thelinkproject.org/contact",
+        "privacyPolicyUrl": "https://www.thelinkproject.org/privacy"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "gambling": false,
+      "lootBox": false,
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "medicalOrTreatmentInformation": "INFREQUENT_OR_MILD",
+      "healthOrWellnessTopics": false,
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gunsOrOtherWeapons": "NONE",
+      "unrestrictedWebAccess": false,
+      "userGeneratedContent": false,
+      "messagingAndChat": false,
+      "advertising": false,
+      "parentalControls": false,
+      "ageAssurance": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "ageRatingOverrideV2": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "release": {
+      "automaticRelease": false
+    },
+    "review": {
+      "firstName": "TODO_REVIEW_CONTACT_FIRST_NAME",
+      "lastName": "TODO_REVIEW_CONTACT_LAST_NAME",
+      "email": "thelinkproject.org@gmail.com",
+      "phone": "TODO_REVIEW_CONTACT_PHONE_+65",
+      "demoUsername": "REVIEW_DEMO_EMAIL",
+      "demoPassword": "REVIEW_DEMO_PASSWORD",
+      "demoRequired": true,
+      "notes": "The LINK Project teaches everyday English to migrant workers in Singapore. Lessons are explained in the learner's own language (Bengali, Tamil, Hindi, Burmese and 10 more). The app is free, has no ads and no purchases.\n\nSIGNING IN\nEverything is behind an account. On the first screen, type the demo email and password from the Sign-In Information section and tap \"Sign in\". The demo account's language is set to English, so the menus are in English. If the app asks \"What is your language?\", scroll to the bottom of the list, choose English and tap Continue.\n\nLESSONS\nThe Home tab lists the lessons. Tap \"Taking the MRT\" to start one. Every answer is a tap; there is no typing. A lesson takes about 5 minutes.\n\nSPEAKING PRACTICE AND THE MICROPHONE\nThe microphone is used only for speaking practice. To reach it, finish a lesson and tap \"Practise speaking\", or tap a finished lesson's Speaking step on Home (the demo account has finished \"Taking the MRT\").\n1. The first screen says, before anything is recorded: \"Your voice is sent to Google's Gemini AI so the tutor can hear you. The LINK Project does not keep your recordings.\"\n2. Tap \"Choose your language first\" and pick the language the tutor should explain in. For review, Español or Français keeps the tutor readable; the English the learner has to say is always shown on screen.\n3. Tap Start. iOS then asks for microphone access. If it is refused, the rest of the app keeps working and the screen offers a button to open Settings.\n4. Tap the microphone, say the English sentence, tap stop, then tap Send.\nEach recording goes over HTTPS to our server, which passes it to Google's Gemini API (paid tier) to write down what was said and to write the tutor's reply. The reply comes back as text and speech. Our server does not store recordings or transcripts, and the phone deletes each recording once it is sent. We do not send the learner's name, email or account details to Google.\n\nAI-GENERATED CONTENT\nThe tutor's replies are written by Gemini and kept to the English the lesson taught. For tutor languages with their own script (Bengali, Tamil, Hindi and others), our server checks every English word in a reply against the lesson; a reply that breaks the rule is rewritten, and if it still breaks it, replaced with a line built from the lesson itself. For languages written in Latin letters, such as Spanish, the instructions to the model hold it to the same rule. The tutor steers off-topic talk back to the lesson. There is no chat between users, and nothing a user records or writes is shown to anyone else.\n\nWORD MEANINGS\nHolding a finger on an English word shows its meaning in the learner's language. The word and the lesson sentence it is in are sent to Gemini; nothing about the user is sent. This needs a language other than English: change it under Account > My language to try it.\n\nNETWORK\nSign-in, speaking practice and word meanings need an internet connection. Lesson pictures and audio are inside the app.\n\nSIGN-IN OPTIONS\nEmail and password, Sign in with Apple, and Google. Sign in with Apple is shown above Google on the sign-in and sign-up screens.\n\nACCOUNT DELETION\nAccount tab > Delete account (the last item) > type DELETE > tap Delete. This deletes the account, the learner's progress and their language choice from our servers and from the phone straight away, and signs the user out. The same account also works on our website, thelinkproject.org, and the delete screen says the account is removed there too.\nPlease test deletion with a new account rather than the demo one: the quickest way is \"Continue with Apple\" on the sign-in screen, which creates an account, and then delete that account.\n\nAGE\nThe app is meant for adults (18+), as our privacy policy says.\n\nIf anything does not work, please contact us at thelinkproject.org@gmail.com."
+    }
+  }
+}
