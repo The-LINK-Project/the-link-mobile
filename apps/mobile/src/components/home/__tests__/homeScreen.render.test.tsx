@@ -87,7 +87,7 @@ it("does not call a lesson done until it has been said aloud", async () => {
 
     act(() => completeSpeaking("mrt-basics", { said: 2, total: 3 }));
     view.rerender(<HomeScreen />);
-    expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
+    expect(screen.getByText("Lessons done: 1 of 10")).toBeTruthy();
     expect(screen.getByLabelText("Taking the MRT. Done")).toBeTruthy();
     expect(screen.getByLabelText("Buying food. Start here")).toBeTruthy();
     // Saying it again stays on offer.
@@ -107,7 +107,7 @@ it("keeps a finished lesson finished while the learner goes through it again", (
 
     // Starting it again used to take it off the count and take its tick away,
     // which read as the app having lost the lesson.
-    expect(screen.getByText("Lessons done: 1 of 4")).toBeTruthy();
+    expect(screen.getByText("Lessons done: 1 of 10")).toBeTruthy();
     const total = initSession(mrtBasics, "en").queue.length;
     expect(screen.getByLabelText(`Taking the MRT. Done. 3 of ${total} done`)).toBeTruthy();
     expect(screen.getByLabelText("Practise speaking. Taking the MRT")).toBeTruthy();
