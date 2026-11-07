@@ -55,9 +55,11 @@ export function readProfileAttributes(
  * Whether the Clerk instance offers a social provider (for example
  * "oauth_google"). Before the environment has loaded this reports true so the
  * button does not flash in after first paint; the sign-in screens only render
- * once Clerk is loaded anyway.
+ * once Clerk is loaded anyway. Once it has loaded, a provider the instance has
+ * never set up is missing from the list altogether, and counts as off.
  */
 export function readSocialProvider(clerk: ClerkEnvironmentSource, strategy: string): boolean {
-    const provider = userSettings(clerk)?.social?.[strategy];
-    return typeof provider?.enabled === "boolean" ? provider.enabled : true;
+    const social = userSettings(clerk)?.social;
+    if (!social) return true;
+    return social[strategy]?.enabled === true;
 }

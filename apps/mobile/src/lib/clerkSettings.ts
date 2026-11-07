@@ -1,5 +1,7 @@
 import { useClerk } from "@clerk/expo";
 import { useMemo } from "react";
+import { Platform } from "react-native";
+
 import {
     readProfileAttributes,
     readSocialProvider,
@@ -46,6 +48,17 @@ export function useProfileAttributes(): {
 export function useGoogleSignIn(): boolean {
     const clerk = useClerk() as unknown as ClerkEnvironmentSource;
     return readSocialProvider(clerk, "oauth_google");
+}
+
+/**
+ * True on an iPhone or iPad when the instance has Apple sign-in switched on.
+ * It uses Apple's own sign-in sheet, which only iOS has. Apple requires it in
+ * an iOS app that offers Google sign-in (App Review guideline 4.8), so turning
+ * Google on for production means turning Apple on too.
+ */
+export function useAppleSignIn(): boolean {
+    const clerk = useClerk() as unknown as ClerkEnvironmentSource;
+    return Platform.OS === "ios" && readSocialProvider(clerk, "oauth_apple");
 }
 
 // Clerk's own rule: 4–64 characters, letters/digits/underscore/hyphen

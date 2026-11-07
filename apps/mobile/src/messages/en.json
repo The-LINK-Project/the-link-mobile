@@ -11,6 +11,7 @@
       "firstName": "First name",
       "lastName": "Last name",
       "continueWithGoogle": "Continue with Google",
+      "continueWithApple": "Continue with Apple",
       "or": "or",
       "noAccount": "New here?",
       "haveAccount": "Have an account?",

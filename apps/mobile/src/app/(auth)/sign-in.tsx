@@ -3,21 +3,23 @@ import { Link } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { AppleButton } from "@/components/auth/AppleButton";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { FormError } from "@/components/auth/FormError";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { PrivacyNotice } from "@/components/auth/PrivacyNotice";
 import { Button, Screen, Text, TextField } from "@/components/ui";
 import { clerkErrorMessage } from "@/lib/clerkErrors";
-import { useGoogleSignIn } from "@/lib/clerkSettings";
+import { useAppleSignIn, useGoogleSignIn } from "@/lib/clerkSettings";
 import { useTranslations } from "@/lib/i18n";
 import { colors, spacing, TOUCH_TARGET } from "@/lib/theme";
 
 export default function SignInScreen() {
     const t = useTranslations("mobile.auth");
     const { signIn, fetchStatus } = useSignIn();
-    // Google is a per-instance Clerk setting; hide the button where it is off
+    // Google and Apple are per-instance Clerk settings; hide a button where it is off
     const googleEnabled = useGoogleSignIn();
+    const appleEnabled = useAppleSignIn();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -110,15 +112,22 @@ export default function SignInScreen() {
                     </Link>
                 </View>
 
-                {googleEnabled ? (
+                {googleEnabled || appleEnabled ? (
                     <>
                         <View style={styles.dividerRow}>
                             <View style={styles.divider} />
                             <Text variant="caption">{t("or")}</Text>
                             <View style={styles.divider} />
                         </View>
-                        <GoogleButton title={t("continueWithGoogle")} onError={setError} />
-                        {/* Google makes a new account here for someone who has none */}
+                        <View style={styles.form}>
+                            {appleEnabled ? (
+                                <AppleButton title={t("continueWithApple")} onError={setError} />
+                            ) : null}
+                            {googleEnabled ? (
+                                <GoogleButton title={t("continueWithGoogle")} onError={setError} />
+                            ) : null}
+                        </View>
+                        {/* Google and Apple make a new account here for someone who has none */}
                         <PrivacyNotice onError={setError} />
                     </>
                 ) : null}

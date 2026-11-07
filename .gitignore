@@ -21,3 +21,6 @@ artifacts/
 
 # Google Cloud service account keys as downloaded: <project>-<12 hex digits>.json
 *-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
+
+# Draft App Store frames built from Android captures; regenerate with store/app-store/generate.py
+store/app-store/draft/
